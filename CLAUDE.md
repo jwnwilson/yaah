@@ -16,9 +16,14 @@ A self-hosted platform for running **virtual dev teams** — role-based AI agent
 
 ## Architecture
 
+> **When designing tasks that touch persistence or the API layer, first read
+> [docs/architecture.md](docs/architecture.md)** — it defines the repository/UnitOfWork,
+> owner-scoping, and CrudRouter patterns (adapted from hexrepo) that new code must follow.
+
 Hexagonal, three layers — domain logic never touches I/O:
 
 ```
+ui/              # UI code
 src/
   domain/        # pure business logic, no I/O
     models.py    # Project, WorkItem (epic/feature/task), Team, AgentDefinition, Run
