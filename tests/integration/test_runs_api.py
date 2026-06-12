@@ -82,3 +82,22 @@ def test_start_run_without_team_assigned_409():
 def test_get_missing_run_404():
     c = make_client()
     assert c.get("/runs/nope").status_code == 404
+
+
+def _start_run(c: TestClient) -> dict:
+    task_id, _team_id, _pid = _ready_task(c)
+    return c.post(f"/work-items/{task_id}/runs").json()["data"]
+
+
+def test_cancel_run_moves_it_to_cancelled():
+    c = make_client()
+    run = _start_run(c)
+    resp = c.post(f"/runs/{run['id']}/cancel")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["status"] == "cancelled"
+
+
+def test_cancel_unknown_run_is_404():
+    c = make_client()
+    resp = c.post("/runs/deadbeef/cancel")
+    assert resp.status_code == 404

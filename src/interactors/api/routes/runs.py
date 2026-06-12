@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from adapters.database.ports import UnitOfWork
-from domain.models import Run, WorkItemKind, WorkItemStatus, utc_now
+from domain.models import Run, RunStatus, WorkItemKind, WorkItemStatus, utc_now
+from domain.run_transitions import validate_run_transition
 from domain.transitions import validate_transition
 from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
@@ -49,3 +50,12 @@ def get_run(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
     with uow.transaction():
         run = uow.runs.get(run_id)  # owner-scoped -> cross-tenant 404
     return ok(run.model_dump(mode="json"))
+
+
+@router.post("/runs/{run_id}/cancel")
+def cancel_run(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        run = uow.runs.get(run_id)
+        validate_run_transition(run.status, RunStatus.CANCELLED)
+        result = uow.runs.update(run_id, run.model_copy(update={"status": RunStatus.CANCELLED}))
+    return ok(result.model_dump(mode="json"))
