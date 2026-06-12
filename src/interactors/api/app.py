@@ -6,7 +6,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
 from adapters.database.engine import make_engine, make_session_factory
-from adapters.database.tables import metadata
+from adapters.database.orm import Base
 from interactors.api.envelope import err, ok
 from interactors.api.settings import Settings
 
@@ -19,11 +19,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     engine = make_engine(settings.database_url)
-    metadata.create_all(engine)  # alembic replaces this once the schema stabilises
-
-    from adapters.database.orm import Base
-
-    Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine)  # alembic replaces this once the schema stabilises
     app.state.settings = settings
     app.state.session_factory = make_session_factory(engine)
 

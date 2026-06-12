@@ -29,13 +29,14 @@ src/
     models.py    # Project, WorkItem (epic/feature/task), Team, AgentDefinition, Run
     transitions.py  # work-item status state machine
     teams.py     # default team factory (lead + engineer + QA)
-    ports.py     # store/runtime/workspace protocols
+    errors.py    # typed persistence errors (RecordNotFound, IntegrityConflict, InvalidFilter)
+    ports.py     # Repository / UnitOfWork protocols + PaginatedResult
   adapters/      # concrete port implementations
-    database/    # SQLAlchemy tables, engine, stores
+    database/    # orm.py (rows), repository.py (generic), repositories.py, uow.py, engine.py
   interactors/   # entry points: wiring only, no business logic
-    api/         # FastAPI app factory, routes, auth, settings
+    api/         # FastAPI app factory, CrudRouter, routes, auth, settings
 tests/
-  unit/          # domain + stores (SQLite in-memory)
+  unit/          # domain + repository/uow (SQLite in-memory)
   integration/   # API via TestClient
 ```
 
