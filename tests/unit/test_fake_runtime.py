@@ -1,6 +1,6 @@
+from adapters.runtime.fake import FakeAgentRuntime, result_of
 from domain.models import RunStage
 from domain.runtime import AgentEvent, RunContext, StageResult
-from adapters.runtime.fake import FakeAgentRuntime, result_of
 
 
 def _ctx(stage):
