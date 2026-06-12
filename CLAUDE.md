@@ -46,7 +46,7 @@ tests/
 
 - **Immutability**: Pydantic models updated via `model_copy(update={...})`, never mutated.
 - **API envelope**: every response is `{success, data, error}` (+ `meta` for pagination).
-- **Owner scoping**: every owned row carries `owner_id`; stores filter by it. Auth mode `dev` injects `dev-user`; Auth0 arrives with the remote profile.
+- **Owner scoping**: every owned row carries `owner_id`; the UnitOfWork applies it as a required filter on every repository query. Auth mode `dev` injects `dev-user`; Auth0 arrives with the remote profile.
 - **Status changes** go through `domain/transitions.validate_transition` — invalid transitions return HTTP 409.
 - **Run IDs / entity IDs** are UUID hex strings (32 chars).
 - **TDD**: write the failing test first; AAA structure; descriptive behavior names.

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from domain.models import Run, WorkItemKind, WorkItemStatus, utc_now
 from domain.ports import UnitOfWork
+from domain.transitions import validate_transition
 from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
 
@@ -16,6 +17,8 @@ def start_run(task_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
             raise HTTPException(status_code=404, detail="task not found")
         if task.status != WorkItemStatus.READY:
             raise HTTPException(status_code=409, detail=f"task is {task.status}, must be ready")
+        # Honour the central state machine for the actual transition we apply.
+        validate_transition(task.status, WorkItemStatus.IN_PROGRESS)  # InvalidTransition -> 409
         project = uow.projects.get(task.project_id)
         if not project.team_id:
             raise HTTPException(status_code=409, detail="project has no team assigned")
