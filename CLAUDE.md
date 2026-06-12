@@ -30,17 +30,17 @@ src/
     transitions.py  # work-item status state machine
     teams.py     # default team factory (lead + engineer + QA)
     errors.py    # typed persistence errors (RecordNotFound, IntegrityConflict, InvalidFilter)
-    ports.py     # Repository / UnitOfWork protocols + PaginatedResult
   adapters/      # concrete port implementations
-    database/    # orm.py (rows), repository.py (generic), repositories.py, uow.py, engine.py
+    database/    # ports.py (Repository/UnitOfWork protocols + PaginatedResult), orm.py, repository.py, repositories.py, uow.py, engine.py
   interactors/   # entry points: wiring only, no business logic
-    api/         # FastAPI app factory, CrudRouter, routes, auth, settings
+    api/         # FastAPI app factory, routes, auth, settings
+  lib/           # reusable, app-agnostic modules (CrudRouter)
 tests/
   unit/          # domain + repository/uow (SQLite in-memory)
   integration/   # API via TestClient
 ```
 
-> Placement rules: ports in `domain/ports.py`; business logic in `domain/` (no argparse, no I/O, no adapter imports); port implementations in `adapters/`; wiring/startup in `interactors/`. No `scripts/` folder.
+> Placement rules: persistence ports (Repository/UnitOfWork protocols) live with their impl in `adapters/database/ports.py`; business logic in `domain/` (no argparse, no I/O, no adapter imports); port implementations in `adapters/`; reusable app-agnostic modules in `lib/`; wiring/startup in `interactors/`. No `scripts/` folder.
 
 ## Key conventions
 

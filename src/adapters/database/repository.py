@@ -6,8 +6,8 @@ from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 from sqlalchemy.orm import Session
 
 from adapters.database.orm import Base
+from adapters.database.ports import PaginatedResult
 from domain.errors import IntegrityConflict, InvalidFilter, RecordNotFound
-from domain.ports import PaginatedResult
 
 DTO = TypeVar("DTO", bound=BaseModel)
 

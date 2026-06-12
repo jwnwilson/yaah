@@ -1,7 +1,7 @@
 from fastapi import Depends, Request
 
+from adapters.database.ports import UnitOfWork
 from adapters.database.uow import SqlUnitOfWork
-from domain.ports import UnitOfWork
 from interactors.api.auth import current_user_id
 
 

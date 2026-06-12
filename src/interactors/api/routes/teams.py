@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
+from adapters.database.ports import UnitOfWork
 from domain.models import AgentRole
-from domain.ports import UnitOfWork
 from domain.teams import default_team
 from interactors.api.auth import current_user_id
 from interactors.api.deps import get_uow

@@ -15,9 +15,8 @@ src/
     transitions.py  # work-item status state machine
     teams.py     # default team factory
     errors.py    # persistence-agnostic errors: RecordNotFound, IntegrityConflict
-    ports.py     # Repository / UnitOfWork protocols (the contract adapters implement)
   adapters/
-    database/    # SQLAlchemy ORM models, generic SqlRepository, SqlUnitOfWork
+    database/    # ports.py (Repository/UnitOfWork protocols), ORM models, SqlRepository, SqlUnitOfWork
   interactors/
     api/         # FastAPI wiring: app factory, routes, deps, auth, envelope
   lib/           # reusable, app-agnostic modular code (e.g. CrudRouter)
@@ -25,6 +24,14 @@ src/
 
 Placement rules: domain never imports adapters or FastAPI; routes contain wiring only;
 all business rules (validation, transitions) stay in domain.
+
+**Persistence ports live with the adapter that implements them** (`adapters/database/ports.py`),
+not in `domain/`. The `Repository`/`UnitOfWork` protocols are generic persistence contracts
+the domain never references — they exist so consumers (routes, DI) depend on an abstraction
+rather than the concrete SQLAlchemy classes. Keeping them beside `repository.py`/`uow.py`
+reflects what they actually are: infrastructure interfaces, not domain ports. A true domain
+port (a business-meaningful capability the domain itself calls out to) would still live in
+`domain/`.
 
 **Reusable modular code goes in `src/lib/`.** When a component is generic infrastructure
 rather than feature logic — something another feature (or project) could reuse unchanged,
@@ -150,7 +157,7 @@ meta-inconsistency deferral).
 | sync + async variants | **sync only** | YAGNI; yaah is sync SQLAlchemy until a measured need |
 | `UUID` ids | **32-char uuid-hex strings** | yaah spec'd convention; no migration value |
 | bare DTO / `PaginatedData` responses | **`{success, data, error}` envelope** | yaah API convention, already shipped |
-| ABC base classes | **`typing.Protocol` ports** in `domain/ports.py` | structural typing; deps annotate Protocol types so ports stay load-bearing |
+| ABC base classes | **`typing.Protocol` ports** in `adapters/database/ports.py` | structural typing; deps annotate Protocol types so ports stay load-bearing. Co-located with their impl since the domain never references them |
 | alembic from day one | **`create_all` until A6** | schema still fluid pre-A2 |
 | read-only engine pool, query counting, relationship auto-sync (`update_relationships`), Mongo/Dynamo backends, Lambda wrapper | **omitted** | no current consumer; add when a phase needs them |
 | `server_default=func.now()` timestamps | **domain-generated `utc_now()`** | timestamps are domain facts; keeps tests deterministic |
@@ -161,7 +168,7 @@ meta-inconsistency deferral).
 2. ORM row class in `adapters/database/orm.py` (`id`, `owner_id` if owned, timestamps).
 3. Repository subclass in `adapters/database/repositories.py` (set `orm_model`, `dto`).
 4. Property on `SqlUnitOfWork` exposing it.
-5. Protocol in `domain/ports.py` if the domain needs to reference it.
+5. Repository/UoW Protocol entry in `adapters/database/ports.py` if a new contract is needed.
 6. `CrudRouter` (from `lib/`) instantiation in `interactors/api/routes/` + hand-written extras.
 7. Integration tests through the API; unit tests only for repo behavior the API
    can't reach.
