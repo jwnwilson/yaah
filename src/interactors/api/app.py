@@ -6,7 +6,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
 from adapters.database.engine import make_engine, make_session_factory
-from adapters.database.tables import metadata
+from adapters.database.orm import Base
 from interactors.api.envelope import err, ok
 from interactors.api.settings import Settings
 
@@ -19,7 +19,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     engine = make_engine(settings.database_url)
-    metadata.create_all(engine)  # alembic replaces this once the schema stabilises
+    Base.metadata.create_all(engine)  # alembic replaces this once the schema stabilises
     app.state.settings = settings
     app.state.session_factory = make_session_factory(engine)
 
@@ -32,6 +32,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.exception_handler(RequestValidationError)
     async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
         return JSONResponse(status_code=422, content=err(str(exc.errors())))
+
+    from pydantic import ValidationError
+
+    from domain.errors import IntegrityConflict, InvalidFilter, RecordNotFound
+    from domain.transitions import InvalidTransition
+
+    def _envelope_handler(status_code: int):
+        async def handler(_: Request, exc: Exception) -> JSONResponse:
+            return JSONResponse(status_code=status_code, content=err(str(exc)))
+
+        return handler
+
+    app.add_exception_handler(RecordNotFound, _envelope_handler(404))
+    app.add_exception_handler(IntegrityConflict, _envelope_handler(409))
+    app.add_exception_handler(InvalidTransition, _envelope_handler(409))
+    app.add_exception_handler(InvalidFilter, _envelope_handler(400))
+    app.add_exception_handler(ValidationError, _envelope_handler(422))
 
     @app.get("/health")
     def health() -> dict:

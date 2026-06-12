@@ -1,11 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from adapters.database.stores import SqlProjectStore, SqlWorkItemStore
+from adapters.database.ports import UnitOfWork
 from domain.models import WorkItem, WorkItemKind, WorkItemStatus, utc_now
-from domain.transitions import InvalidTransition, validate_transition
-from interactors.api.auth import current_user_id
-from interactors.api.deps import project_store, work_item_store
+from domain.transitions import validate_transition
+from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
 
 router = APIRouter(tags=["work-items"])
@@ -30,20 +29,12 @@ class SetStatus(BaseModel):
 
 
 @router.post("/projects/{project_id}/work-items", status_code=201)
-def create(
-    project_id: str,
-    body: CreateWorkItem,
-    user_id: str = Depends(current_user_id),
-    projects: SqlProjectStore = Depends(project_store),
-    store: SqlWorkItemStore = Depends(work_item_store),
-) -> dict:
-    if not projects.get(project_id, owner_id=user_id):
-        raise HTTPException(status_code=404, detail="project not found")
-    try:
-        item = WorkItem(project_id=project_id, **body.model_dump())
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return ok(store.add(item).model_dump(mode="json"))
+def create(project_id: str, body: CreateWorkItem, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        project = uow.projects.get(project_id)  # RecordNotFound -> 404
+        item = WorkItem(project_id=project_id, owner_id=project.owner_id, **body.model_dump())
+        created = uow.work_items.create(item)
+    return ok(created.model_dump(mode="json"))
 
 
 @router.get("/projects/{project_id}/work-items")
@@ -52,57 +43,54 @@ def list_items(
     kind: WorkItemKind | None = None,
     status: WorkItemStatus | None = None,
     parent_id: str | None = None,
-    limit: int = 100,
-    offset: int = 0,
-    user_id: str = Depends(current_user_id),
-    projects: SqlProjectStore = Depends(project_store),
-    store: SqlWorkItemStore = Depends(work_item_store),
+    page_size: int = Query(100, ge=1, le=200),
+    page_number: int = Query(1, ge=1),
+    uow: UnitOfWork = Depends(get_uow),
 ) -> dict:
-    if not projects.get(project_id, owner_id=user_id):
-        raise HTTPException(status_code=404, detail="project not found")
-    items = store.list(
-        project_id, kind=kind, status=status, parent_id=parent_id, limit=limit, offset=offset
+    filters: dict = {"project_id": project_id}
+    if kind:
+        filters["kind"] = kind
+    if status:
+        filters["status"] = status
+    if parent_id:
+        filters["parent_id"] = parent_id
+    with uow.transaction():
+        uow.projects.get(project_id)  # RecordNotFound -> 404
+        page = uow.work_items.list(
+            filters=filters,
+            page_size=page_size,
+            page_number=page_number,
+            order_by="created_at",
+        )
+    return ok(
+        [i.model_dump(mode="json") for i in page.results],
+        meta={"total": page.total, "page_size": page.page_size, "page_number": page.page_number},
     )
-    return ok([i.model_dump(mode="json") for i in items], meta={"limit": limit, "offset": offset})
-
-
-def _get_or_404(store: SqlWorkItemStore, item_id: str) -> WorkItem:
-    item = store.get(item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="work item not found")
-    return item
 
 
 @router.patch("/work-items/{item_id}")
-def patch(
-    item_id: str,
-    body: UpdateWorkItem,
-    store: SqlWorkItemStore = Depends(work_item_store),
-) -> dict:
-    item = _get_or_404(store, item_id)
-    updated = item.model_copy(
-        update={**body.model_dump(exclude_none=True), "updated_at": utc_now()}
-    )
-    return ok(store.update(updated).model_dump(mode="json"))
+def patch(item_id: str, body: UpdateWorkItem, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        item = uow.work_items.get(item_id)  # owner-scoped: cross-tenant -> 404
+        updated = item.model_copy(
+            update={**body.model_dump(exclude_none=True), "updated_at": utc_now()}
+        )
+        result = uow.work_items.update(item_id, updated)
+    return ok(result.model_dump(mode="json"))
 
 
 @router.post("/work-items/{item_id}/status")
-def set_status(
-    item_id: str,
-    body: SetStatus,
-    store: SqlWorkItemStore = Depends(work_item_store),
-) -> dict:
-    item = _get_or_404(store, item_id)
-    try:
-        validate_transition(item.status, body.status)
-    except InvalidTransition as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    updated = item.model_copy(update={"status": body.status, "updated_at": utc_now()})
-    return ok(store.update(updated).model_dump(mode="json"))
+def set_status(item_id: str, body: SetStatus, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        item = uow.work_items.get(item_id)
+        validate_transition(item.status, body.status)  # InvalidTransition -> 409
+        updated = item.model_copy(update={"status": body.status, "updated_at": utc_now()})
+        result = uow.work_items.update(item_id, updated)
+    return ok(result.model_dump(mode="json"))
 
 
 @router.delete("/work-items/{item_id}")
-def delete(item_id: str, store: SqlWorkItemStore = Depends(work_item_store)) -> dict:
-    _get_or_404(store, item_id)
-    store.delete(item_id)
+def delete(item_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        uow.work_items.delete(item_id)  # get+delete, owner-scoped
     return ok({"deleted": item_id})

@@ -16,31 +16,37 @@ A self-hosted platform for running **virtual dev teams** — role-based AI agent
 
 ## Architecture
 
+> **When designing tasks that touch persistence or the API layer, first read
+> [docs/architecture.md](docs/architecture.md)** — it defines the repository/UnitOfWork,
+> owner-scoping, and CrudRouter patterns (adapted from hexrepo) that new code must follow.
+
 Hexagonal, three layers — domain logic never touches I/O:
 
 ```
+ui/              # UI code
 src/
   domain/        # pure business logic, no I/O
     models.py    # Project, WorkItem (epic/feature/task), Team, AgentDefinition, Run
     transitions.py  # work-item status state machine
     teams.py     # default team factory (lead + engineer + QA)
-    ports.py     # store/runtime/workspace protocols
+    errors.py    # typed persistence errors (RecordNotFound, IntegrityConflict, InvalidFilter)
   adapters/      # concrete port implementations
-    database/    # SQLAlchemy tables, engine, stores
+    database/    # ports.py (Repository/UnitOfWork protocols + PaginatedResult), orm.py, repository.py, repositories.py, uow.py, engine.py
   interactors/   # entry points: wiring only, no business logic
     api/         # FastAPI app factory, routes, auth, settings
+  lib/           # reusable, app-agnostic modules (CrudRouter)
 tests/
-  unit/          # domain + stores (SQLite in-memory)
+  unit/          # domain + repository/uow (SQLite in-memory)
   integration/   # API via TestClient
 ```
 
-> Placement rules: ports in `domain/ports.py`; business logic in `domain/` (no argparse, no I/O, no adapter imports); port implementations in `adapters/`; wiring/startup in `interactors/`. No `scripts/` folder.
+> Placement rules: persistence ports (Repository/UnitOfWork protocols) live with their impl in `adapters/database/ports.py`; business logic in `domain/` (no argparse, no I/O, no adapter imports); port implementations in `adapters/`; reusable app-agnostic modules in `lib/`; wiring/startup in `interactors/`. No `scripts/` folder.
 
 ## Key conventions
 
 - **Immutability**: Pydantic models updated via `model_copy(update={...})`, never mutated.
 - **API envelope**: every response is `{success, data, error}` (+ `meta` for pagination).
-- **Owner scoping**: every owned row carries `owner_id`; stores filter by it. Auth mode `dev` injects `dev-user`; Auth0 arrives with the remote profile.
+- **Owner scoping**: every owned row carries `owner_id`; the UnitOfWork applies it as a required filter on every repository query. Auth mode `dev` injects `dev-user`; Auth0 arrives with the remote profile.
 - **Status changes** go through `domain/transitions.validate_transition` — invalid transitions return HTTP 409.
 - **Run IDs / entity IDs** are UUID hex strings (32 chars).
 - **TDD**: write the failing test first; AAA structure; descriptive behavior names.

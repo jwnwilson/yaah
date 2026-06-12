@@ -6,3 +6,6 @@ __pycache__/
 .ruff_cache/
 htmlcov/
 .coverage
+
+# superpowers brainstorm scratch
+.superpowers/
