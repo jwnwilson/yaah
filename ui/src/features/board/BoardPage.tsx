@@ -1,6 +1,7 @@
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Board } from "./Board";
 import { TicketPanel } from "../work-items/TicketPanel";
+import { HierarchyTree } from "../work-items/HierarchyTree";
 
 export default function BoardPage() {
   const { projectId } = useParams();
@@ -12,13 +13,24 @@ export default function BoardPage() {
     setParams(params);
   };
 
+  const selectedFeature = params.get("feature") ?? undefined;
+  const selectFeature = (id: string | undefined) => {
+    if (id) params.set("feature", id); else params.delete("feature");
+    setParams(params);
+  };
+
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center gap-3 border-b p-3">
         <Link to="/" className="text-sm text-blue-700">← Projects</Link>
         <h1 className="font-semibold">Board</h1>
       </header>
-      <Board projectId={projectId} onOpen={openItem} />
+      <div className="flex flex-1 overflow-hidden">
+        <HierarchyTree projectId={projectId} selectedFeature={selectedFeature} onSelectFeature={selectFeature} />
+        <div className="flex-1 overflow-auto">
+          <Board projectId={projectId} parentId={selectedFeature} onOpen={openItem} />
+        </div>
+      </div>
       {params.get("item") && (
         <TicketPanel
           projectId={projectId}
