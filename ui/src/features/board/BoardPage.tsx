@@ -1,5 +1,6 @@
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Board } from "./Board";
+import { TicketPanel } from "../work-items/TicketPanel";
 
 export default function BoardPage() {
   const { projectId } = useParams();
@@ -18,6 +19,13 @@ export default function BoardPage() {
         <h1 className="font-semibold">Board</h1>
       </header>
       <Board projectId={projectId} onOpen={openItem} />
+      {params.get("item") && (
+        <TicketPanel
+          projectId={projectId}
+          itemId={params.get("item")!}
+          onClose={() => { params.delete("item"); setParams(params); }}
+        />
+      )}
     </div>
   );
 }
