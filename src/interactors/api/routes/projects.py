@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from adapters.database.stores import SqlProjectStore
+from adapters.database.stores import SqlProjectStore, SqlWorkItemStore
 from domain.models import AutonomyLevel, Project
 from interactors.api.auth import current_user_id
-from interactors.api.deps import project_store
+from interactors.api.deps import project_store, work_item_store
 from interactors.api.envelope import ok
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -80,7 +80,9 @@ def delete(
     project_id: str,
     user_id: str = Depends(current_user_id),
     store: SqlProjectStore = Depends(project_store),
+    work_items: SqlWorkItemStore = Depends(work_item_store),
 ) -> dict:
     _get_or_404(store, project_id, user_id)
+    work_items.delete_for_project(project_id)
     store.delete(project_id, owner_id=user_id)
     return ok({"deleted": project_id})

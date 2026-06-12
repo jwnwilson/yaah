@@ -30,3 +30,13 @@ def test_create_get_list_update_delete_project():
 def test_create_project_requires_a_repo():
     resp = make_client().post("/projects", json={"name": "nowhere"})
     assert resp.status_code == 422
+
+
+def test_delete_project_cascades_work_items():
+    c = make_client()
+    pid = c.post("/projects", json={"name": "p", "repo_url": "r"}).json()["data"]["id"]
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+
+    assert c.delete(f"/projects/{pid}").status_code == 200
+
+    assert c.patch(f"/work-items/{epic['id']}", json={"title": "x"}).status_code == 404

@@ -18,6 +18,7 @@ def test_create_default_team_and_fetch_agents():
 
     assert c.get("/teams").json()["data"][0]["id"] == team["id"]
     fetched = c.get(f"/teams/{team['id']}").json()["data"]
+    assert fetched["team"]["id"] == team["id"]
     assert [a["role"] for a in fetched["agents"]] == ["lead", "backend", "qa"]
 
 

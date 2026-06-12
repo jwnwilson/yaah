@@ -46,3 +46,14 @@ def test_work_item_filters(session_factory):
     assert [i.id for i in store.list("p1", status=WorkItemStatus.READY)] == [task.id]
     assert [i.id for i in store.list("p1", parent_id=epic.id)] == [task.id]
     assert len(store.list("p1")) == 2
+
+
+def test_delete_for_project_removes_all_items(session_factory):
+    store = SqlWorkItemStore(session_factory)
+    store.add(WorkItem(project_id="p1", kind=WorkItemKind.EPIC, title="E1"))
+    store.add(WorkItem(project_id="p1", kind=WorkItemKind.EPIC, title="E2"))
+    store.add(WorkItem(project_id="p2", kind=WorkItemKind.EPIC, title="other"))
+
+    assert store.delete_for_project("p1") == 2
+    assert store.list("p1") == []
+    assert len(store.list("p2")) == 1

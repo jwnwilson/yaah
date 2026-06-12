@@ -124,6 +124,13 @@ class SqlWorkItemStore:
             result = s.execute(delete(tables.work_items).where(tables.work_items.c.id == item_id))
         return result.rowcount > 0
 
+    def delete_for_project(self, project_id: str) -> int:
+        with self._sf() as s, s.begin():
+            result = s.execute(
+                delete(tables.work_items).where(tables.work_items.c.project_id == project_id)
+            )
+        return result.rowcount
+
 
 class SqlTeamStore:
     def __init__(self, session_factory: sessionmaker[Session]):

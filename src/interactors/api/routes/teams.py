@@ -44,7 +44,7 @@ def get(
     agents = store.agents(team_id)
     return ok(
         {
-            **team.model_dump(mode="json"),
+            "team": team.model_dump(mode="json"),
             "agents": [a.model_dump(mode="json") for a in agents],
         }
     )

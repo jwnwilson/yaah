@@ -58,6 +58,17 @@ def test_status_transition_enforced():
     assert bad.status_code == 409
 
 
+def test_create_work_item_under_missing_project_404():
+    c = make_client()
+    resp = c.post("/projects/nope/work-items", json={"kind": "epic", "title": "E"})
+    assert resp.status_code == 404
+
+
+def test_list_work_items_under_missing_project_404():
+    c = make_client()
+    assert c.get("/projects/nope/work-items").status_code == 404
+
+
 def test_update_and_delete_work_item():
     c = make_client()
     pid = _project(c)

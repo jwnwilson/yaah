@@ -45,3 +45,39 @@ def test_run_rejected_unless_task_ready():
     c.post(f"/work-items/{task_id}/runs")  # consumes ready -> in_progress
     again = c.post(f"/work-items/{task_id}/runs")
     assert again.status_code == 409
+
+
+def test_start_run_on_missing_task_404():
+    c = make_client()
+    assert c.post("/work-items/nope/runs").status_code == 404
+
+
+def test_start_run_on_non_task_kind_404():
+    c = make_client()
+    pid = c.post("/projects", json={"name": "p", "repo_url": "r"}).json()["data"]["id"]
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+    assert c.post(f"/work-items/{epic['id']}/runs").status_code == 404
+
+
+def test_start_run_without_team_assigned_409():
+    c = make_client()
+    pid = c.post("/projects", json={"name": "p", "repo_url": "r"}).json()["data"]["id"]
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+    feat = c.post(
+        f"/projects/{pid}/work-items",
+        json={"kind": "feature", "title": "F", "parent_id": epic["id"]},
+    ).json()["data"]
+    task = c.post(
+        f"/projects/{pid}/work-items",
+        json={"kind": "task", "title": "T", "parent_id": feat["id"]},
+    ).json()["data"]
+    c.post(f"/work-items/{task['id']}/status", json={"status": "ready"})
+
+    resp = c.post(f"/work-items/{task['id']}/runs")
+    assert resp.status_code == 409
+    assert resp.json()["error"] == "project has no team assigned"
+
+
+def test_get_missing_run_404():
+    c = make_client()
+    assert c.get("/runs/nope").status_code == 404
