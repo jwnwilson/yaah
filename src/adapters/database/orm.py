@@ -71,3 +71,15 @@ class RunRow(Base):
     pr_url: Mapped[str | None] = mapped_column(String(500))
     cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class RunEventRow(Base):
+    __tablename__ = "run_events"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    run_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    stage: Mapped[str | None] = mapped_column(String(30))
+    type: Mapped[str] = mapped_column(String(30), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

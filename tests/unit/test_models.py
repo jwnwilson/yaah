@@ -53,3 +53,17 @@ def test_roles_enum_has_core_roles():
     assert {"lead", "architect", "backend", "frontend", "qa", "devops"} <= {
         r.value for r in AgentRole
     }
+
+
+def test_run_stage_and_event_types_exist():
+    from domain.models import RunEvent, RunEventType, RunStage
+
+    assert RunStage.PLAN == "plan"
+    assert [s for s in RunStage] == [
+        RunStage.PLAN, RunStage.PROVISION, RunStage.IMPLEMENT,
+        RunStage.VERIFY, RunStage.PR, RunStage.LEARN,
+    ]
+    assert RunEventType.STAGE_STARTED == "stage_started"
+    ev = RunEvent(run_id="r1", owner_id="dev-user", stage=RunStage.PLAN,
+                  type=RunEventType.STAGE_STARTED, message="hi")
+    assert ev.id and ev.created_at and ev.message == "hi"

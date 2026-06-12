@@ -95,6 +95,35 @@ class RunStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class RunStage(StrEnum):
+    PLAN = "plan"
+    PROVISION = "provision"
+    IMPLEMENT = "implement"
+    VERIFY = "verify"
+    PR = "pr"
+    LEARN = "learn"
+
+
+class RunEventType(StrEnum):
+    STAGE_STARTED = "stage_started"
+    STAGE_COMPLETED = "stage_completed"
+    AGENT_EVENT = "agent_event"
+    GATE_OPENED = "gate_opened"
+    GATE_RESOLVED = "gate_resolved"
+    BLOCKED = "blocked"
+    ERROR = "error"
+
+
+class RunEvent(BaseModel):
+    id: str = Field(default_factory=new_id)
+    run_id: str
+    owner_id: str
+    stage: RunStage | None = None
+    type: RunEventType
+    message: str = ""
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class Team(BaseModel):
     id: str = Field(default_factory=new_id)
     owner_id: str
