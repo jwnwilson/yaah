@@ -174,7 +174,7 @@ generic repo already supports update; add the run-status validation in the route
 All follow A1.5 patterns: owner-scoped via required filters, typed domain errors mapped to
 404/409, standard envelope.
 
-## 10. Build & dev integration
+## 9. Build & dev integration
 
 - Vite dev server proxies `/api` → uvicorn (`:8000`); `npm run build` emits `ui/dist`, served
   by FastAPI as static assets in both compose profiles.

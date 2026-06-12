@@ -1,13 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import Depends
 from pydantic import BaseModel
 
-from adapters.database.stores import SqlProjectStore, SqlWorkItemStore
 from domain.models import AutonomyLevel, Project
-from interactors.api.auth import current_user_id
-from interactors.api.deps import project_store, work_item_store
+from domain.ports import UnitOfWork
+from interactors.api.crud_router import CrudRouter
+from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
-
-router = APIRouter(prefix="/projects", tags=["projects"])
 
 
 class CreateProject(BaseModel):
@@ -23,66 +21,22 @@ class UpdateProject(BaseModel):
     autonomy: AutonomyLevel | None = None
 
 
-@router.post("", status_code=201)
-def create(
-    body: CreateProject,
-    user_id: str = Depends(current_user_id),
-    store: SqlProjectStore = Depends(project_store),
-) -> dict:
-    try:
-        project = Project(owner_id=user_id, **body.model_dump())
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return ok(store.add(project).model_dump(mode="json"))
-
-
-@router.get("")
-def list_projects(
-    limit: int = 50,
-    offset: int = 0,
-    user_id: str = Depends(current_user_id),
-    store: SqlProjectStore = Depends(project_store),
-) -> dict:
-    items = store.list(user_id, limit=limit, offset=offset)
-    return ok([p.model_dump(mode="json") for p in items], meta={"limit": limit, "offset": offset})
-
-
-def _get_or_404(store: SqlProjectStore, project_id: str, user_id: str) -> Project:
-    project = store.get(project_id, owner_id=user_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="project not found")
-    return project
-
-
-@router.get("/{project_id}")
-def get(
-    project_id: str,
-    user_id: str = Depends(current_user_id),
-    store: SqlProjectStore = Depends(project_store),
-) -> dict:
-    return ok(_get_or_404(store, project_id, user_id).model_dump(mode="json"))
-
-
-@router.patch("/{project_id}")
-def patch(
-    project_id: str,
-    body: UpdateProject,
-    user_id: str = Depends(current_user_id),
-    store: SqlProjectStore = Depends(project_store),
-) -> dict:
-    project = _get_or_404(store, project_id, user_id)
-    updated = project.model_copy(update=body.model_dump(exclude_none=True))
-    return ok(store.update(updated).model_dump(mode="json"))
+router = CrudRouter(
+    repository="projects",
+    response_dto=Project,
+    create_schema=CreateProject,
+    update_schema=UpdateProject,
+    methods=("CREATE", "READ", "UPDATE", "DELETE"),
+    prefix="/projects",
+    tags=["projects"],
+)
 
 
 @router.delete("/{project_id}")
-def delete(
-    project_id: str,
-    user_id: str = Depends(current_user_id),
-    store: SqlProjectStore = Depends(project_store),
-    work_items: SqlWorkItemStore = Depends(work_item_store),
-) -> dict:
-    _get_or_404(store, project_id, user_id)
-    work_items.delete_for_project(project_id)
-    store.delete(project_id, owner_id=user_id)
+def delete_project(project_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    """Override: cascade child work items in the same transaction."""
+    with uow.transaction():
+        uow.projects.get(project_id)  # 404 (RecordNotFound) if absent/not owned
+        uow.work_items.delete_many({"project_id": project_id})
+        uow.projects.delete(project_id)
     return ok({"deleted": project_id})

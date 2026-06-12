@@ -37,6 +37,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
         return JSONResponse(status_code=422, content=err(str(exc.errors())))
 
+    from pydantic import ValidationError
+
     from domain.errors import IntegrityConflict, InvalidFilter, RecordNotFound
     from domain.transitions import InvalidTransition
 
