@@ -1,7 +1,10 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
@@ -60,4 +63,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(work_items.router)
     app.include_router(teams.router)
     app.include_router(runs.router)
+
+    ui_dist = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ui", "dist")
+    if os.path.isdir(ui_dist):
+        app.mount("/", StaticFiles(directory=ui_dist, html=True), name="ui")
+
     return app

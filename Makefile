@@ -1,4 +1,4 @@
-.PHONY: dev test coverage lint up
+.PHONY: dev test coverage lint up ui ui-build ui-test
 
 up:
 	docker compose up -d postgres
@@ -14,3 +14,12 @@ coverage:
 
 lint:
 	uv run ruff check src tests
+
+ui:
+	cd ui && npm run dev
+
+ui-build:
+	cd ui && npm run build
+
+ui-test:
+	cd ui && npm test
