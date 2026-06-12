@@ -8,7 +8,7 @@ def make_client() -> TestClient:
     return TestClient(create_app(Settings(_env_file=None, database_url="sqlite:///:memory:")))
 
 
-def _ready_task(c: TestClient) -> tuple[str, str]:
+def _ready_task(c: TestClient) -> tuple[str, str, str]:
     pid = c.post("/projects", json={"name": "p", "repo_url": "r"}).json()["data"]["id"]
     team_id = c.post("/teams/default").json()["data"]["team"]["id"]
     c.patch(f"/projects/{pid}", json={"team_id": team_id})
@@ -22,18 +22,19 @@ def _ready_task(c: TestClient) -> tuple[str, str]:
         json={"kind": "task", "title": "T", "parent_id": feat["id"]},
     ).json()["data"]
     c.post(f"/work-items/{task['id']}/status", json={"status": "ready"})
-    return task["id"], team_id
+    return task["id"], team_id, pid
 
 
 def test_start_run_on_ready_task():
     c = make_client()
-    task_id, team_id = _ready_task(c)
+    task_id, team_id, pid = _ready_task(c)
     resp = c.post(f"/work-items/{task_id}/runs")
     assert resp.status_code == 201
     run = resp.json()["data"]
     assert run["status"] == "pending"
     assert run["team_id"] == team_id
-    # task moved to in_progress
+    items = c.get(f"/projects/{pid}/work-items", params={"kind": "task"}).json()["data"]
+    assert items[0]["status"] == "in_progress"
     runs = c.get(f"/work-items/{task_id}/runs").json()["data"]
     assert [r["id"] for r in runs] == [run["id"]]
     assert c.get(f"/runs/{run['id']}").json()["data"]["id"] == run["id"]
@@ -41,7 +42,7 @@ def test_start_run_on_ready_task():
 
 def test_run_rejected_unless_task_ready():
     c = make_client()
-    task_id, _ = _ready_task(c)
+    task_id, _, _ = _ready_task(c)
     c.post(f"/work-items/{task_id}/runs")  # consumes ready -> in_progress
     again = c.post(f"/work-items/{task_id}/runs")
     assert again.status_code == 409
