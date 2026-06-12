@@ -32,11 +32,13 @@ router = CrudRouter(
 )
 
 
-@router.delete("/{project_id}")
-def delete_project(project_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+# Path param must be named `entity_id` to match the generated DELETE route's
+# path string, so the decorator's _remove_route drops the non-cascading one.
+@router.delete("/{entity_id}")
+def delete_project(entity_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
     """Override: cascade child work items in the same transaction."""
     with uow.transaction():
-        uow.projects.get(project_id)  # 404 (RecordNotFound) if absent/not owned
-        uow.work_items.delete_many({"project_id": project_id})
-        uow.projects.delete(project_id)
-    return ok({"deleted": project_id})
+        uow.projects.get(entity_id)  # 404 (RecordNotFound) if absent/not owned
+        uow.work_items.delete_many({"project_id": entity_id})
+        uow.projects.delete(entity_id)
+    return ok({"deleted": entity_id})

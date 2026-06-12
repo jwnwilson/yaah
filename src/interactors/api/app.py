@@ -52,6 +52,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_exception_handler(IntegrityConflict, _envelope_handler(409))
     app.add_exception_handler(InvalidTransition, _envelope_handler(409))
     app.add_exception_handler(InvalidFilter, _envelope_handler(400))
+    app.add_exception_handler(ValidationError, _envelope_handler(422))
 
     @app.get("/health")
     def health() -> dict:
