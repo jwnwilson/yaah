@@ -32,6 +32,13 @@ def test_create_project_requires_a_repo():
     assert resp.status_code == 422
 
 
+def test_list_rejects_non_dict_and_malformed_filters():
+    c = make_client()
+    assert c.get("/projects", params={"filters": "5"}).status_code == 400
+    assert c.get("/projects", params={"filters": "[]"}).status_code == 400
+    assert c.get("/projects", params={"filters": "{bad"}).status_code == 400
+
+
 def test_delete_project_cascades_work_items():
     c = make_client()
     pid = c.post("/projects", json={"name": "p", "repo_url": "r"}).json()["data"]["id"]

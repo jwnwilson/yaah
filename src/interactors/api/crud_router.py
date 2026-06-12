@@ -87,6 +87,8 @@ class CrudRouter(APIRouter):
                 parsed: dict[str, Any] = json.loads(filters)
             except json.JSONDecodeError as exc:
                 raise InvalidFilter(f"filters must be a JSON object: {exc}") from exc
+            if not isinstance(parsed, dict):
+                raise InvalidFilter("filters must be a JSON object")
             with uow.transaction():
                 page = getattr(uow, repo_name).list(
                     filters=parsed,
