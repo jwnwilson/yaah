@@ -8,11 +8,16 @@
 
 **Tech Stack:** Python 3.12, uv, FastAPI, Pydantic v2, SQLAlchemy 2.0 (sync), Postgres 16 (SQLite in-memory for tests), pytest + httpx.
 
-> **PROGRESS (2026-06-12):** Tasks 1–6 are COMPLETE and committed on branch `feature/a1-control-plane`
-> (scaffold acdfb31, settings 458a525, domain models 4197e8d, teams/runs 67109f4, transitions d35be6b, ports e2f2864).
-> Tasks 7-8 are ALSO complete (stores: 3a04dae, 10f4dc3) — 32 tests green, ruff clean — but NOT yet reviewed.
-> RESUME BY: (1) spec+quality review of Tasks 7-8 commits, then (2) implement Task 9 onward.
-> Tasks 1-6 passed both reviews already. Execution method: superpowers:subagent-driven-development.
+> **PROGRESS (2026-06-12):** Tasks 1–10 are COMPLETE, committed on branch `feature/a1-control-plane`,
+> and have passed BOTH spec-compliance and code-quality reviews
+> (scaffold acdfb31, settings 458a525, domain models 4197e8d, teams/runs 67109f4, transitions d35be6b,
+> ports e2f2864, stores 3a04dae + 10f4dc3, lint gate 3e2be60, app factory 8113ef8, projects CRUD 22256d3).
+> 36 tests green, ruff clean, coverage 94%.
+> RESUME BY: implementing Task 11 (work-items routes) onward via superpowers:subagent-driven-development
+> (implementer subagent → spec reviewer → code-quality reviewer per task), then final whole-branch review
+> + superpowers:finishing-a-development-branch after Task 14.
+> Deferred review notes for later tasks: structured (non-repr) error details + a 422 RequestValidationError
+> test when convenient; Query(ge=0) bounds on limit/offset and cross-tenant integration test at A2/A5.
 
 **Spec:** `docs/specs/2026-06-12-yaah-design.md`
 
