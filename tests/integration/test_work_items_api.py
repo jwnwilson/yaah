@@ -77,3 +77,18 @@ def test_update_and_delete_work_item():
     assert patched.json()["data"]["title"] == "E2"
     assert c.delete(f"/work-items/{epic['id']}").status_code == 200
     assert c.patch(f"/work-items/{epic['id']}", json={"title": "x"}).status_code == 404
+
+
+def test_get_single_work_item():
+    c = make_client()
+    pid = c.post("/projects", json={"name": "p", "repo_url": "r"}).json()["data"]["id"]
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+    resp = c.get(f"/work-items/{epic['id']}")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["id"] == epic["id"]
+
+
+def test_get_missing_work_item_404():
+    c = make_client()
+    resp = c.get("/work-items/deadbeef")
+    assert resp.status_code == 404

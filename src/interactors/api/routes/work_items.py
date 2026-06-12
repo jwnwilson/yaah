@@ -68,6 +68,13 @@ def list_items(
     )
 
 
+@router.get("/work-items/{item_id}")
+def get_item(item_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        item = uow.work_items.get(item_id)
+    return ok(item.model_dump(mode="json"))
+
+
 @router.patch("/work-items/{item_id}")
 def patch(item_id: str, body: UpdateWorkItem, uow: UnitOfWork = Depends(get_uow)) -> dict:
     with uow.transaction():
