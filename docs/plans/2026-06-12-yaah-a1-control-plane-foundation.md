@@ -8,6 +8,10 @@
 
 **Tech Stack:** Python 3.12, uv, FastAPI, Pydantic v2, SQLAlchemy 2.0 (sync), Postgres 16 (SQLite in-memory for tests), pytest + httpx.
 
+> **PROGRESS (2026-06-12):** Tasks 1–6 are COMPLETE and committed on branch `feature/a1-control-plane`
+> (scaffold acdfb31, settings 458a525, domain models 4197e8d, teams/runs 67109f4, transitions d35be6b, ports e2f2864; 27 tests green).
+> Both reviews passed (spec + quality). RESUME AT TASK 7 (SQLAlchemy tables + stores).
+
 **Spec:** `docs/specs/2026-06-12-yaah-design.md`
 
 ---
