@@ -26,28 +26,38 @@ class SqlProjectStore:
 
     def get(self, project_id: str, owner_id: str) -> Project | None:
         with self._sf() as s:
-            row = s.execute(
-                select(tables.projects).where(
-                    tables.projects.c.id == project_id, tables.projects.c.owner_id == owner_id
+            row = (
+                s.execute(
+                    select(tables.projects).where(
+                        tables.projects.c.id == project_id, tables.projects.c.owner_id == owner_id
+                    )
                 )
-            ).mappings().first()
+                .mappings()
+                .first()
+            )
         return Project(**row) if row else None
 
     def list(self, owner_id: str, limit: int = 50, offset: int = 0) -> list[Project]:
         with self._sf() as s:
-            rows = s.execute(
-                select(tables.projects)
-                .where(tables.projects.c.owner_id == owner_id)
-                .order_by(tables.projects.c.created_at.desc())
-                .limit(limit)
-                .offset(offset)
-            ).mappings().all()
+            rows = (
+                s.execute(
+                    select(tables.projects)
+                    .where(tables.projects.c.owner_id == owner_id)
+                    .order_by(tables.projects.c.created_at.desc())
+                    .limit(limit)
+                    .offset(offset)
+                )
+                .mappings()
+                .all()
+            )
         return [Project(**r) for r in rows]
 
     def update(self, project: Project) -> Project:
         with self._sf() as s, s.begin():
             s.execute(
-                update(tables.projects).where(tables.projects.c.id == project.id).values(**project.model_dump())
+                update(tables.projects)
+                .where(tables.projects.c.id == project.id)
+                .values(**project.model_dump())
             )
         return project
 
@@ -72,7 +82,11 @@ class SqlWorkItemStore:
 
     def get(self, item_id: str) -> WorkItem | None:
         with self._sf() as s:
-            row = s.execute(select(tables.work_items).where(tables.work_items.c.id == item_id)).mappings().first()
+            row = (
+                s.execute(select(tables.work_items).where(tables.work_items.c.id == item_id))
+                .mappings()
+                .first()
+            )
         return WorkItem(**row) if row else None
 
     def list(
@@ -98,7 +112,11 @@ class SqlWorkItemStore:
 
     def update(self, item: WorkItem) -> WorkItem:
         with self._sf() as s, s.begin():
-            s.execute(update(tables.work_items).where(tables.work_items.c.id == item.id).values(**item.model_dump()))
+            s.execute(
+                update(tables.work_items)
+                .where(tables.work_items.c.id == item.id)
+                .values(**item.model_dump())
+            )
         return item
 
     def delete(self, item_id: str) -> bool:
@@ -120,21 +138,37 @@ class SqlTeamStore:
 
     def get(self, team_id: str, owner_id: str) -> Team | None:
         with self._sf() as s:
-            row = s.execute(
-                select(tables.teams).where(tables.teams.c.id == team_id, tables.teams.c.owner_id == owner_id)
-            ).mappings().first()
+            row = (
+                s.execute(
+                    select(tables.teams).where(
+                        tables.teams.c.id == team_id, tables.teams.c.owner_id == owner_id
+                    )
+                )
+                .mappings()
+                .first()
+            )
         return Team(**row) if row else None
 
     def list(self, owner_id: str) -> list[Team]:
         with self._sf() as s:
-            rows = s.execute(select(tables.teams).where(tables.teams.c.owner_id == owner_id)).mappings().all()
+            rows = (
+                s.execute(select(tables.teams).where(tables.teams.c.owner_id == owner_id))
+                .mappings()
+                .all()
+            )
         return [Team(**r) for r in rows]
 
     def agents(self, team_id: str) -> list[AgentDefinition]:
         with self._sf() as s:
-            rows = s.execute(
-                select(tables.agent_definitions).where(tables.agent_definitions.c.team_id == team_id)
-            ).mappings().all()
+            rows = (
+                s.execute(
+                    select(tables.agent_definitions).where(
+                        tables.agent_definitions.c.team_id == team_id
+                    )
+                )
+                .mappings()
+                .all()
+            )
         return [AgentDefinition(**r) for r in rows]
 
 
@@ -149,17 +183,27 @@ class SqlRunStore:
 
     def get(self, run_id: str) -> Run | None:
         with self._sf() as s:
-            row = s.execute(select(tables.runs).where(tables.runs.c.id == run_id)).mappings().first()
+            row = (
+                s.execute(select(tables.runs).where(tables.runs.c.id == run_id)).mappings().first()
+            )
         return Run(**row) if row else None
 
     def list_for_task(self, task_id: str) -> list[Run]:
         with self._sf() as s:
-            rows = s.execute(
-                select(tables.runs).where(tables.runs.c.task_id == task_id).order_by(tables.runs.c.created_at.desc())
-            ).mappings().all()
+            rows = (
+                s.execute(
+                    select(tables.runs)
+                    .where(tables.runs.c.task_id == task_id)
+                    .order_by(tables.runs.c.created_at.desc())
+                )
+                .mappings()
+                .all()
+            )
         return [Run(**r) for r in rows]
 
     def update(self, run: Run) -> Run:
         with self._sf() as s, s.begin():
-            s.execute(update(tables.runs).where(tables.runs.c.id == run.id).values(**run.model_dump()))
+            s.execute(
+                update(tables.runs).where(tables.runs.c.id == run.id).values(**run.model_dump())
+            )
         return run

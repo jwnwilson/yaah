@@ -2,7 +2,15 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from domain.models import Project, Run, Team, AgentDefinition, WorkItem, WorkItemKind, WorkItemStatus
+from domain.models import (
+    AgentDefinition,
+    Project,
+    Run,
+    Team,
+    WorkItem,
+    WorkItemKind,
+    WorkItemStatus,
+)
 
 
 class ProjectStore(Protocol):

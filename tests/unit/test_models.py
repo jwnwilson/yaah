@@ -39,4 +39,6 @@ def test_task_requires_parent():
 
 
 def test_roles_enum_has_core_roles():
-    assert {"lead", "architect", "backend", "frontend", "qa", "devops"} <= {r.value for r in AgentRole}
+    assert {"lead", "architect", "backend", "frontend", "qa", "devops"} <= {
+        r.value for r in AgentRole
+    }
