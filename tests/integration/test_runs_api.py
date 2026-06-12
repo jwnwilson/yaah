@@ -137,3 +137,22 @@ def test_approve_pending_run_is_409():
     run = _start_run(c)
     resp = c.post(f"/runs/{run['id']}/approve")
     assert resp.status_code == 409
+
+
+def test_patch_run_edits_metadata_only():
+    c = make_client()
+    run = _start_run(c)
+    resp = c.patch(f"/runs/{run['id']}", json={"branch": "agent/x", "stage": "implement"})
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["branch"] == "agent/x"
+    assert data["stage"] == "implement"
+    assert data["status"] == "pending"
+
+
+def test_patch_run_ignores_status_field():
+    c = make_client()
+    run = _start_run(c)
+    resp = c.patch(f"/runs/{run['id']}", json={"status": "done"})
+    assert resp.status_code == 200
+    assert resp.json()["data"]["status"] == "pending"

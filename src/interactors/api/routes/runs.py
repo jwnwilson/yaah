@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
 from domain.models import Run, RunStatus, WorkItemKind, WorkItemStatus, utc_now
@@ -77,3 +78,17 @@ def approve_run(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
 @router.post("/runs/{run_id}/reject")
 def reject_run(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
     return _gate(run_id, RunStatus.FAILED, uow)
+
+
+class UpdateRun(BaseModel):
+    stage: str | None = None
+    branch: str | None = None
+    pr_url: str | None = None
+
+
+@router.patch("/runs/{run_id}")
+def patch_run(run_id: str, body: UpdateRun, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        run = uow.runs.get(run_id)
+        result = uow.runs.update(run_id, run.model_copy(update=body.model_dump(exclude_none=True)))
+    return ok(result.model_dump(mode="json"))
