@@ -2,25 +2,28 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
+from adapters.temporal.client import TemporalRunClient
 from domain.models import Run, RunStatus, WorkItemKind, WorkItemStatus, utc_now
-from domain.run_transitions import validate_run_transition
 from domain.transitions import validate_transition
-from interactors.api.deps import get_uow
+from interactors.api.deps import get_uow, temporal_client
 from interactors.api.envelope import ok
 
 router = APIRouter(tags=["runs"])
 
 
 @router.post("/work-items/{task_id}/runs", status_code=201)
-def start_run(task_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+def start_run(
+    task_id: str,
+    uow: UnitOfWork = Depends(get_uow),
+    temporal: TemporalRunClient = Depends(temporal_client),
+) -> dict:
     with uow.transaction():
-        task = uow.work_items.get(task_id)  # RecordNotFound -> 404 (owner-scoped)
+        task = uow.work_items.get(task_id)
         if task.kind != WorkItemKind.TASK:
             raise HTTPException(status_code=404, detail="task not found")
         if task.status != WorkItemStatus.READY:
             raise HTTPException(status_code=409, detail=f"task is {task.status}, must be ready")
-        # Honour the central state machine for the actual transition we apply.
-        validate_transition(task.status, WorkItemStatus.IN_PROGRESS)  # InvalidTransition -> 409
+        validate_transition(task.status, WorkItemStatus.IN_PROGRESS)
         project = uow.projects.get(task.project_id)
         if not project.team_id:
             raise HTTPException(status_code=409, detail="project has no team assigned")
@@ -31,14 +34,22 @@ def start_run(task_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
             task_id,
             task.model_copy(update={"status": WorkItemStatus.IN_PROGRESS, "updated_at": utc_now()}),
         )
-    # run insert + task transition commit or roll back together (closes the A1 atomicity gap)
+        run_input = {
+            "run_id": run.id,
+            "owner_id": run.owner_id,
+            "task_id": task_id,
+            "autonomy": project.autonomy,
+            "task_title": task.title,
+            "acceptance_criteria": task.acceptance_criteria,
+        }
+    temporal.start_run_workflow(run_input)  # after commit: run row exists for the worker
     return ok(run.model_dump(mode="json"))
 
 
 @router.get("/work-items/{task_id}/runs")
 def list_runs(task_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
     with uow.transaction():
-        uow.work_items.get(task_id)  # 404 for unknown task (unifies list semantics)
+        uow.work_items.get(task_id)
         page = uow.runs.list(filters={"task_id": task_id}, order_by="-created_at")
     return ok(
         [r.model_dump(mode="json") for r in page.results],
@@ -49,35 +60,67 @@ def list_runs(task_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
 @router.get("/runs/{run_id}")
 def get_run(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
     with uow.transaction():
-        run = uow.runs.get(run_id)  # owner-scoped -> cross-tenant 404
+        run = uow.runs.get(run_id)
     return ok(run.model_dump(mode="json"))
 
 
-@router.post("/runs/{run_id}/cancel")
-def cancel_run(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+@router.get("/runs/{run_id}/events")
+def list_run_events(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        uow.runs.get(run_id)  # 404 if unknown / cross-tenant
+        page = uow.run_events.list(filters={"run_id": run_id}, order_by="created_at", page_size=200)
+    return ok(
+        [e.model_dump(mode="json") for e in page.results],
+        meta={"total": page.total, "page_size": page.page_size, "page_number": page.page_number},
+    )
+
+
+def _signal(
+    run_id: str,
+    name: str,
+    *,
+    require_gate: bool,
+    uow: UnitOfWork,
+    temporal: TemporalRunClient,
+) -> dict:
     with uow.transaction():
         run = uow.runs.get(run_id)
-        validate_run_transition(run.status, RunStatus.CANCELLED)
-        result = uow.runs.update(run_id, run.model_copy(update={"status": RunStatus.CANCELLED}))
-    return ok(result.model_dump(mode="json"))
+        if require_gate and run.status != RunStatus.AWAITING_APPROVAL:
+            raise HTTPException(
+                status_code=409, detail=f"run is {run.status}, not awaiting approval"
+            )
+        terminal = (RunStatus.DONE, RunStatus.FAILED, RunStatus.CANCELLED)
+        if not require_gate and run.status in terminal:
+            raise HTTPException(status_code=409, detail=f"run is terminal ({run.status})")
+    temporal.signal(run_id, name)
+    return run.model_dump(mode="json")
 
 
-def _gate(run_id: str, dst: RunStatus, uow: UnitOfWork) -> dict:
-    with uow.transaction():
-        run = uow.runs.get(run_id)
-        validate_run_transition(run.status, dst)
-        result = uow.runs.update(run_id, run.model_copy(update={"status": dst}))
-    return ok(result.model_dump(mode="json"))
+@router.post("/runs/{run_id}/approve", status_code=202)
+def approve_run(
+    run_id: str,
+    uow: UnitOfWork = Depends(get_uow),
+    temporal: TemporalRunClient = Depends(temporal_client),
+) -> dict:
+    return ok(_signal(run_id, "approve", require_gate=True, uow=uow, temporal=temporal))
 
 
-@router.post("/runs/{run_id}/approve")
-def approve_run(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
-    return _gate(run_id, RunStatus.DONE, uow)
+@router.post("/runs/{run_id}/reject", status_code=202)
+def reject_run(
+    run_id: str,
+    uow: UnitOfWork = Depends(get_uow),
+    temporal: TemporalRunClient = Depends(temporal_client),
+) -> dict:
+    return ok(_signal(run_id, "reject", require_gate=True, uow=uow, temporal=temporal))
 
 
-@router.post("/runs/{run_id}/reject")
-def reject_run(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
-    return _gate(run_id, RunStatus.FAILED, uow)
+@router.post("/runs/{run_id}/cancel", status_code=202)
+def cancel_run(
+    run_id: str,
+    uow: UnitOfWork = Depends(get_uow),
+    temporal: TemporalRunClient = Depends(temporal_client),
+) -> dict:
+    return ok(_signal(run_id, "cancel", require_gate=False, uow=uow, temporal=temporal))
 
 
 class UpdateRun(BaseModel):
