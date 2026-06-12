@@ -32,9 +32,10 @@ def test_project_update_and_delete(session_factory):
 
 def test_work_item_filters(session_factory):
     store = SqlWorkItemStore(session_factory)
-    epic = store.add(WorkItem(project_id="p1", kind=WorkItemKind.EPIC, title="E"))
+    epic = store.add(WorkItem(owner_id="u1", project_id="p1", kind=WorkItemKind.EPIC, title="E"))
     task = store.add(
         WorkItem(
+            owner_id="u1",
             project_id="p1",
             kind=WorkItemKind.TASK,
             parent_id=epic.id,
@@ -50,9 +51,9 @@ def test_work_item_filters(session_factory):
 
 def test_delete_for_project_removes_all_items(session_factory):
     store = SqlWorkItemStore(session_factory)
-    store.add(WorkItem(project_id="p1", kind=WorkItemKind.EPIC, title="E1"))
-    store.add(WorkItem(project_id="p1", kind=WorkItemKind.EPIC, title="E2"))
-    store.add(WorkItem(project_id="p2", kind=WorkItemKind.EPIC, title="other"))
+    store.add(WorkItem(owner_id="u1", project_id="p1", kind=WorkItemKind.EPIC, title="E1"))
+    store.add(WorkItem(owner_id="u1", project_id="p1", kind=WorkItemKind.EPIC, title="E2"))
+    store.add(WorkItem(owner_id="u1", project_id="p2", kind=WorkItemKind.EPIC, title="other"))
 
     assert store.delete_for_project("p1") == 2
     assert store.list("p1") == []

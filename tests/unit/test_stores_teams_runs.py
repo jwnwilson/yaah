@@ -26,7 +26,7 @@ def test_team_roundtrip_with_agents(session_factory):
 
 def test_run_roundtrip_and_update(session_factory):
     store = SqlRunStore(session_factory)
-    r = store.add(Run(task_id="t1", team_id="tm1"))
+    r = store.add(Run(owner_id="u1", task_id="t1", team_id="tm1"))
     r = r.model_copy(update={"status": RunStatus.RUNNING, "stage": "plan"})
     store.update(r)
     assert store.get(r.id).status == RunStatus.RUNNING

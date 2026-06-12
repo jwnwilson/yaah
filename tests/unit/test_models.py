@@ -23,19 +23,30 @@ def test_project_requires_repo_url_or_local_path():
 
 
 def test_work_item_defaults_to_draft():
-    w = WorkItem(project_id="p1", kind=WorkItemKind.EPIC, title="Auth")
+    w = WorkItem(owner_id="dev-user", project_id="p1", kind=WorkItemKind.EPIC, title="Auth")
     assert w.status == WorkItemStatus.DRAFT
     assert w.acceptance_criteria == []
 
 
+def test_work_item_requires_owner():
+    with pytest.raises(ValidationError):
+        WorkItem(project_id="p1", kind=WorkItemKind.EPIC, title="x")
+
+
 def test_epic_cannot_have_parent():
     with pytest.raises(ValidationError):
-        WorkItem(project_id="p1", kind=WorkItemKind.EPIC, title="x", parent_id="other")
+        WorkItem(
+            owner_id="dev-user",
+            project_id="p1",
+            kind=WorkItemKind.EPIC,
+            title="x",
+            parent_id="other",
+        )
 
 
 def test_task_requires_parent():
     with pytest.raises(ValidationError):
-        WorkItem(project_id="p1", kind=WorkItemKind.TASK, title="x")
+        WorkItem(owner_id="dev-user", project_id="p1", kind=WorkItemKind.TASK, title="x")
 
 
 def test_roles_enum_has_core_roles():

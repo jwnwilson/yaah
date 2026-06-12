@@ -65,6 +65,7 @@ class Project(BaseModel):
 
 class WorkItem(BaseModel):
     id: str = Field(default_factory=new_id)
+    owner_id: str
     project_id: str
     kind: WorkItemKind
     parent_id: str | None = None
@@ -113,6 +114,7 @@ class AgentDefinition(BaseModel):
 
 class Run(BaseModel):
     id: str = Field(default_factory=new_id)
+    owner_id: str
     task_id: str
     team_id: str
     status: RunStatus = RunStatus.PENDING

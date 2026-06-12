@@ -19,7 +19,7 @@ def test_default_team_model_aliases_follow_role_rubric():
 
 
 def test_run_defaults():
-    r = Run(task_id="t1", team_id="tm1")
+    r = Run(owner_id="dev-user", task_id="t1", team_id="tm1")
     assert r.status == RunStatus.PENDING
     assert r.cost_usd == 0.0
     assert r.stage is None

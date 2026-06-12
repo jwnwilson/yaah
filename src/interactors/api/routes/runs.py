@@ -28,7 +28,7 @@ def start_run(
     if not project.team_id:
         raise HTTPException(status_code=409, detail="project has no team assigned")
 
-    run = store.add(Run(task_id=task_id, team_id=project.team_id))
+    run = store.add(Run(task_id=task_id, team_id=project.team_id, owner_id=project.owner_id))
     items.update(
         task.model_copy(update={"status": WorkItemStatus.IN_PROGRESS, "updated_at": utc_now()})
     )

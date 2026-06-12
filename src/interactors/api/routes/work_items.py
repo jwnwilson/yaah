@@ -40,7 +40,7 @@ def create(
     if not projects.get(project_id, owner_id=user_id):
         raise HTTPException(status_code=404, detail="project not found")
     try:
-        item = WorkItem(project_id=project_id, **body.model_dump())
+        item = WorkItem(project_id=project_id, owner_id=user_id, **body.model_dump())
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return ok(store.add(item).model_dump(mode="json"))
