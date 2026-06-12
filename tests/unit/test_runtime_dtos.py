@@ -1,5 +1,5 @@
 from domain.models import RunStage
-from domain.runtime import AgentEvent, StageResult, RunContext
+from domain.runtime import AgentEvent, RunContext, StageResult
 
 
 def test_runtime_dtos_construct():

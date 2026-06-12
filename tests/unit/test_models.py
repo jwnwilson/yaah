@@ -56,7 +56,7 @@ def test_roles_enum_has_core_roles():
 
 
 def test_run_stage_and_event_types_exist():
-    from domain.models import RunStage, RunEventType, RunEvent
+    from domain.models import RunEvent, RunEventType, RunStage
 
     assert RunStage.PLAN == "plan"
     assert [s for s in RunStage] == [
