@@ -8,16 +8,31 @@
 
 **Tech Stack:** Python 3.12, uv, FastAPI, Pydantic v2, SQLAlchemy 2.0 (sync), Postgres 16 (SQLite in-memory for tests), pytest + httpx.
 
-> **PROGRESS (2026-06-12):** Tasks 1–10 are COMPLETE, committed on branch `feature/a1-control-plane`,
-> and have passed BOTH spec-compliance and code-quality reviews
-> (scaffold acdfb31, settings 458a525, domain models 4197e8d, teams/runs 67109f4, transitions d35be6b,
-> ports e2f2864, stores 3a04dae + 10f4dc3, lint gate 3e2be60, app factory 8113ef8, projects CRUD 22256d3).
-> 36 tests green, ruff clean, coverage 94%.
-> RESUME BY: implementing Task 11 (work-items routes) onward via superpowers:subagent-driven-development
-> (implementer subagent → spec reviewer → code-quality reviewer per task), then final whole-branch review
-> + superpowers:finishing-a-development-branch after Task 14.
-> Deferred review notes for later tasks: structured (non-repr) error details + a 422 RequestValidationError
-> test when convenient; Query(ge=0) bounds on limit/offset and cross-tenant integration test at A2/A5.
+> **PROGRESS (2026-06-12): COMPLETE.** All 14 tasks implemented, committed on branch
+> `feature/a1-control-plane`, and passed BOTH spec-compliance and code-quality reviews
+> (tasks 1–10: scaffold acdfb31, settings 458a525, domain models 4197e8d, teams/runs 67109f4,
+> transitions d35be6b, ports e2f2864, stores 3a04dae + 10f4dc3, lint gate 3e2be60,
+> app factory 8113ef8, projects CRUD 22256d3; tasks 11–14: work-items 6b5e8de, teams 97adaa9,
+> runs 4c29370, makefile 4af8d9d). Final whole-branch review verdict: ready to merge with fixes;
+> fixes applied in 64af919 (nested team payload shape on GET /teams/{id}, cascade work-item delete
+> on project delete, error-branch tests). 52 tests green, ruff clean, coverage 97.61%.
+>
+> **Deferred backlog (do at A2/A3/Auth0, recorded across task + final reviews):**
+> - Owner-scoping enforcement on item-level work-item routes (PATCH/DELETE/status) and on run
+>   list/get routes; cross-tenant integration tests. (Before Auth0.)
+> - parent_id integrity on work-item create (exists, same project, correct kind) and team_id
+>   validation on project PATCH. (Before A2 board UI.)
+> - Run-creation two-store write is non-atomic; READY check is TOCTOU — close when A3 Temporal
+>   workflow replaces pending-run creation. GET /work-items/{task_id}/runs returns ok([]) for an
+>   unknown task where sibling list routes 404 — unify semantics then too.
+> - Structured (non-repr) error details + 422 RequestValidationError test; Query(ge=0) bounds on
+>   limit/offset; unify pagination meta across list endpoints (teams/runs return none).
+> - ports.py Protocols are not referenced by deps/routes (no type-check step) — annotate deps with
+>   Protocol types or add mypy/pyright so the port layer is load-bearing.
+> - SqlWorkItemStore.list uses truthiness for parent_id (can't query roots via parent_id IS NULL) —
+>   A2 board tree view will need a sentinel/flag.
+> - CORS allow_origins=["*"] must become settings-driven before the remote profile ships.
+> - Extract shared make_client()/conftest.py fixture for integration tests on next test addition.
 
 **Spec:** `docs/specs/2026-06-12-yaah-design.md`
 
@@ -28,7 +43,7 @@
 **Files:**
 - Create: `/Users/noel/projects/yaah/pyproject.toml`, `.gitignore`, `README.md`, `src/domain/__init__.py`, `src/adapters/__init__.py`, `src/interactors/__init__.py`, `tests/unit/__init__.py`, `tests/integration/__init__.py`
 
-- [ ] **Step 1: Create repo and structure**
+- [x] **Step 1: Create repo and structure**
 
 ```bash
 cd /Users/noel/projects/yaah  # repo, git, CLAUDE.md and docs/ already exist
@@ -38,7 +53,7 @@ touch src/__init__.py src/domain/__init__.py src/adapters/__init__.py src/adapte
   tests/__init__.py tests/unit/__init__.py tests/integration/__init__.py
 ```
 
-- [ ] **Step 2: Write `pyproject.toml`**
+- [x] **Step 2: Write `pyproject.toml`**
 
 ```toml
 [project]
@@ -67,7 +82,7 @@ line-length = 100
 src = ["src", "tests"]
 ```
 
-- [ ] **Step 3: Write `.gitignore`**
+- [x] **Step 3: Write `.gitignore`**
 
 ```
 __pycache__/
@@ -80,7 +95,7 @@ htmlcov/
 .coverage
 ```
 
-- [ ] **Step 4: Write `README.md`**
+- [x] **Step 4: Write `README.md`**
 
 ```markdown
 # yaah
@@ -103,14 +118,14 @@ uv run uvicorn --app-dir src interactors.api.app:create_app --factory --reload
 ```
 ```
 
-- [ ] **Step 5: Install and verify pytest runs**
+- [x] **Step 5: Install and verify pytest runs**
 
 ```bash
 cd /Users/noel/projects/yaah && uv sync && uv run pytest
 ```
 Expected: `no tests ran` (exit code 5 is fine).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A && git commit -m "chore: scaffold yaah repo (hexagonal layout, uv, pytest)"
@@ -124,7 +139,7 @@ git add -A && git commit -m "chore: scaffold yaah repo (hexagonal layout, uv, py
 - Create: `docker-compose.yml`, `.env.example`, `src/interactors/api/settings.py`
 - Test: `tests/unit/test_settings.py`
 
-- [ ] **Step 1: Write `docker-compose.yml`**
+- [x] **Step 1: Write `docker-compose.yml`**
 
 ```yaml
 services:
@@ -148,7 +163,7 @@ volumes:
   pgdata:
 ```
 
-- [ ] **Step 2: Write `.env.example`**
+- [x] **Step 2: Write `.env.example`**
 
 ```
 YAAH_PROFILE=local            # local | remote
@@ -156,7 +171,7 @@ YAAH_DATABASE_URL=postgresql+psycopg://yaah:yaah@localhost:5433/yaah
 YAAH_AUTH_MODE=dev            # dev | auth0
 ```
 
-- [ ] **Step 3: Write the failing test** (`tests/unit/test_settings.py`)
+- [x] **Step 3: Write the failing test** (`tests/unit/test_settings.py`)
 
 ```python
 from interactors.api.settings import Settings
@@ -177,11 +192,11 @@ def test_settings_reads_env(monkeypatch):
     assert s.auth_mode == "auth0"
 ```
 
-- [ ] **Step 4: Run to verify it fails**
+- [x] **Step 4: Run to verify it fails**
 
 Run: `uv run pytest tests/unit/test_settings.py -v` — Expected: FAIL (`ModuleNotFoundError`).
 
-- [ ] **Step 5: Implement** (`src/interactors/api/settings.py`)
+- [x] **Step 5: Implement** (`src/interactors/api/settings.py`)
 
 ```python
 from typing import Literal
@@ -197,11 +212,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://yaah:yaah@localhost:5433/yaah"
 ```
 
-- [ ] **Step 6: Run to verify it passes**
+- [x] **Step 6: Run to verify it passes**
 
 Run: `uv run pytest tests/unit/test_settings.py -v` — Expected: 2 PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A && git commit -m "feat: docker-compose postgres + typed settings with profiles"
@@ -215,7 +230,7 @@ git add -A && git commit -m "feat: docker-compose postgres + typed settings with
 - Create: `src/domain/models.py`
 - Test: `tests/unit/test_models.py`
 
-- [ ] **Step 1: Write the failing tests** (`tests/unit/test_models.py`)
+- [x] **Step 1: Write the failing tests** (`tests/unit/test_models.py`)
 
 ```python
 import pytest
@@ -262,11 +277,11 @@ def test_roles_enum_has_core_roles():
     assert {"lead", "architect", "backend", "frontend", "qa", "devops"} <= {r.value for r in AgentRole}
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/unit/test_models.py -v` — Expected: FAIL (`ModuleNotFoundError`).
 
-- [ ] **Step 3: Implement** (`src/domain/models.py`)
+- [x] **Step 3: Implement** (`src/domain/models.py`)
 
 ```python
 from datetime import datetime, timezone
@@ -355,11 +370,11 @@ class WorkItem(BaseModel):
         return self
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: `uv run pytest tests/unit/test_models.py -v` — Expected: 6 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat: domain models for projects and work-item hierarchy"
@@ -374,7 +389,7 @@ git add -A && git commit -m "feat: domain models for projects and work-item hier
 - Create: `src/domain/teams.py`
 - Test: `tests/unit/test_teams.py`
 
-- [ ] **Step 1: Write the failing tests** (`tests/unit/test_teams.py`)
+- [x] **Step 1: Write the failing tests** (`tests/unit/test_teams.py`)
 
 ```python
 from domain.models import AgentRole, Run, RunStatus, Team
@@ -404,11 +419,11 @@ def test_run_defaults():
     assert r.stage is None
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/unit/test_teams.py -v` — Expected: FAIL (ImportError).
 
-- [ ] **Step 3: Append to `src/domain/models.py`**
+- [x] **Step 3: Append to `src/domain/models.py`**
 
 ```python
 class RunStatus(StrEnum):
@@ -450,7 +465,7 @@ class Run(BaseModel):
     created_at: datetime = Field(default_factory=utc_now)
 ```
 
-- [ ] **Step 4: Implement `src/domain/teams.py`**
+- [x] **Step 4: Implement `src/domain/teams.py`**
 
 ```python
 from domain.models import AgentDefinition, AgentRole, Team
@@ -472,11 +487,11 @@ def default_team(owner_id: str, name: str = "Default Team") -> tuple[Team, list[
     return team, agents
 ```
 
-- [ ] **Step 5: Run to verify pass**
+- [x] **Step 5: Run to verify pass**
 
 Run: `uv run pytest tests/unit/test_teams.py -v` — Expected: 3 PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A && git commit -m "feat: team/agent/run models and default lead+engineer+qa team"
@@ -490,7 +505,7 @@ git add -A && git commit -m "feat: team/agent/run models and default lead+engine
 - Create: `src/domain/transitions.py`
 - Test: `tests/unit/test_transitions.py`
 
-- [ ] **Step 1: Write the failing tests** (`tests/unit/test_transitions.py`)
+- [x] **Step 1: Write the failing tests** (`tests/unit/test_transitions.py`)
 
 ```python
 import pytest
@@ -529,11 +544,11 @@ def test_invalid_transitions_raise(src, dst):
         validate_transition(src, dst)
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/unit/test_transitions.py -v` — Expected: FAIL (ImportError).
 
-- [ ] **Step 3: Implement** (`src/domain/transitions.py`)
+- [x] **Step 3: Implement** (`src/domain/transitions.py`)
 
 ```python
 from domain.models import WorkItemStatus as S
@@ -561,11 +576,11 @@ def validate_transition(src: S, dst: S) -> None:
         raise InvalidTransition(f"cannot move work item from {src} to {dst}")
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: `uv run pytest tests/unit/test_transitions.py -v` — Expected: 16 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat: work-item status state machine"
@@ -578,7 +593,7 @@ git add -A && git commit -m "feat: work-item status state machine"
 **Files:**
 - Create: `src/domain/ports.py`
 
-- [ ] **Step 1: Implement** (`src/domain/ports.py`) — typing-only module; covered by adapter tests in Tasks 7–8.
+- [x] **Step 1: Implement** (`src/domain/ports.py`) — typing-only module; covered by adapter tests in Tasks 7–8.
 
 ```python
 from typing import Protocol
@@ -624,7 +639,7 @@ class RunStore(Protocol):
     def update(self, run: Run) -> Run: ...
 ```
 
-- [ ] **Step 2: Verify it imports, commit**
+- [x] **Step 2: Verify it imports, commit**
 
 ```bash
 uv run python -c "import domain.ports" && git add -A && git commit -m "feat: store ports (protocols) for project/work-item/team/run"
@@ -638,7 +653,7 @@ uv run python -c "import domain.ports" && git add -A && git commit -m "feat: sto
 - Create: `src/adapters/database/tables.py`, `src/adapters/database/engine.py`, `src/adapters/database/stores.py`
 - Test: `tests/unit/test_stores.py`
 
-- [ ] **Step 1: Write the failing tests** (`tests/unit/test_stores.py`)
+- [x] **Step 1: Write the failing tests** (`tests/unit/test_stores.py`)
 
 ```python
 import pytest
@@ -691,11 +706,11 @@ def test_work_item_filters(session_factory):
     assert len(store.list("p1")) == 2
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/unit/test_stores.py -v` — Expected: FAIL (ImportError).
 
-- [ ] **Step 3: Implement tables** (`src/adapters/database/tables.py`)
+- [x] **Step 3: Implement tables** (`src/adapters/database/tables.py`)
 
 ```python
 from sqlalchemy import JSON, Column, DateTime, Float, MetaData, String, Table, Text
@@ -766,7 +781,7 @@ runs = Table(
 )
 ```
 
-- [ ] **Step 4: Implement engine helpers** (`src/adapters/database/engine.py`)
+- [x] **Step 4: Implement engine helpers** (`src/adapters/database/engine.py`)
 
 ```python
 from sqlalchemy import Engine, create_engine
@@ -781,7 +796,7 @@ def make_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, expire_on_commit=False)
 ```
 
-- [ ] **Step 5: Implement stores** (`src/adapters/database/stores.py`)
+- [x] **Step 5: Implement stores** (`src/adapters/database/stores.py`)
 
 ```python
 from sqlalchemy import delete, insert, select, update
@@ -877,11 +892,11 @@ class SqlWorkItemStore:
         return result.rowcount > 0
 ```
 
-- [ ] **Step 6: Run to verify pass**
+- [x] **Step 6: Run to verify pass**
 
 Run: `uv run pytest tests/unit/test_stores.py -v` — Expected: 3 PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A && git commit -m "feat: sqlalchemy tables + project/work-item stores"
@@ -895,7 +910,7 @@ git add -A && git commit -m "feat: sqlalchemy tables + project/work-item stores"
 - Modify: `src/adapters/database/stores.py` (append)
 - Test: `tests/unit/test_stores_teams_runs.py`
 
-- [ ] **Step 1: Write the failing tests** (`tests/unit/test_stores_teams_runs.py`)
+- [x] **Step 1: Write the failing tests** (`tests/unit/test_stores_teams_runs.py`)
 
 ```python
 import pytest
@@ -933,11 +948,11 @@ def test_run_roundtrip_and_update(session_factory):
     assert [x.id for x in store.list_for_task("t1")] == [r.id]
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/unit/test_stores_teams_runs.py -v` — Expected: FAIL (ImportError).
 
-- [ ] **Step 3: Append to `src/adapters/database/stores.py`**
+- [x] **Step 3: Append to `src/adapters/database/stores.py`**
 
 ```python
 from adapters.database.tables import agent_definitions, runs, teams
@@ -1002,11 +1017,11 @@ class SqlRunStore:
         return run
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: `uv run pytest tests/unit/test_stores_teams_runs.py -v` — Expected: 2 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat: team and run stores"
@@ -1020,7 +1035,7 @@ git add -A && git commit -m "feat: team and run stores"
 - Create: `src/interactors/api/app.py`, `src/interactors/api/envelope.py`, `src/interactors/api/auth.py`, `src/interactors/api/deps.py`
 - Test: `tests/integration/test_app.py`
 
-- [ ] **Step 1: Write the failing tests** (`tests/integration/test_app.py`)
+- [x] **Step 1: Write the failing tests** (`tests/integration/test_app.py`)
 
 ```python
 from fastapi.testclient import TestClient
@@ -1048,11 +1063,11 @@ def test_unknown_route_envelope():
     assert body["error"]
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/integration/test_app.py -v` — Expected: FAIL (ImportError).
 
-- [ ] **Step 3: Implement envelope** (`src/interactors/api/envelope.py`)
+- [x] **Step 3: Implement envelope** (`src/interactors/api/envelope.py`)
 
 ```python
 from typing import Any
@@ -1069,7 +1084,7 @@ def err(message: str) -> dict:
     return {"success": False, "data": None, "error": message}
 ```
 
-- [ ] **Step 4: Implement auth** (`src/interactors/api/auth.py`)
+- [x] **Step 4: Implement auth** (`src/interactors/api/auth.py`)
 
 ```python
 from fastapi import HTTPException, Request
@@ -1085,7 +1100,7 @@ def current_user_id(request: Request) -> str:
     raise HTTPException(status_code=501, detail="auth0 mode not implemented yet")
 ```
 
-- [ ] **Step 5: Implement deps + app factory** (`src/interactors/api/deps.py`)
+- [x] **Step 5: Implement deps + app factory** (`src/interactors/api/deps.py`)
 
 ```python
 from fastapi import Request
@@ -1167,11 +1182,11 @@ from fastapi import APIRouter
 router = APIRouter()
 ```
 
-- [ ] **Step 6: Run to verify pass**
+- [x] **Step 6: Run to verify pass**
 
 Run: `uv run pytest tests/integration/test_app.py -v` — Expected: 2 PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A && git commit -m "feat: fastapi app factory with envelope, error handlers, dev auth"
@@ -1185,7 +1200,7 @@ git add -A && git commit -m "feat: fastapi app factory with envelope, error hand
 - Modify: `src/interactors/api/routes/projects.py`
 - Test: `tests/integration/test_projects_api.py`
 
-- [ ] **Step 1: Write the failing tests** (`tests/integration/test_projects_api.py`)
+- [x] **Step 1: Write the failing tests** (`tests/integration/test_projects_api.py`)
 
 ```python
 from fastapi.testclient import TestClient
@@ -1222,11 +1237,11 @@ def test_create_project_requires_a_repo():
     assert resp.status_code == 422
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/integration/test_projects_api.py -v` — Expected: FAIL (404s — routes don't exist).
 
-- [ ] **Step 3: Implement** (`src/interactors/api/routes/projects.py`)
+- [x] **Step 3: Implement** (`src/interactors/api/routes/projects.py`)
 
 ```python
 from fastapi import APIRouter, Depends, HTTPException
@@ -1317,11 +1332,11 @@ def delete(
     return ok({"deleted": project_id})
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: `uv run pytest tests/integration/test_projects_api.py -v` — Expected: 2 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat: projects CRUD API"
@@ -1335,7 +1350,7 @@ git add -A && git commit -m "feat: projects CRUD API"
 - Modify: `src/interactors/api/routes/work_items.py`
 - Test: `tests/integration/test_work_items_api.py`
 
-- [ ] **Step 1: Write the failing tests** (`tests/integration/test_work_items_api.py`)
+- [x] **Step 1: Write the failing tests** (`tests/integration/test_work_items_api.py`)
 
 ```python
 from fastapi.testclient import TestClient
@@ -1406,11 +1421,11 @@ def test_update_and_delete_work_item():
     assert c.patch(f"/work-items/{epic['id']}", json={"title": "x"}).status_code == 404
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/integration/test_work_items_api.py -v` — Expected: FAIL (404s).
 
-- [ ] **Step 3: Implement** (`src/interactors/api/routes/work_items.py`)
+- [x] **Step 3: Implement** (`src/interactors/api/routes/work_items.py`)
 
 ```python
 from fastapi import APIRouter, Depends, HTTPException
@@ -1519,11 +1534,11 @@ def delete(item_id: str, store: SqlWorkItemStore = Depends(work_item_store)) -> 
     return ok({"deleted": item_id})
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: `uv run pytest tests/integration/test_work_items_api.py -v` — Expected: 4 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat: work-items CRUD + status transition API"
@@ -1537,7 +1552,7 @@ git add -A && git commit -m "feat: work-items CRUD + status transition API"
 - Modify: `src/interactors/api/routes/teams.py`
 - Test: `tests/integration/test_teams_api.py`
 
-- [ ] **Step 1: Write the failing tests** (`tests/integration/test_teams_api.py`)
+- [x] **Step 1: Write the failing tests** (`tests/integration/test_teams_api.py`)
 
 ```python
 from fastapi.testclient import TestClient
@@ -1567,11 +1582,11 @@ def test_get_missing_team_404():
     assert make_client().get("/teams/nope").status_code == 404
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/integration/test_teams_api.py -v` — Expected: FAIL (404/405).
 
-- [ ] **Step 3: Implement** (`src/interactors/api/routes/teams.py`)
+- [x] **Step 3: Implement** (`src/interactors/api/routes/teams.py`)
 
 ```python
 from fastapi import APIRouter, Depends, HTTPException
@@ -1626,11 +1641,11 @@ def get(
     )
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: `uv run pytest tests/integration/test_teams_api.py -v` — Expected: 2 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat: teams API with default lead+engineer+qa team"
@@ -1646,7 +1661,7 @@ git add -A && git commit -m "feat: teams API with default lead+engineer+qa team"
 
 The A3 plan replaces "create pending run" with "start Temporal workflow"; the API contract stays the same.
 
-- [ ] **Step 1: Write the failing tests** (`tests/integration/test_runs_api.py`)
+- [x] **Step 1: Write the failing tests** (`tests/integration/test_runs_api.py`)
 
 ```python
 from fastapi.testclient import TestClient
@@ -1698,11 +1713,11 @@ def test_run_rejected_unless_task_ready():
     assert again.status_code == 409
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/integration/test_runs_api.py -v` — Expected: FAIL (404/405).
 
-- [ ] **Step 3: Implement** (`src/interactors/api/routes/runs.py`)
+- [x] **Step 3: Implement** (`src/interactors/api/routes/runs.py`)
 
 ```python
 from fastapi import APIRouter, Depends, HTTPException
@@ -1755,11 +1770,11 @@ def get_run(run_id: str, store: SqlRunStore = Depends(run_store)) -> dict:
     return ok(run.model_dump(mode="json"))
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: `uv run pytest tests/integration/test_runs_api.py -v` — Expected: 2 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat: runs API (pending run creation, listing, fetch)"
@@ -1772,7 +1787,7 @@ git add -A && git commit -m "feat: runs API (pending run creation, listing, fetc
 **Files:**
 - Create: `Makefile`
 
-- [ ] **Step 1: Write `Makefile`**
+- [x] **Step 1: Write `Makefile`**
 
 ```makefile
 .PHONY: dev test coverage lint up
@@ -1793,15 +1808,15 @@ lint:
 	uv run ruff check src tests
 ```
 
-- [ ] **Step 2: Run the full suite + coverage**
+- [x] **Step 2: Run the full suite + coverage**
 
 Run: `make coverage` — Expected: all tests PASS, coverage ≥ 80%.
 
-- [ ] **Step 3: Run lint, fix anything trivial**
+- [x] **Step 3: Run lint, fix anything trivial**
 
 Run: `make lint` — Expected: clean (or fix reported issues and rerun).
 
-- [ ] **Step 4: Smoke-test the live API against Postgres**
+- [x] **Step 4: Smoke-test the live API against Postgres**
 
 ```bash
 docker compose up -d postgres
@@ -1811,7 +1826,7 @@ kill %1
 ```
 Expected: `{"success":true,"data":{"status":"ok"},"error":null}`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "chore: makefile, coverage gate, live smoke check"
