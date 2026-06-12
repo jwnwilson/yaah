@@ -59,3 +59,21 @@ def cancel_run(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
         validate_run_transition(run.status, RunStatus.CANCELLED)
         result = uow.runs.update(run_id, run.model_copy(update={"status": RunStatus.CANCELLED}))
     return ok(result.model_dump(mode="json"))
+
+
+def _gate(run_id: str, dst: RunStatus, uow: UnitOfWork) -> dict:
+    with uow.transaction():
+        run = uow.runs.get(run_id)
+        validate_run_transition(run.status, dst)
+        result = uow.runs.update(run_id, run.model_copy(update={"status": dst}))
+    return ok(result.model_dump(mode="json"))
+
+
+@router.post("/runs/{run_id}/approve")
+def approve_run(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    return _gate(run_id, RunStatus.DONE, uow)
+
+
+@router.post("/runs/{run_id}/reject")
+def reject_run(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    return _gate(run_id, RunStatus.FAILED, uow)

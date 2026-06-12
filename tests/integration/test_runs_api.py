@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from adapters.database.uow import SqlUnitOfWork
+from domain.models import Run, RunStatus
 from interactors.api.app import create_app
 from interactors.api.settings import Settings
 
@@ -101,3 +103,37 @@ def test_cancel_unknown_run_is_404():
     c = make_client()
     resp = c.post("/runs/deadbeef/cancel")
     assert resp.status_code == 404
+
+
+def _seed_awaiting_run(c: TestClient) -> str:
+    task_id, team_id, _pid = _ready_task(c)
+    uow = SqlUnitOfWork(c.app.state.session_factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        run = uow.runs.create(
+            Run(owner_id="dev-user", task_id=task_id, team_id=team_id,
+                status=RunStatus.AWAITING_APPROVAL)
+        )
+    return run.id
+
+
+def test_approve_gate_moves_run_to_done():
+    c = make_client()
+    run_id = _seed_awaiting_run(c)
+    resp = c.post(f"/runs/{run_id}/approve")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["status"] == "done"
+
+
+def test_reject_gate_moves_run_to_failed():
+    c = make_client()
+    run_id = _seed_awaiting_run(c)
+    resp = c.post(f"/runs/{run_id}/reject")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["status"] == "failed"
+
+
+def test_approve_pending_run_is_409():
+    c = make_client()
+    run = _start_run(c)
+    resp = c.post(f"/runs/{run['id']}/approve")
+    assert resp.status_code == 409
