@@ -19,11 +19,17 @@ src/
   adapters/
     database/    # SQLAlchemy ORM models, generic SqlRepository, SqlUnitOfWork
   interactors/
-    api/         # FastAPI wiring: app factory, CrudRouter, deps, auth, envelope
+    api/         # FastAPI wiring: app factory, routes, deps, auth, envelope
+  lib/           # reusable, app-agnostic modular code (e.g. CrudRouter)
 ```
 
 Placement rules: domain never imports adapters or FastAPI; routes contain wiring only;
 all business rules (validation, transitions) stay in domain.
+
+**Reusable modular code goes in `src/lib/`.** When a component is generic infrastructure
+rather than feature logic — something another feature (or project) could reuse unchanged,
+like the `CrudRouter` factory — it belongs in `lib/`, not buried in `interactors/`. Keep
+`lib/` modules as decoupled as practical so they read as a small internal toolkit.
 
 ## Persistence: Repository + Unit of Work (from hexrepo libs/db)
 
@@ -94,7 +100,7 @@ access uniformly surfaces as `RecordNotFound` → 404.
 
 ### CrudRouter
 
-`interactors/api/crud_router.py` provides an envelope-aware port of hexrepo's
+`lib/crud_router.py` provides an envelope-aware port of hexrepo's
 `CrudRouter`: a factory that registers standard CRUD routes for a UoW repository name —
 
 ```python
@@ -156,6 +162,6 @@ meta-inconsistency deferral).
 3. Repository subclass in `adapters/database/repositories.py` (set `orm_model`, `dto`).
 4. Property on `SqlUnitOfWork` exposing it.
 5. Protocol in `domain/ports.py` if the domain needs to reference it.
-6. `CrudRouter` instantiation in `interactors/api/routes/` + hand-written extras.
+6. `CrudRouter` (from `lib/`) instantiation in `interactors/api/routes/` + hand-written extras.
 7. Integration tests through the API; unit tests only for repo behavior the API
    can't reach.

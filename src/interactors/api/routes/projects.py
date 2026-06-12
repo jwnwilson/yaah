@@ -3,9 +3,9 @@ from pydantic import BaseModel
 
 from domain.models import AutonomyLevel, Project
 from domain.ports import UnitOfWork
-from interactors.api.crud_router import CrudRouter
 from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
+from lib.crud_router import CrudRouter
 
 
 class CreateProject(BaseModel):
