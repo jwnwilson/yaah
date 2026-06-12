@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from adapters.database.uow import SqlUnitOfWork
+from domain.models import Run, RunStatus
 from interactors.api.app import create_app
 from interactors.api.settings import Settings
 
@@ -82,3 +84,75 @@ def test_start_run_without_team_assigned_409():
 def test_get_missing_run_404():
     c = make_client()
     assert c.get("/runs/nope").status_code == 404
+
+
+def _start_run(c: TestClient) -> dict:
+    task_id, _team_id, _pid = _ready_task(c)
+    return c.post(f"/work-items/{task_id}/runs").json()["data"]
+
+
+def test_cancel_run_moves_it_to_cancelled():
+    c = make_client()
+    run = _start_run(c)
+    resp = c.post(f"/runs/{run['id']}/cancel")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["status"] == "cancelled"
+
+
+def test_cancel_unknown_run_is_404():
+    c = make_client()
+    resp = c.post("/runs/deadbeef/cancel")
+    assert resp.status_code == 404
+
+
+def _seed_awaiting_run(c: TestClient) -> str:
+    task_id, team_id, _pid = _ready_task(c)
+    uow = SqlUnitOfWork(c.app.state.session_factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        run = uow.runs.create(
+            Run(owner_id="dev-user", task_id=task_id, team_id=team_id,
+                status=RunStatus.AWAITING_APPROVAL)
+        )
+    return run.id
+
+
+def test_approve_gate_moves_run_to_done():
+    c = make_client()
+    run_id = _seed_awaiting_run(c)
+    resp = c.post(f"/runs/{run_id}/approve")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["status"] == "done"
+
+
+def test_reject_gate_moves_run_to_failed():
+    c = make_client()
+    run_id = _seed_awaiting_run(c)
+    resp = c.post(f"/runs/{run_id}/reject")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["status"] == "failed"
+
+
+def test_approve_pending_run_is_409():
+    c = make_client()
+    run = _start_run(c)
+    resp = c.post(f"/runs/{run['id']}/approve")
+    assert resp.status_code == 409
+
+
+def test_patch_run_edits_metadata_only():
+    c = make_client()
+    run = _start_run(c)
+    resp = c.patch(f"/runs/{run['id']}", json={"branch": "agent/x", "stage": "implement"})
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["branch"] == "agent/x"
+    assert data["stage"] == "implement"
+    assert data["status"] == "pending"
+
+
+def test_patch_run_ignores_status_field():
+    c = make_client()
+    run = _start_run(c)
+    resp = c.patch(f"/runs/{run['id']}", json={"status": "done"})
+    assert resp.status_code == 200
+    assert resp.json()["data"]["status"] == "pending"
