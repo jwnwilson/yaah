@@ -1,4 +1,4 @@
-.PHONY: dev test coverage lint up ui ui-build ui-test
+.PHONY: dev test coverage lint up ui ui-build ui-test temporal worker
 
 up:
 	docker compose up -d postgres
@@ -23,3 +23,9 @@ ui-build:
 
 ui-test:
 	cd ui && npm test
+
+temporal:
+	docker compose up -d temporal
+
+worker:
+	uv run python -m interactors.temporal.worker

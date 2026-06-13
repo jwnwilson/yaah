@@ -3,7 +3,7 @@ from typing import Any, Generic, Protocol, TypeVar
 
 from pydantic import BaseModel
 
-from domain.models import AgentDefinition, Project, Run, Team, WorkItem
+from domain.models import AgentDefinition, Project, Run, RunEvent, Team, WorkItem
 
 DTO = TypeVar("DTO", bound=BaseModel)
 
@@ -43,3 +43,5 @@ class UnitOfWork(Protocol):
     def agents(self) -> Repository[AgentDefinition]: ...
     @property
     def runs(self) -> Repository[Run]: ...
+    @property
+    def run_events(self) -> Repository[RunEvent]: ...

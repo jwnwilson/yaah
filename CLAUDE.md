@@ -60,6 +60,8 @@ docker compose up -d postgres
 uv run pytest                # all tests
 make coverage                # tests + 80% gate
 uv run uvicorn --app-dir src interactors.api.app:create_app --factory --reload
+docker compose up -d temporal     # Temporal dev server (UI on :8233)
+make worker                       # run the Temporal worker (pipeline executor)
 ```
 
 ## Roadmap (phase A spine → C management plane → B full team)

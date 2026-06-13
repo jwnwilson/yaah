@@ -103,6 +103,26 @@ To make this work, **every owned row carries `owner_id` — including `work_item
 gap where item-level work-item routes and run list/get were unscoped. Cross-tenant
 access uniformly surfaces as `RecordNotFound` → 404.
 
+## Storage port (blobs / run workspaces)
+
+Non-relational blob storage (run workspaces, stage artifacts like `plan.md`/`progress.md`)
+uses a **port co-located with its adapter**, the same convention as the database ports:
+
+- `adapters/storage/ports.py` — `StoragePort` (a `typing.Protocol`):
+  `write_bytes` / `read_text` / `exists` / `delete` / `delete_directory` / `local_path`.
+  Keys are relative paths (`runs/{run_id}/plan.md`).
+- `adapters/storage/local.py` — `LocalStorageAdapter(base_dir)` resolves keys under a base
+  directory on the local filesystem (current backend).
+- `adapters/storage/s3.py` — `S3StorageAdapter` (boto3) is the planned A4 backend; because
+  callers depend only on `StoragePort`, swapping it in needs no code changes elsewhere
+  (pattern adapted from `llm_api` `adapters/storage` and `hexrepo` `libs/cloud`).
+
+A run's workspace is just the prefix `runs/{run_id}/`: Temporal activities derive the working
+directory via `storage.local_path(...)` and reclaim it on terminal states via
+`storage.delete_directory(...)`. There is **no separate workspace port** — workspace logic is
+"just use the storage adapter (and the DB adapter) as normal." Placement rule: like the
+database port, the storage port lives in `adapters/storage/ports.py`, not in `domain/`.
+
 ## API layer (from hexrepo libs/api)
 
 ### CrudRouter
