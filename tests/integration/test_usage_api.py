@@ -43,3 +43,36 @@ def test_run_usage_returns_totals_and_breakdown():
     assert round(body["data"]["totals"]["cost_usd"], 2) == 0.5
     stages = {b["stage"] for b in body["data"]["breakdown"]}
     assert stages == {"plan", "implement"}
+
+
+def test_feature_usage_rolls_up_descendant_tasks_grouped_by_stage():
+    client = _client()
+    _seed_run_with_usage(client)
+    resp = client.get("/work-items/f1/usage", params={"group_by": "stage"})
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["totals"]["input_tokens"] == 100
+    assert data["groups"]["plan"]["input_tokens"] == 10
+    assert data["groups"]["implement"]["input_tokens"] == 90
+
+
+def test_epic_usage_includes_grandchild_task():
+    client = _client()
+    _seed_run_with_usage(client)
+    resp = client.get("/work-items/e1/usage")
+    assert resp.json()["data"]["totals"]["input_tokens"] == 100
+
+
+def test_project_usage_totals_and_window_validation():
+    client = _client()
+    _seed_run_with_usage(client)
+    assert client.get("/projects/p1/usage").json()["data"]["totals"]["input_tokens"] == 100
+    bad = client.get("/projects/p1/usage", params={"since": "2030-01-01T00:00:00",
+                                                   "until": "2020-01-01T00:00:00"})
+    assert bad.status_code == 422
+
+
+def test_invalid_group_by_is_422():
+    client = _client()
+    _seed_run_with_usage(client)
+    assert client.get("/work-items/f1/usage", params={"group_by": "nonsense"}).status_code == 422
