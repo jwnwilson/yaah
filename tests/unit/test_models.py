@@ -103,7 +103,7 @@ def test_run_stage_and_event_types_exist():
 
 
 def test_chat_models():
-    from domain.models import ChatRole, ChatSession, ChatMessage
+    from domain.models import ChatMessage, ChatRole, ChatSession
     s = ChatSession(owner_id="u", project_id="p")
     m = ChatMessage(owner_id="u", session_id=s.id, role=ChatRole.USER, content="hi")
     assert s.id and m.role == "user" and m.content == "hi" and s.epic_id is None
