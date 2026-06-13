@@ -211,3 +211,11 @@ def test_list_run_events():
     resp = c.get(f"/runs/{run_id}/events")
     assert resp.status_code == 200
     assert "data" in resp.json()
+
+
+def test_start_run_passes_profile_and_repo(monkeypatch):
+    c, fake = _client_with_fake_temporal()
+    task_id, _t, _pid = _ready_task(c)
+    c.post(f"/work-items/{task_id}/runs")
+    assert fake.started[0]["profile"] in ("local", "remote")
+    assert "repo_ref" in fake.started[0]
