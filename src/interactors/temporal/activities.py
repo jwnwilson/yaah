@@ -66,6 +66,29 @@ class RunActivities:
     @activity.defn(name="run_stage")
     def run_stage(self, payload: dict) -> dict:
         workspace_path = self._storage.local_path(f"runs/{payload['run_id']}")
+
+        agent_manifest = None
+        team_id = payload.get("team_id")
+        if team_id:
+            from domain import capabilities
+            uow = self._uow(payload["owner_id"])
+            with uow.transaction():
+                agents = uow.agents.list(filters={"team_id": team_id}, page_size=100).results
+                selected = capabilities.select_agent(agents, RunStage(payload["stage"]))
+                if selected is not None:
+                    skills, mcps = [], []
+                    for sid in selected.skill_ids:
+                        try:
+                            skills.append(uow.skills.get(sid))
+                        except Exception:  # noqa: BLE001 - deleted grant: skip, don't fail
+                            pass
+                    for mid in selected.mcp_server_ids:
+                        try:
+                            mcps.append(uow.mcp_servers.get(mid))
+                        except Exception:  # noqa: BLE001
+                            pass
+                    agent_manifest = capabilities.assemble(selected, skills, mcps)
+
         ctx = RunContext(
             run_id=payload["run_id"],
             stage=RunStage(payload["stage"]),
@@ -73,6 +96,7 @@ class RunActivities:
             acceptance_criteria=payload.get("acceptance_criteria", []),
             workspace_path=workspace_path,
             prior_artifacts=payload.get("prior_artifacts", {}),
+            agent=agent_manifest,
         )
         events = []
         for event in self._runtime.run_stage(ctx):

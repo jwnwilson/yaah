@@ -2,6 +2,7 @@ from typing import Iterator, Literal, Protocol
 
 from pydantic import BaseModel
 
+from domain.capabilities import AgentManifest
 from domain.models import RunStage
 
 
@@ -25,6 +26,7 @@ class RunContext(BaseModel):
     acceptance_criteria: list[str] = []
     workspace_path: str
     prior_artifacts: dict = {}
+    agent: AgentManifest | None = None
 
 
 class AgentRuntime(Protocol):
