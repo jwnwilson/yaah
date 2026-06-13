@@ -230,3 +230,25 @@ class UsageRecord(BaseModel):
     def dedupe_key(self) -> str:
         role = self.agent_role.value if self.agent_role else "none"
         return f"{self.run_id}:{self.stage.value}:{role}:{self.model_id}"
+
+
+class ChatRole(StrEnum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
+class ChatSession(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    project_id: str
+    epic_id: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class ChatMessage(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    session_id: str
+    role: ChatRole
+    content: str
+    created_at: datetime = Field(default_factory=utc_now)
