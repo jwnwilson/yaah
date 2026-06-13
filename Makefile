@@ -1,4 +1,4 @@
-.PHONY: dev test coverage lint up ui ui-build ui-test temporal worker
+.PHONY: dev test coverage lint up ui ui-build ui-test temporal worker litellm
 
 up:
 	docker compose up -d postgres
@@ -29,3 +29,6 @@ temporal:
 
 worker:
 	docker compose up -d --build worker
+
+litellm:
+	docker compose up -d litellm

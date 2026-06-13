@@ -30,6 +30,7 @@ class AgentManifest(BaseModel):
     skills: list[SkillRef] = []
     mcp_servers: list[McpRef] = []
     secret_env: dict[str, str] = {}
+    model_alias: str = ""
 
 
 def role_for_stage(stage: RunStage) -> AgentRole | None:
@@ -66,4 +67,5 @@ def assemble(
             )
             for m in mcp_servers
         ],
+        model_alias=agent.model_alias,
     )

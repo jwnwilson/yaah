@@ -38,3 +38,12 @@ def test_manifest_has_secret_env_default_empty():
     assert AgentManifest().secret_env == {}
     m = AgentManifest(secret_env={"GH_TOKEN": "x"})
     assert m.secret_env["GH_TOKEN"] == "x"
+
+
+def test_assemble_sets_model_alias():
+    from domain.capabilities import assemble
+    from domain.models import AgentDefinition, AgentRole
+    agent = AgentDefinition(team_id="t", role=AgentRole.BACKEND, name="E",
+                            model_alias="engineer-model")
+    man = assemble(agent, [], [])
+    assert man.model_alias == "engineer-model"

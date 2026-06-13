@@ -71,10 +71,13 @@ class ClaudeCodeRuntime:
                 _write_mcp_config(ctx.workspace_path, ctx.agent.mcp_servers, ctx.agent.secret_env)
                 argv += ["--mcp-config", os.path.join(ctx.workspace_path, ".mcp.json")]
 
+        model_id = self._model.model_id()
+        if ctx.agent is not None and ctx.agent.model_alias:
+            model_id = ctx.agent.model_alias
         argv += [
             "--allowedTools", *tools,
             "--max-turns", str(prompts.max_turns(ctx.stage)),
-            "--model", self._model.model_id(),
+            "--model", model_id,
         ]
 
         env = {**os.environ, **self._model.agent_env()}

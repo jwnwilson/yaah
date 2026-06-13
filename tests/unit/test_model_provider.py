@@ -17,3 +17,12 @@ def test_fake_provider():
     f = FakeModelProvider()
     assert f.model_id() == "fake-model"
     assert f.agent_env() == {}
+
+
+def test_litellm_provider_env_and_model():
+    from adapters.model.litellm import LiteLLMProvider
+    p = LiteLLMProvider("http://litellm:4000", "sk-virt", default_model="sonnet")
+    env = p.agent_env()
+    assert env["ANTHROPIC_BASE_URL"] == "http://litellm:4000"
+    assert env["ANTHROPIC_API_KEY"] == "sk-virt"
+    assert p.model_id() == "sonnet"

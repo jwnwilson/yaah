@@ -230,6 +230,40 @@ def test_secret_env_injected_into_subprocess_and_mcp():
     assert cfg["mcpServers"]["fs"]["env"]["GH_TOKEN"] == "ghp_x"
 
 
+def test_model_alias_overrides_model_flag():
+    import json
+    import tempfile
+
+    from adapters.skills.fake import FakeSkillFetcher
+    from domain.capabilities import AgentManifest
+    from domain.runtime import RunContext
+
+    man = AgentManifest(allowed_tools=["Read"], model_alias="engineer-model")
+    ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="T",
+                     workspace_path=tempfile.mkdtemp(), agent=man)
+    captured = {}
+
+    result_json = json.dumps({"type": "result", "is_error": False, "total_cost_usd": 0})
+
+    class _P:
+        def __init__(s):
+            s.stdout = iter([result_json])
+            s.stderr = iter([])
+            s.pid = 1
+
+        def wait(s):
+            return 0
+
+    def spawn(argv, **kw):
+        captured["argv"] = argv
+        return _P()
+
+    rt = ClaudeCodeRuntime(FakeModelProvider(), spawn=spawn, skills=FakeSkillFetcher())
+    list(rt.run_stage(ctx))
+    i = captured["argv"].index("--model")
+    assert captured["argv"][i + 1] == "engineer-model"  # alias, not provider default
+
+
 def test_no_agent_path_unchanged():
     """ctx.agent=None must produce the same argv as before T4 (no double flags)."""
     lines = [json.dumps({"type": "result", "is_error": False, "total_cost_usd": 0.0})]

@@ -28,6 +28,12 @@ def _build_forge(profile: str):
 
 
 def _build_model_provider(settings):
+    gw = settings.model_gateway
+    use_litellm = gw == "litellm" or (gw == "auto" and bool(settings.litellm_base_url))
+    if use_litellm:
+        from adapters.model.litellm import LiteLLMProvider
+        return LiteLLMProvider(settings.litellm_base_url or "", settings.litellm_api_key or "",
+                               default_model=settings.agent_model)
     from adapters.model.anthropic import AnthropicProvider
     return AnthropicProvider(api_key=settings.anthropic_api_key, model=settings.agent_model)
 
