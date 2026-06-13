@@ -56,7 +56,11 @@ def build_activities(database_url: str, profile: str = "local") -> list:
     git = LocalGit()
     forge = _build_forge(profile)
     runtime = _build_runtime(settings, storage)
-    acts = RunActivities(factory, runtime, storage, git, forge)
+    cipher = None
+    if settings.secret_key:
+        from adapters.secrets.cipher import FernetCipher
+        cipher = FernetCipher(settings.secret_key)
+    acts = RunActivities(factory, runtime, storage, git, forge, cipher=cipher)
     return [acts.persist_run_state, acts.record_event, acts.run_stage,
             acts.cleanup_workspace, acts.provision_workspace, acts.open_pr]
 

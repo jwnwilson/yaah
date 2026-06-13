@@ -191,6 +191,45 @@ def test_skill_fetch_failure_is_skipped_not_fatal():
     assert skip_events
 
 
+def test_secret_env_injected_into_subprocess_and_mcp():
+    import json
+    import os
+    import tempfile
+
+    from adapters.skills.fake import FakeSkillFetcher
+    from domain.capabilities import AgentManifest, McpRef
+
+    ws = tempfile.mkdtemp()
+    man = AgentManifest(
+        allowed_tools=["Read"],
+        secret_env={"GH_TOKEN": "ghp_x"},
+        mcp_servers=[McpRef(name="fs", transport="stdio", command_or_url="npx mcp-fs")],
+    )
+    ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="T",
+                     workspace_path=ws, agent=man)
+    captured = {}
+
+    class _P:
+        def __init__(self):
+            result = json.dumps({"type": "result", "is_error": False, "total_cost_usd": 0})
+            self.stdout = iter([result])
+            self.stderr = iter([])
+            self.pid = 1
+
+        def wait(self):
+            return 0
+
+    def spawn(argv, **kw):
+        captured["env"] = kw.get("env", {})
+        return _P()
+
+    rt = ClaudeCodeRuntime(FakeModelProvider(), spawn=spawn, skills=FakeSkillFetcher())
+    list(rt.run_stage(ctx))
+    assert captured["env"].get("GH_TOKEN") == "ghp_x"
+    cfg = json.load(open(os.path.join(ws, ".mcp.json")))
+    assert cfg["mcpServers"]["fs"]["env"]["GH_TOKEN"] == "ghp_x"
+
+
 def test_no_agent_path_unchanged():
     """ctx.agent=None must produce the same argv as before T4 (no double flags)."""
     lines = [json.dumps({"type": "result", "is_error": False, "total_cost_usd": 0.0})]
