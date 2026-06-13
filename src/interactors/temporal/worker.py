@@ -40,7 +40,8 @@ def _build_runtime(settings, storage):
     )
     if use_claude:
         from adapters.runtime.claude_code import ClaudeCodeRuntime
-        return ClaudeCodeRuntime(_build_model_provider(settings))
+        from adapters.skills.fetcher import SkillFetcher
+        return ClaudeCodeRuntime(_build_model_provider(settings), skills=SkillFetcher())
     return FakeAgentRuntime(storage=storage)
 
 
