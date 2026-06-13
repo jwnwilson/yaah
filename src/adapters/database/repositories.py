@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+
 from adapters.database.orm import (
     AgentDefinitionRow,
     McpServerRow,
@@ -7,9 +9,11 @@ from adapters.database.orm import (
     SecretRow,
     SkillRow,
     TeamRow,
+    UsageRecordRow,
     WorkItemRow,
 )
 from adapters.database.repository import SqlRepository
+from domain.errors import IntegrityConflict
 from domain.models import (
     AgentDefinition,
     McpServer,
@@ -19,6 +23,7 @@ from domain.models import (
     Secret,
     Skill,
     Team,
+    UsageRecord,
     WorkItem,
 )
 
@@ -70,3 +75,27 @@ class McpServerRepository(SqlRepository[McpServer]):
 class SecretRepository(SqlRepository[Secret]):
     orm_model = SecretRow
     dto = Secret
+
+
+class UsageRecordRepository(SqlRepository[UsageRecord]):
+    orm_model = UsageRecordRow
+    dto = UsageRecord
+
+    def create(self, obj: UsageRecord) -> UsageRecord:
+        data = obj.model_dump()
+        data["dedupe_key"] = obj.dedupe_key  # stored column, derived on the DTO
+        row = self.orm_model(**data)
+        try:
+            self._session.add(row)
+            self._session.flush()
+        except SQLIntegrityError as err:
+            raise IntegrityConflict(str(err.orig)) from err
+        return self._to_dto(row)
+
+    def _to_dto(self, row: UsageRecordRow) -> UsageRecord:
+        data = {
+            k: v
+            for k, v in row.__dict__.items()
+            if not k.startswith("_") and k != "dedupe_key"
+        }
+        return UsageRecord(**data)
