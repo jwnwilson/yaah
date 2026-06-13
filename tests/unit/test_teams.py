@@ -18,6 +18,16 @@ def test_default_team_model_aliases_follow_role_rubric():
     assert by_role[AgentRole.QA] == "qa-model"
 
 
+def test_default_team_agents_have_purpose_and_tools():
+    from domain.teams import default_team
+    _team, agents = default_team(owner_id="u")
+    by_role = {a.role: a for a in agents}
+    assert all(a.purpose and a.system_prompt for a in agents)
+    assert "Read" in by_role["lead"].allowed_tools
+    assert "Edit" in by_role["backend"].allowed_tools
+    assert "Edit" not in by_role["qa"].allowed_tools  # QA is read-only
+
+
 def test_run_defaults():
     r = Run(owner_id="dev-user", task_id="t1", team_id="tm1")
     assert r.status == RunStatus.PENDING
