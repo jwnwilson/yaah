@@ -15,13 +15,16 @@ def _heartbeat(detail: str) -> None:
 
 
 class RunActivities:
-    """Holds the session factory, runtime, and storage; exposes Temporal activities.
+    """Holds the session factory, runtime, storage, git, and forge; exposes Temporal activities.
     The ONLY DB writer during a run."""
 
-    def __init__(self, session_factory, runtime: AgentRuntime, storage: StoragePort) -> None:
+    def __init__(self, session_factory, runtime: AgentRuntime, storage: StoragePort,
+                 git, forge) -> None:
         self._session_factory = session_factory
         self._runtime = runtime
         self._storage = storage
+        self._git = git
+        self._forge = forge
 
     def _uow(self, owner_id: str) -> SqlUnitOfWork:
         return SqlUnitOfWork(self._session_factory, required_filters={"owner_id": owner_id})
@@ -89,3 +92,44 @@ class RunActivities:
     @activity.defn(name="cleanup_workspace")
     def cleanup_workspace(self, payload: dict) -> None:
         self._storage.delete_directory(f"runs/{payload['run_id']}/")
+
+    @activity.defn(name="provision_workspace")
+    def provision_workspace(self, payload: dict) -> dict:
+        run_id = payload["run_id"]
+        workspace = self._storage.local_path(f"runs/{run_id}")
+        token = self._forge.installation_token() if payload["profile"] == "remote" else None
+        mode = "clone" if payload["profile"] == "remote" else "worktree"
+        self._git.prepare(repo_ref=payload["repo_ref"], workspace_path=workspace,
+                          branch=payload["branch"], mode=mode, token=token)
+        self.record_event({"run_id": run_id, "owner_id": payload["owner_id"],
+                           "stage": "provision", "type": "stage_completed",
+                           "message": f"workspace ready on {payload['branch']}"})
+        return {"outcome": "ok"}
+
+    @activity.defn(name="open_pr")
+    def open_pr(self, payload: dict) -> dict:
+        run_id, owner_id = payload["run_id"], payload["owner_id"]
+        workspace = self._storage.local_path(f"runs/{run_id}")
+        committed = self._git.commit_all(workspace, payload["title"])
+        if not committed:
+            self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "pr",
+                               "type": "stage_completed", "message": "no changes to PR"})
+            return {"outcome": "ok", "pr_url": None}
+        if payload["profile"] == "remote":
+            token = self._forge.installation_token()
+            self._git.push(workspace, payload["branch"], token=token)
+            pr_url = self._forge.open_pull_request(
+                head=payload["branch"], base=payload["base"],
+                title=payload["title"], body=payload["body"])
+            self.persist_run_state({"run_id": run_id, "owner_id": owner_id,
+                                    "branch": payload["branch"], "pr_url": pr_url})
+            self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "pr",
+                               "type": "stage_completed", "message": f"opened {pr_url}"})
+            return {"outcome": "ok", "pr_url": pr_url}
+        # local profile: record the branch, no push/PR
+        self.persist_run_state({"run_id": run_id, "owner_id": owner_id,
+                                "branch": payload["branch"]})
+        self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "pr",
+                           "type": "stage_completed",
+                           "message": f"branch {payload['branch']} ready"})
+        return {"outcome": "ok", "pr_url": None}
