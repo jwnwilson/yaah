@@ -14,3 +14,10 @@ def test_settings_reads_env(monkeypatch):
     s = Settings(_env_file=None)
     assert s.profile == "remote"
     assert s.auth_mode == "auth0"
+
+
+def test_github_settings_default_none():
+    from interactors.api.settings import Settings
+    s = Settings(_env_file=None)
+    assert s.github_app_id is None
+    assert s.github_base_branch == "main"
