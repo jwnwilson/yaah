@@ -5,6 +5,7 @@ from typing import Iterable
 
 from domain.models import RunStage
 from domain.runtime import AgentEvent, StageResult
+from domain.usage import TokenUsage
 
 
 def _assistant_text(obj: dict) -> str:
@@ -13,6 +14,31 @@ def _assistant_text(obj: dict) -> str:
         p.get("text", "") for p in content
         if isinstance(p, dict) and p.get("type") == "text"
     ).strip()
+
+
+def _usage_from_top_level(obj: dict) -> TokenUsage:
+    u = obj.get("usage") or {}
+    return TokenUsage(
+        input_tokens=int(u.get("input_tokens", 0)),
+        output_tokens=int(u.get("output_tokens", 0)),
+        cache_read_tokens=int(u.get("cache_read_input_tokens", 0)),
+        cache_creation_tokens=int(u.get("cache_creation_input_tokens", 0)),
+        cost_usd=float(obj.get("total_cost_usd") or 0.0),
+    )
+
+
+def _model_usage(obj: dict) -> dict[str, TokenUsage]:
+    raw = obj.get("modelUsage") or {}
+    out: dict[str, TokenUsage] = {}
+    for model_id, m in raw.items():
+        out[model_id] = TokenUsage(
+            input_tokens=int(m.get("inputTokens", 0)),
+            output_tokens=int(m.get("outputTokens", 0)),
+            cache_read_tokens=int(m.get("cacheReadInputTokens", 0)),
+            cache_creation_tokens=int(m.get("cacheCreationInputTokens", 0)),
+            cost_usd=float(m.get("costUSD", 0.0)),
+        )
+    return out
 
 
 def parse(lines: Iterable[str], stage: RunStage) -> tuple[list[AgentEvent], StageResult]:
@@ -33,9 +59,12 @@ def parse(lines: Iterable[str], stage: RunStage) -> tuple[list[AgentEvent], Stag
                 events.append(AgentEvent(type="progress", stage=stage, message=text[:500]))
         elif kind == "result":
             outcome = "fail" if obj.get("is_error") else "ok"
+            usage = _usage_from_top_level(obj)
             result = StageResult(
                 outcome=outcome,
-                cost_usd=float(obj.get("total_cost_usd") or 0.0),
+                cost_usd=usage.cost_usd,
+                usage=usage,
+                model_usage=_model_usage(obj),
                 artifacts={"result": obj.get("result", "")},
             )
             events.append(AgentEvent(type="result", stage=stage, message="stage complete",
