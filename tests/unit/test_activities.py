@@ -182,3 +182,52 @@ def test_run_stage_populates_ctx_agent_from_team():
     assert ctx.agent.system_prompt == "build"
     assert ctx.agent.allowed_tools == ["Read", "Edit"]
     assert ctx.agent.skills[0].source == "git@x/s.git"
+
+
+def test_run_stage_injects_secret_env_without_leaking():
+    import json
+    import tempfile
+
+    from cryptography.fernet import Fernet
+
+    from adapters.secrets.cipher import FernetCipher
+    from domain.models import AgentDefinition, Secret, Team
+    from domain.runtime import AgentEvent, StageResult
+
+    factory = _factory()
+    run_id = _seed_run(factory)
+    key = Fernet.generate_key().decode()
+    cipher = FernetCipher(key)
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        team = uow.teams.create(Team(owner_id="u1", name="T"))
+        sec = uow.secrets.create(Secret(owner_id="u1", name="GH_TOKEN",
+                                        encrypted_value=cipher.encrypt("ghp_TOPSECRET")))
+        uow.agents.create(AgentDefinition(team_id=team.id, role="backend", name="E",
+                                          model_alias="m", secret_ids=[sec.id]))
+
+    captured = {}
+
+    class _Spy:
+        def run_stage(self, ctx):
+            captured["ctx"] = ctx
+            yield AgentEvent(type="result", stage=ctx.stage, message="ok",
+                             data=StageResult(outcome="ok").model_dump())
+
+        def cancel(self, run_id):  # noqa: ARG002
+            pass
+
+    recorded = []
+    storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
+    acts = RunActivities(factory, _Spy(), storage, FakeGit(), FakeGitForge(), cipher=cipher)
+    # capture every event the activity records
+    orig = acts.record_event
+    acts.record_event = lambda p: recorded.append(p) or orig(p)
+
+    result = acts.run_stage({"run_id": run_id, "owner_id": "u1", "stage": "implement",
+                             "task_title": "T", "acceptance_criteria": [], "team_id": team.id})
+
+    # security invariant: plaintext injected in-process, never in output or events
+    assert captured["ctx"].agent.secret_env == {"GH_TOKEN": "ghp_TOPSECRET"}
+    assert "ghp_TOPSECRET" not in json.dumps(result)
+    assert "ghp_TOPSECRET" not in json.dumps(recorded)

@@ -30,3 +30,8 @@ def test_agent_runtime_defaults():
     assert s.agent_model == "claude-sonnet-4-6"
     assert s.claude_max_turns == 30
     assert s.anthropic_api_key is None
+
+
+def test_secret_key_defaults_none():
+    from interactors.api.settings import Settings
+    assert Settings(_env_file=None).secret_key is None
