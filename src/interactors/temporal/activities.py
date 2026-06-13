@@ -19,12 +19,13 @@ class RunActivities:
     The ONLY DB writer during a run."""
 
     def __init__(self, session_factory, runtime: AgentRuntime, storage: StoragePort,
-                 git, forge) -> None:
+                 git, forge, *, cipher=None) -> None:
         self._session_factory = session_factory
         self._runtime = runtime
         self._storage = storage
         self._git = git
         self._forge = forge
+        self._cipher = cipher
 
     def _uow(self, owner_id: str) -> SqlUnitOfWork:
         return SqlUnitOfWork(self._session_factory, required_filters={"owner_id": owner_id})
@@ -88,6 +89,16 @@ class RunActivities:
                         except Exception:  # noqa: BLE001
                             pass
                     agent_manifest = capabilities.assemble(selected, skills, mcps)
+                    if self._cipher is not None and selected.secret_ids:
+                        secret_env = {}
+                        for sec_id in selected.secret_ids:
+                            try:
+                                sec = uow.secrets.get(sec_id)
+                                if sec.encrypted_value:
+                                    secret_env[sec.name] = self._cipher.decrypt(sec.encrypted_value)
+                            except Exception:  # noqa: BLE001 - missing/bad secret: skip, don't fail
+                                pass
+                        agent_manifest = agent_manifest.model_copy(update={"secret_env": secret_env})
 
         ctx = RunContext(
             run_id=payload["run_id"],
