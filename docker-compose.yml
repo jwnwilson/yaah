@@ -48,6 +48,18 @@ services:
     pids_limit: 512
     restart: unless-stopped
 
+  litellm:
+    image: ghcr.io/berriai/litellm:main-v1.55.8
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./infra/litellm/config.yaml:/app/config.yaml:ro
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-yaah-local}
+    restart: unless-stopped
+
 volumes:
   pgdata:
   temporaldata:
