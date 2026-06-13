@@ -91,3 +91,24 @@ def test_secret_roundtrips_encrypted_value():
         assert sec.encrypted_value is None
         stored = uow.secrets.update(sec.id, sec.model_copy(update={"encrypted_value": "tok"}))
     assert stored.encrypted_value == "tok"
+
+
+def test_chat_repos_owner_scoped():
+    from adapters.database.engine import make_engine, make_session_factory
+    from adapters.database.orm import Base
+    from adapters.database.uow import SqlUnitOfWork
+    from domain.models import ChatMessage, ChatRole, ChatSession
+
+    engine = make_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = make_session_factory(engine)
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        s = uow.chat_sessions.create(ChatSession(owner_id="u1", project_id="p1"))
+        uow.chat_messages.create(ChatMessage(owner_id="u1", session_id=s.id,
+                                             role=ChatRole.USER, content="hi"))
+        msgs = uow.chat_messages.list(filters={"session_id": s.id}, order_by="created_at")
+    assert msgs.total == 1 and msgs.results[0].content == "hi"
+    other = SqlUnitOfWork(factory, required_filters={"owner_id": "u2"})
+    with other.transaction():
+        assert other.chat_sessions.list(filters={"project_id": "p1"}).total == 0

@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from adapters.database.repositories import (
     AgentDefinitionRepository,
     AuditEventRepository,
+    ChatMessageRepository,
+    ChatSessionRepository,
     McpServerRepository,
     NotificationRepository,
     ProjectRepository,
@@ -101,3 +103,11 @@ class SqlUnitOfWork:
     @property
     def usage(self) -> UsageRecordRepository:
         return UsageRecordRepository(self.session, self._required_filters)
+
+    @property
+    def chat_sessions(self) -> ChatSessionRepository:
+        return ChatSessionRepository(self.session, self._required_filters)
+
+    @property
+    def chat_messages(self) -> ChatMessageRepository:
+        return ChatMessageRepository(self.session, self._required_filters)

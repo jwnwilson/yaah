@@ -50,6 +50,27 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_audit_events_owner_id'), 'audit_events', ['owner_id'], unique=False)
     op.create_index(op.f('ix_audit_events_run_id'), 'audit_events', ['run_id'], unique=False)
+    op.create_table('chat_messages',
+    sa.Column('id', sa.String(length=32), nullable=False),
+    sa.Column('owner_id', sa.String(length=64), nullable=False),
+    sa.Column('session_id', sa.String(length=32), nullable=False),
+    sa.Column('role', sa.String(length=16), nullable=False),
+    sa.Column('content', sa.Text(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_chat_messages_owner_id'), 'chat_messages', ['owner_id'], unique=False)
+    op.create_index(op.f('ix_chat_messages_session_id'), 'chat_messages', ['session_id'], unique=False)
+    op.create_table('chat_sessions',
+    sa.Column('id', sa.String(length=32), nullable=False),
+    sa.Column('owner_id', sa.String(length=64), nullable=False),
+    sa.Column('project_id', sa.String(length=32), nullable=False),
+    sa.Column('epic_id', sa.String(length=32), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_chat_sessions_owner_id'), 'chat_sessions', ['owner_id'], unique=False)
+    op.create_index(op.f('ix_chat_sessions_project_id'), 'chat_sessions', ['project_id'], unique=False)
     op.create_table('mcp_servers',
     sa.Column('id', sa.String(length=32), nullable=False),
     sa.Column('owner_id', sa.String(length=64), nullable=False),
@@ -230,6 +251,12 @@ def downgrade() -> None:
     op.drop_table('notifications')
     op.drop_index(op.f('ix_mcp_servers_owner_id'), table_name='mcp_servers')
     op.drop_table('mcp_servers')
+    op.drop_index(op.f('ix_chat_sessions_project_id'), table_name='chat_sessions')
+    op.drop_index(op.f('ix_chat_sessions_owner_id'), table_name='chat_sessions')
+    op.drop_table('chat_sessions')
+    op.drop_index(op.f('ix_chat_messages_session_id'), table_name='chat_messages')
+    op.drop_index(op.f('ix_chat_messages_owner_id'), table_name='chat_messages')
+    op.drop_table('chat_messages')
     op.drop_index(op.f('ix_audit_events_run_id'), table_name='audit_events')
     op.drop_index(op.f('ix_audit_events_owner_id'), table_name='audit_events')
     op.drop_table('audit_events')

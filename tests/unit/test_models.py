@@ -100,3 +100,10 @@ def test_run_stage_and_event_types_exist():
     ev = RunEvent(run_id="r1", owner_id="dev-user", stage=RunStage.PLAN,
                   type=RunEventType.STAGE_STARTED, message="hi")
     assert ev.id and ev.created_at and ev.message == "hi"
+
+
+def test_chat_models():
+    from domain.models import ChatMessage, ChatRole, ChatSession
+    s = ChatSession(owner_id="u", project_id="p")
+    m = ChatMessage(owner_id="u", session_id=s.id, role=ChatRole.USER, content="hi")
+    assert s.id and m.role == "user" and m.content == "hi" and s.epic_id is None
