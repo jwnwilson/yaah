@@ -28,7 +28,6 @@ def test_memory_proposal_round_trips(factory):
 
 
 def test_memory_proposal_is_owner_scoped(factory):
-    SqlUnitOfWork(factory, required_filters={"owner_id": "owner"}).__class__  # noqa
     owner_uow = SqlUnitOfWork(factory, required_filters={"owner_id": "owner"})
     with owner_uow.transaction():
         owner_uow.memory_proposals.create(MemoryProposal(
