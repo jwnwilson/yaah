@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from adapters.database.ports import UnitOfWork
 from domain.models import Run, RunStatus, WorkItemKind, WorkItemStatus, utc_now
 from domain.transitions import validate_transition
-from interactors.api.deps import get_uow, temporal_client
+from interactors.api.deps import get_uow, settings as get_settings, temporal_client
 from interactors.api.envelope import ok
 from interactors.temporal.client import TemporalRunClient
 
@@ -16,6 +16,7 @@ def start_run(
     task_id: str,
     uow: UnitOfWork = Depends(get_uow),
     temporal: TemporalRunClient = Depends(temporal_client),
+    settings=Depends(get_settings),
 ) -> dict:
     with uow.transaction():
         task = uow.work_items.get(task_id)
@@ -34,6 +35,7 @@ def start_run(
             task_id,
             task.model_copy(update={"status": WorkItemStatus.IN_PROGRESS, "updated_at": utc_now()}),
         )
+        repo_ref = project.local_path if settings.profile == "local" else project.repo_url
         run_input = {
             "run_id": run.id,
             "owner_id": run.owner_id,
@@ -41,6 +43,10 @@ def start_run(
             "autonomy": project.autonomy,
             "task_title": task.title,
             "acceptance_criteria": task.acceptance_criteria,
+            "body": task.body,
+            "profile": settings.profile,
+            "repo_ref": repo_ref,
+            "base": settings.github_base_branch,
         }
     temporal.start_run_workflow(run_input)  # after commit: run row exists for the worker
     return ok(run.model_dump(mode="json"))
