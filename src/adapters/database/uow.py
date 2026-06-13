@@ -13,6 +13,7 @@ from adapters.database.repositories import (
     SecretRepository,
     SkillRepository,
     TeamRepository,
+    UsageRecordRepository,
     WorkItemRepository,
 )
 
@@ -91,3 +92,7 @@ class SqlUnitOfWork:
     @property
     def secrets(self) -> SecretRepository:
         return SecretRepository(self.session, self._required_filters)
+
+    @property
+    def usage(self) -> UsageRecordRepository:
+        return UsageRecordRepository(self.session, self._required_filters)

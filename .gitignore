@@ -9,3 +9,6 @@ htmlcov/
 
 # superpowers brainstorm scratch
 .superpowers/
+
+# git worktrees created by agents
+.claude/worktrees/

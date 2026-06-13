@@ -7,7 +7,15 @@ from adapters.forge.fake import FakeGitForge
 from adapters.git.fake import FakeGit
 from adapters.runtime.fake import FakeAgentRuntime
 from adapters.storage.local import LocalStorageAdapter
-from domain.models import Run, RunStage, RunStatus
+from domain.models import (
+    Project,
+    Run,
+    RunStage,
+    RunStatus,
+    WorkItem,
+    WorkItemKind,
+    WorkItemStatus,
+)
 from interactors.temporal.activities import RunActivities
 
 
@@ -24,6 +32,10 @@ def _storage():
 def _seed_run(factory) -> str:
     uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
     with uow.transaction():
+        uow.projects.create(Project(id="p1", owner_id="u1", name="P", local_path="/tmp/x"))
+        uow.work_items.create(WorkItem(id="t1", owner_id="u1", project_id="p1",
+                                       kind=WorkItemKind.TASK, parent_id="f1", title="T",
+                                       status=WorkItemStatus.IN_PROGRESS))
         run = uow.runs.create(Run(owner_id="u1", task_id="t1", team_id="tm1"))
     return run.id
 
