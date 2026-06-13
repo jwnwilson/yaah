@@ -98,7 +98,9 @@ class RunActivities:
                                     secret_env[sec.name] = self._cipher.decrypt(sec.encrypted_value)
                             except Exception:  # noqa: BLE001 - missing/bad secret: skip, don't fail
                                 pass
-                        agent_manifest = agent_manifest.model_copy(update={"secret_env": secret_env})
+                        agent_manifest = agent_manifest.model_copy(
+                            update={"secret_env": secret_env}
+                        )
 
         ctx = RunContext(
             run_id=payload["run_id"],

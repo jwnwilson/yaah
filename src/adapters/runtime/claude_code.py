@@ -12,19 +12,21 @@ from domain.capabilities import McpRef
 from domain.runtime import AgentEvent, RunContext, StageResult
 
 
-def _write_mcp_config(workspace_path: str, servers: list[McpRef]) -> None:
-    cfg = {
-        "mcpServers": {
-            s.name: (
-                {"command": s.command_or_url}
-                if s.transport == "stdio"
-                else {"url": s.command_or_url}
-            )
-            for s in servers
-        }
-    }
+def _write_mcp_config(workspace_path: str, servers: list[McpRef],
+                      secret_env: dict | None = None) -> None:
+    env = secret_env or {}
+    mcp = {}
+    for s in servers:
+        entry = (
+            {"command": s.command_or_url}
+            if s.transport == "stdio"
+            else {"url": s.command_or_url}
+        )
+        if env:
+            entry["env"] = dict(env)
+        mcp[s.name] = entry
     with open(os.path.join(workspace_path, ".mcp.json"), "w") as f:
-        json.dump(cfg, f)
+        json.dump({"mcpServers": mcp}, f)
 
 
 class ClaudeCodeRuntime:
@@ -66,7 +68,7 @@ class ClaudeCodeRuntime:
                         message=f"skill '{skill.name}' skipped: {exc}",
                     ))
             if ctx.agent.mcp_servers:
-                _write_mcp_config(ctx.workspace_path, ctx.agent.mcp_servers)
+                _write_mcp_config(ctx.workspace_path, ctx.agent.mcp_servers, ctx.agent.secret_env)
                 argv += ["--mcp-config", os.path.join(ctx.workspace_path, ".mcp.json")]
 
         argv += [
@@ -76,6 +78,8 @@ class ClaudeCodeRuntime:
         ]
 
         env = {**os.environ, **self._model.agent_env()}
+        if ctx.agent is not None and ctx.agent.secret_env:
+            env = {**env, **ctx.agent.secret_env}
         proc = self._spawn(
             argv, cwd=ctx.workspace_path, env=env,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,

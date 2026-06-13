@@ -227,6 +227,7 @@ def test_run_stage_injects_secret_env_without_leaking():
     result = acts.run_stage({"run_id": run_id, "owner_id": "u1", "stage": "implement",
                              "task_title": "T", "acceptance_criteria": [], "team_id": team.id})
 
-    assert captured["ctx"].agent.secret_env == {"GH_TOKEN": "ghp_TOPSECRET"}   # injected in-process
-    assert "ghp_TOPSECRET" not in json.dumps(result)                            # not in activity result
-    assert "ghp_TOPSECRET" not in json.dumps(recorded)                          # not in run_events
+    # security invariant: plaintext injected in-process, never in output or events
+    assert captured["ctx"].agent.secret_env == {"GH_TOKEN": "ghp_TOPSECRET"}
+    assert "ghp_TOPSECRET" not in json.dumps(result)
+    assert "ghp_TOPSECRET" not in json.dumps(recorded)
