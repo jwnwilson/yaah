@@ -187,3 +187,43 @@ class Run(BaseModel):
     pr_url: str | None = None
     cost_usd: float = 0.0
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class NotificationCategory(StrEnum):
+    DECISION = "decision"
+    REVIEW = "review"
+    UPDATE = "update"
+    ALERT = "alert"
+
+
+class NotificationSeverity(StrEnum):
+    INFO = "info"
+    ATTENTION = "attention"
+    CRITICAL = "critical"
+
+
+class NotificationSource(StrEnum):
+    AGENT = "agent"
+    SYSTEM = "system"
+
+
+class NotificationAction(BaseModel):
+    kind: Literal["gate_approval"]
+    run_id: str
+
+
+class Notification(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    source: NotificationSource
+    category: NotificationCategory
+    severity: NotificationSeverity = NotificationSeverity.INFO
+    title: str
+    body: str = ""
+    run_id: str | None = None
+    work_item_id: str | None = None
+    project_id: str | None = None
+    action: NotificationAction | None = None
+    read_at: datetime | None = None
+    resolved_at: datetime | None = None
+    created_at: datetime = Field(default_factory=utc_now)
