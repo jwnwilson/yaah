@@ -10,7 +10,17 @@ from adapters.database.orm import (
     WorkItemRow,
 )
 from adapters.database.repository import SqlRepository
-from domain.models import AgentDefinition, McpServer, Project, Run, RunEvent, Secret, Skill, Team, WorkItem
+from domain.models import (
+    AgentDefinition,
+    McpServer,
+    Project,
+    Run,
+    RunEvent,
+    Secret,
+    Skill,
+    Team,
+    WorkItem,
+)
 
 
 class ProjectRepository(SqlRepository[Project]):

@@ -56,7 +56,7 @@ def test_roles_enum_has_core_roles():
 
 
 def test_capability_models_and_agent_grants():
-    from domain.models import Skill, McpServer, Secret, AgentDefinition
+    from domain.models import AgentDefinition, McpServer, Secret, Skill
 
     s = Skill(owner_id="u", name="pytest", source="git@x/skills.git")
     m = McpServer(owner_id="u", name="fs", transport="stdio", command_or_url="npx mcp-fs",

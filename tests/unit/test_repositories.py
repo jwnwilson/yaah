@@ -36,7 +36,7 @@ def test_capability_repos_owner_scoped_and_agent_grants():
     from adapters.database.engine import make_engine, make_session_factory
     from adapters.database.orm import Base
     from adapters.database.uow import SqlUnitOfWork
-    from domain.models import Skill, AgentDefinition, Team
+    from domain.models import AgentDefinition, Skill, Team
 
     engine = make_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)

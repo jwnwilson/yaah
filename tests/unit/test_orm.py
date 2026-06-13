@@ -31,7 +31,7 @@ def test_work_item_row_has_owner_id_column():
 
 def test_capability_rows_roundtrip():
     from adapters.database.engine import make_engine, make_session_factory
-    from adapters.database.orm import Base, SkillRow, McpServerRow, SecretRow, AgentDefinitionRow
+    from adapters.database.orm import AgentDefinitionRow, Base, SkillRow
 
     engine = make_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
