@@ -1,0 +1,105 @@
+# --- PostgreSQL backing Temporal ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yaah-temporal-db
+spec:
+  clusterIP: None
+  selector:
+    app: yaah-temporal-db
+  ports:
+    - port: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: yaah-temporal-db
+spec:
+  serviceName: yaah-temporal-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yaah-temporal-db
+  template:
+    metadata:
+      labels:
+        app: yaah-temporal-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_USER
+              value: temporal
+            - name: POSTGRES_PASSWORD
+              value: temporal
+            - name: POSTGRES_DB
+              value: temporal
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "temporal"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 5Gi
+---
+# --- Temporal server (auto-setup creates schema + the "default" namespace) ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yaah-temporal
+spec:
+  selector:
+    app: yaah-temporal
+  ports:
+    - name: grpc
+      port: 7233
+      targetPort: 7233
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yaah-temporal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yaah-temporal
+  template:
+    metadata:
+      labels:
+        app: yaah-temporal
+    spec:
+      containers:
+        - name: temporal
+          image: temporalio/auto-setup:1.27
+          ports:
+            - containerPort: 7233
+          env:
+            - name: DB
+              value: postgres12
+            - name: DB_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              value: temporal
+            - name: POSTGRES_PWD
+              value: temporal
+            - name: POSTGRES_SEEDS
+              value: yaah-temporal-db
+          readinessProbe:
+            tcpSocket:
+              port: 7233
+            initialDelaySeconds: 20
+            periodSeconds: 10
