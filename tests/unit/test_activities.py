@@ -135,3 +135,50 @@ def test_open_pr_local_records_branch_only():
     with uow.transaction():
         run = uow.runs.get(run_id)
     assert run.branch == "agent/t1"
+
+
+def test_run_stage_populates_ctx_agent_from_team():
+    from domain.models import AgentDefinition, Skill, Team
+
+    factory = _factory()
+    run_id = _seed_run(factory)
+
+    # Seed a team, agent, and skill in the same owner scope
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        team = uow.teams.create(Team(owner_id="u1", name="T"))
+        sk = uow.skills.create(Skill(owner_id="u1", name="pytest", source="git@x/s.git"))
+        uow.agents.create(AgentDefinition(
+            team_id=team.id, role="backend", name="Eng",
+            model_alias="m", system_prompt="build",
+            allowed_tools=["Read", "Edit"], skill_ids=[sk.id],
+        ))
+
+    captured = {}
+
+    class _Spy:
+        def run_stage(self, ctx):
+            captured["ctx"] = ctx
+            from domain.runtime import AgentEvent, StageResult
+            yield AgentEvent(type="result", stage=ctx.stage, message="ok",
+                             data=StageResult(outcome="ok").model_dump())
+
+        def cancel(self, run_id):  # noqa: ARG002
+            pass
+
+    storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
+    acts = RunActivities(factory, _Spy(), storage, FakeGit(), FakeGitForge())
+    acts.run_stage({
+        "run_id": run_id,
+        "owner_id": "u1",
+        "stage": "implement",
+        "task_title": "T",
+        "acceptance_criteria": [],
+        "team_id": team.id,
+    })
+
+    ctx = captured["ctx"]
+    assert ctx.agent is not None
+    assert ctx.agent.system_prompt == "build"
+    assert ctx.agent.allowed_tools == ["Read", "Edit"]
+    assert ctx.agent.skills[0].source == "git@x/s.git"

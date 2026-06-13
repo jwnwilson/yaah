@@ -219,3 +219,10 @@ def test_start_run_passes_profile_and_repo(monkeypatch):
     c.post(f"/work-items/{task_id}/runs")
     assert fake.started[0]["profile"] in ("local", "remote")
     assert "repo_ref" in fake.started[0]
+
+
+def test_start_run_passes_team_id():
+    c, fake = _client_with_fake_temporal()
+    task_id, _t, _p = _ready_task(c)
+    c.post(f"/work-items/{task_id}/runs")
+    assert "team_id" in fake.started[0] and fake.started[0]["team_id"]
