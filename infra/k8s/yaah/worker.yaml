@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yaah-temporal-worker
+  labels:
+    app: yaah-temporal-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yaah-temporal-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: yaah-temporal-worker
+    spec:
+      imagePullSecrets:
+        - name: ecr-credentials
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+      containers:
+        - name: yaah-temporal-worker
+          image: <ECR_WORKER_IMAGE>
+          env:
+            - name: YAAH_PROFILE
+              value: remote
+            - name: YAAH_TEMPORAL_ADDRESS
+              value: yaah-temporal:7233
+            - name: YAAH_LITELLM_BASE_URL
+              value: http://yaah-litellm:4000
+            - name: YAAH_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: yaah-db-secret
+                  key: database-url
+            - name: YAAH_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: yaah-secrets
+                  key: secret-key
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: yaah-secrets
+                  key: anthropic-api-key
+            - name: YAAH_GITHUB_APP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: yaah-secrets
+                  key: github-app-id
+            - name: YAAH_GITHUB_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: yaah-secrets
+                  key: github-private-key
+            - name: YAAH_GITHUB_INSTALLATION_ID
+              valueFrom:
+                secretKeyRef:
+                  name: yaah-secrets
+                  key: github-installation-id
+            - name: YAAH_GITHUB_REPO
+              valueFrom:
+                secretKeyRef:
+                  name: yaah-secrets
+                  key: github-repo
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
