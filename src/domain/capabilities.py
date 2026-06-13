@@ -29,6 +29,7 @@ class AgentManifest(BaseModel):
     allowed_tools: list[str] = []
     skills: list[SkillRef] = []
     mcp_servers: list[McpRef] = []
+    secret_env: dict[str, str] = {}
 
 
 def role_for_stage(stage: RunStage) -> AgentRole | None:
