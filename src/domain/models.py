@@ -156,6 +156,7 @@ class Secret(BaseModel):
     owner_id: str
     name: str
     description: str = ""
+    encrypted_value: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
 
 

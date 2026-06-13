@@ -54,3 +54,19 @@ def test_capability_repos_owner_scoped_and_agent_grants():
     other = SqlUnitOfWork(factory, required_filters={"owner_id": "u2"})
     with other.transaction():
         assert other.skills.list().total == 0   # cross-tenant hidden
+
+
+def test_secret_roundtrips_encrypted_value():
+    from adapters.database.engine import make_engine, make_session_factory
+    from adapters.database.orm import Base
+    from adapters.database.uow import SqlUnitOfWork
+    from domain.models import Secret
+
+    engine = make_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    uow = SqlUnitOfWork(make_session_factory(engine), required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        sec = uow.secrets.create(Secret(owner_id="u1", name="GH"))
+        assert sec.encrypted_value is None
+        stored = uow.secrets.update(sec.id, sec.model_copy(update={"encrypted_value": "tok"}))
+    assert stored.encrypted_value == "tok"
