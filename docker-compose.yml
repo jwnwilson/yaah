@@ -29,6 +29,26 @@ services:
       timeout: 3s
       retries: 20
 
+  worker:
+    build: { context: ., dockerfile: infra/worker/Dockerfile }
+    depends_on: [postgres, temporal]
+    environment:
+      YAAH_DATABASE_URL: postgresql+psycopg://yaah:yaah@postgres:5432/yaah
+      YAAH_TEMPORAL_ADDRESS: temporal:7233
+      YAAH_PROFILE: ${YAAH_PROFILE:-local}
+      YAAH_AGENT_RUNTIME: ${YAAH_AGENT_RUNTIME:-auto}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - workspaces:/app/data/workspaces
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 4g
+    pids_limit: 512
+    restart: unless-stopped
+
 volumes:
   pgdata:
   temporaldata:
+  workspaces:

@@ -1,4 +1,6 @@
 import asyncio
+import os
+import shutil
 from concurrent.futures import ThreadPoolExecutor
 
 from temporalio.client import Client
@@ -25,15 +27,35 @@ def _build_forge(profile: str):
                      base_branch=s.github_base_branch)
 
 
+def _build_model_provider(settings):
+    from adapters.model.anthropic import AnthropicProvider
+    return AnthropicProvider(api_key=settings.anthropic_api_key, model=settings.agent_model)
+
+
+def _build_runtime(settings, storage):
+    choice = settings.agent_runtime
+    has_key = bool(settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY"))
+    use_claude = (
+        choice == "claude_code" or (choice == "auto" and has_key and shutil.which("claude"))
+    )
+    if use_claude:
+        from adapters.runtime.claude_code import ClaudeCodeRuntime
+        return ClaudeCodeRuntime(_build_model_provider(settings))
+    return FakeAgentRuntime(storage=storage)
+
+
 def build_activities(database_url: str, profile: str = "local") -> list:
     engine = make_engine(database_url)
     Base.metadata.create_all(engine)
     factory = make_session_factory(engine)
     storage = LocalStorageAdapter(base_dir="data/workspaces")
     from adapters.git.local_git import LocalGit
+    from interactors.api.settings import Settings
+    settings = Settings()
     git = LocalGit()
     forge = _build_forge(profile)
-    acts = RunActivities(factory, FakeAgentRuntime(storage=storage), storage, git, forge)
+    runtime = _build_runtime(settings, storage)
+    acts = RunActivities(factory, runtime, storage, git, forge)
     return [acts.persist_run_state, acts.record_event, acts.run_stage,
             acts.cleanup_workspace, acts.provision_workspace, acts.open_pr]
 

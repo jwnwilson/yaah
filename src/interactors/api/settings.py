@@ -18,3 +18,8 @@ class Settings(BaseSettings):
     github_installation_id: str | None = None
     github_repo: str | None = None             # "owner/name" for the PR API
     github_base_branch: str = "main"
+
+    anthropic_api_key: str | None = None
+    agent_model: str = "claude-sonnet-4-6"
+    claude_max_turns: int = 30
+    agent_runtime: Literal["auto", "fake", "claude_code"] = "auto"

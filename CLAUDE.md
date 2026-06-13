@@ -62,6 +62,7 @@ make coverage                # tests + 80% gate
 uv run uvicorn --app-dir src interactors.api.app:create_app --factory --reload
 docker compose up -d temporal     # Temporal dev server (UI on :8233)
 make worker                       # run the Temporal worker (pipeline executor)
+ANTHROPIC_API_KEY=... docker compose up -d --build worker   # real agent worker (auto-selects claude)
 ```
 
 ## Roadmap (phase A spine → C management plane → B full team)

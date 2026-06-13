@@ -21,3 +21,12 @@ def test_github_settings_default_none():
     s = Settings(_env_file=None)
     assert s.github_app_id is None
     assert s.github_base_branch == "main"
+
+
+def test_agent_runtime_defaults():
+    from interactors.api.settings import Settings
+    s = Settings(_env_file=None)
+    assert s.agent_runtime == "auto"
+    assert s.agent_model == "claude-sonnet-4-6"
+    assert s.claude_max_turns == 30
+    assert s.anthropic_api_key is None
