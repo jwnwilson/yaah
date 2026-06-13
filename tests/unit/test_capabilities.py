@@ -31,3 +31,10 @@ def test_assemble_manifest_from_grants():
     assert man.system_prompt == "you build" and man.allowed_tools == ["Read", "Edit"]
     assert man.skills[0].name == "pytest" and man.skills[0].source == "git@x/s.git"
     assert man.mcp_servers[0].tool_allowlist == ["mcp__fs__read"]
+
+
+def test_manifest_has_secret_env_default_empty():
+    from domain.capabilities import AgentManifest
+    assert AgentManifest().secret_env == {}
+    m = AgentManifest(secret_env={"GH_TOKEN": "x"})
+    assert m.secret_env["GH_TOKEN"] == "x"
