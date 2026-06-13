@@ -20,3 +20,10 @@ def temporal_client(request: Request) -> TemporalRunClient:
 
 def settings(request: Request):
     return request.app.state.settings
+
+
+def cipher(request: Request):
+    from adapters.secrets.cipher import FernetCipher
+
+    key = request.app.state.settings.secret_key
+    return FernetCipher(key) if key else None
