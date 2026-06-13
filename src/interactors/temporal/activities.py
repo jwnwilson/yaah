@@ -30,6 +30,22 @@ class RunActivities:
     def _uow(self, owner_id: str) -> SqlUnitOfWork:
         return SqlUnitOfWork(self._session_factory, required_filters={"owner_id": owner_id})
 
+    def _record_audit(
+        self, owner_id: str, run_id: str, stage: str, actor: str, detail: dict
+    ) -> None:
+        from domain.models import AuditAction, AuditEvent, RunStage, utc_now
+        try:
+            uow = self._uow(owner_id)
+            with uow.transaction():
+                uow.audit_events.create(AuditEvent(
+                    run_id=run_id, owner_id=owner_id,
+                    stage=RunStage(stage) if stage else None,
+                    actor=actor, action=AuditAction.CAPABILITY_GRANTED,
+                    detail=detail, created_at=utc_now(),
+                ))
+        except Exception:  # noqa: BLE001 - audit is best-effort, never fails the stage
+            pass
+
     @activity.defn(name="persist_run_state")
     def persist_run_state(self, payload: dict) -> None:
         uow = self._uow(payload["owner_id"])
@@ -101,6 +117,19 @@ class RunActivities:
                         agent_manifest = agent_manifest.model_copy(
                             update={"secret_env": secret_env}
                         )
+
+        if agent_manifest is not None:
+            self._record_audit(
+                payload["owner_id"], payload["run_id"], payload["stage"],
+                selected.role,
+                {
+                    "tools": list(agent_manifest.allowed_tools),
+                    "skills": [s.name for s in agent_manifest.skills],
+                    "mcp_servers": [m.name for m in agent_manifest.mcp_servers],
+                    "model_alias": agent_manifest.model_alias,
+                    "secret_count": len(agent_manifest.secret_env),
+                },
+            )
 
         ctx = RunContext(
             run_id=payload["run_id"],
