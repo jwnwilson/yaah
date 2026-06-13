@@ -38,6 +38,10 @@ class RunActivities:
                 updates["stage"] = RunStage(payload["stage"])
             if payload.get("cost_usd") is not None:
                 updates["cost_usd"] = float(payload["cost_usd"])
+            if payload.get("branch") is not None:
+                updates["branch"] = payload["branch"]
+            if payload.get("pr_url") is not None:
+                updates["pr_url"] = payload["pr_url"]
             if updates:
                 uow.runs.update(payload["run_id"], run.model_copy(update=updates))
 

@@ -73,3 +73,17 @@ def test_cleanup_workspace_deletes_run_dir():
     acts = RunActivities(factory, FakeAgentRuntime(), storage)
     acts.cleanup_workspace({"run_id": "r1", "owner_id": "u1"})
     assert not storage.exists("runs/r1")
+
+
+def test_persist_sets_branch_and_pr_url():
+    factory = _factory()
+    run_id = _seed_run(factory)
+    # T8: constructor is still 3-arg (git/forge added in T9). Use the existing _storage() helper.
+    acts = RunActivities(factory, FakeAgentRuntime(), _storage())
+    acts.persist_run_state({"run_id": run_id, "owner_id": "u1",
+                            "branch": "agent/x", "pr_url": "https://github.com/o/r/pull/1"})
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        run = uow.runs.get(run_id)
+    assert run.branch == "agent/x"
+    assert run.pr_url == "https://github.com/o/r/pull/1"
