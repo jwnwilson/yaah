@@ -5,16 +5,24 @@ from domain.models import RunStage
 _EDIT_TOOLS = ["Read", "Edit", "Write", "Bash"]
 _READ_TOOLS = ["Read", "Bash"]
 
+_MEMORY_POINTER = (
+    "Before you begin, read project memory if present: CLAUDE.md or AGENTS.md at the "
+    "repo root, and any relevant files under docs/adr/. Honor the conventions, "
+    "decisions, and gotchas recorded there.\n\n"
+)
+
 
 def for_stage(stage: RunStage, task_title: str, acceptance_criteria: list[str],
               body: str = "") -> tuple[str, list[str]]:
     ac = "\n".join(f"- {c}" for c in acceptance_criteria)
     if stage == RunStage.PLAN:
-        return (f"Read the ticket and write an implementation plan to plan.md.\n\n"
+        return (_MEMORY_POINTER +
+                f"Read the ticket and write an implementation plan to plan.md.\n\n"
                 f"Ticket: {task_title}\n{body}\n\nAcceptance criteria:\n{ac}",
                 ["Read", "Write"])
     if stage == RunStage.IMPLEMENT:
-        return (f"Implement this ticket by editing the repository in the working directory.\n\n"
+        return (_MEMORY_POINTER +
+                "Implement this ticket by editing the repository in the working directory.\n\n"
                 f"Ticket: {task_title}\n{body}\n\nAcceptance criteria:\n{ac}",
                 list(_EDIT_TOOLS))
     if stage == RunStage.VERIFY:

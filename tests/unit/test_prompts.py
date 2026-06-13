@@ -16,3 +16,26 @@ def test_verify_is_read_only():
 
 def test_max_turns_implement_highest():
     assert prompts.max_turns(RunStage.IMPLEMENT) >= prompts.max_turns(RunStage.VERIFY)
+
+
+# Task 1: Memory pointer tests
+from domain.prompts import for_stage
+
+
+def test_plan_prompt_points_to_project_memory():
+    prompt, tools = for_stage(RunStage.PLAN, "Add login", ["works"])
+    assert "CLAUDE.md" in prompt
+    assert "AGENTS.md" in prompt
+    assert "docs/adr" in prompt
+    assert "Read" in tools
+
+
+def test_implement_prompt_points_to_project_memory():
+    prompt, _ = for_stage(RunStage.IMPLEMENT, "Add login", ["works"])
+    assert "CLAUDE.md" in prompt
+    assert "docs/adr" in prompt
+
+
+def test_verify_prompt_has_no_memory_pointer():
+    prompt, _ = for_stage(RunStage.VERIFY, "Add login", ["works"])
+    assert "CLAUDE.md" not in prompt
