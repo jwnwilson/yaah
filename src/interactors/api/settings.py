@@ -23,3 +23,5 @@ class Settings(BaseSettings):
     agent_model: str = "claude-sonnet-4-6"
     claude_max_turns: int = 30
     agent_runtime: Literal["auto", "fake", "claude_code"] = "auto"
+
+    secret_key: str | None = None
