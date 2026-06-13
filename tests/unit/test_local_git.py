@@ -46,3 +46,54 @@ def test_commit_all_false_when_no_changes():
     g = LocalGit()
     g.prepare(repo_ref=bare, workspace_path=ws, branch="agent/t2", mode="clone")
     assert g.commit_all(ws, "noop") is False
+
+
+def _init_repo(path: Path) -> None:
+    subprocess.run(["git", "init", "-b", "main"], cwd=path, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                    "commit", "--allow-empty", "-m", "init"], cwd=path, check=True,
+                   capture_output=True)
+    (path / "CLAUDE.md").write_text("# original\n")
+    subprocess.run(["git", "add", "-A"], cwd=path, check=True, capture_output=True)
+    subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                    "commit", "-m", "add memory"], cwd=path, check=True,
+                   capture_output=True)
+
+
+def test_diff_shows_working_tree_memory_change():
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = Path(tmp)
+        _init_repo(ws)
+        (ws / "CLAUDE.md").write_text("# original\n# learned\n")
+        out = LocalGit().diff(str(ws), paths=["CLAUDE.md", "AGENTS.md", "docs/adr"])
+        assert "learned" in out
+        assert "CLAUDE.md" in out
+
+
+def test_commit_to_branch_commits_only_memory_paths():
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = Path(tmp)
+        _init_repo(ws)
+        (ws / "CLAUDE.md").write_text("# original\n# learned\n")
+        (ws / "other.py").write_text("print('x')\n")  # non-memory change
+        git = LocalGit()
+        committed = git.commit_to_branch(str(ws), branch="agent/memory-r1", base="main",
+                                         paths=["CLAUDE.md", "AGENTS.md", "docs/adr"],
+                                         message="memory update")
+        assert committed is True
+        assert git.current_branch(str(ws)) == "agent/memory-r1"
+        # the memory commit contains CLAUDE.md, not other.py
+        files = subprocess.run(["git", "show", "--name-only", "--pretty=format:"],
+                               cwd=ws, capture_output=True, text=True).stdout
+        assert "CLAUDE.md" in files
+        assert "other.py" not in files
+
+
+def test_commit_to_branch_returns_false_with_no_memory_changes():
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = Path(tmp)
+        _init_repo(ws)
+        committed = LocalGit().commit_to_branch(str(ws), branch="b", base="main",
+                                                paths=["CLAUDE.md"], message="m")
+        assert committed is False
