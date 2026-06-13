@@ -39,3 +39,14 @@ module "dns" {
   ui_cf_domain = module.s3_ui.cloudfront_domain
   cluster_ip   = var.cluster_ip
 }
+
+module "iam" {
+  source      = "./modules/iam"
+  github_repo = var.github_repo
+  ecr_push_policy_arns = [
+    module.ecr_api.ecr_push_policy_arn,
+    module.ecr_worker.ecr_push_policy_arn,
+  ]
+  ui_bucket_arn       = module.s3_ui.bucket_arn
+  ui_distribution_arn = module.s3_ui.distribution_arn
+}
