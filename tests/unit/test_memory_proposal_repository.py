@@ -31,7 +31,7 @@ def test_memory_proposal_is_owner_scoped(factory):
     SqlUnitOfWork(factory, required_filters={"owner_id": "owner"}).__class__  # noqa
     owner_uow = SqlUnitOfWork(factory, required_filters={"owner_id": "owner"})
     with owner_uow.transaction():
-        p = owner_uow.memory_proposals.create(MemoryProposal(
+        owner_uow.memory_proposals.create(MemoryProposal(
             owner_id="owner", run_id="r1", project_id="p1", branch="b"))
     other_uow = SqlUnitOfWork(factory, required_filters={"owner_id": "intruder"})
     with other_uow.transaction():
