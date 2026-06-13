@@ -12,6 +12,7 @@ from domain.models import (
     Secret,
     Skill,
     Team,
+    UsageRecord,
     WorkItem,
 )
 
@@ -61,3 +62,5 @@ class UnitOfWork(Protocol):
     def mcp_servers(self) -> Repository[McpServer]: ...
     @property
     def secrets(self) -> Repository[Secret]: ...
+    @property
+    def usage(self) -> Repository[UsageRecord]: ...
