@@ -22,7 +22,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     engine = make_engine(settings.database_url)
-    Base.metadata.create_all(engine)  # alembic replaces this once the schema stabilises
+    # SQLite (tests) builds the schema directly; Postgres is managed by Alembic migrations
+    # (`make migrate`).
+    if engine.dialect.name == "sqlite":
+        Base.metadata.create_all(engine)
     app.state.settings = settings
     app.state.session_factory = make_session_factory(engine)
 
