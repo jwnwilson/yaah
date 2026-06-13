@@ -1,4 +1,4 @@
-.PHONY: install dev test coverage lint up down infra ui ui-build ui-test ui-lint \
+.PHONY: install dev test coverage lint up down infra migrate migration ui ui-build ui-test ui-lint \
 	temporal worker worker-local litellm start test-all lint-all e2e e2e-fake e2e-real e2e-run
 
 install:
@@ -14,11 +14,20 @@ infra:
 down:
 	docker compose down
 
+# Apply Alembic migrations to Postgres (waits for the DB to be healthy first).
+migrate:
+	docker compose up -d --wait postgres
+	uv run alembic upgrade head
+
+# Autogenerate a new migration from ORM changes:  make migration m="add foo column"
+migration:
+	uv run alembic revision --autogenerate -m "$(m)"
+
 dev:
 	uv run uvicorn --app-dir src interactors.api.app:create_app --factory --reload
 
-# Start API (:8000) and UI (:5173) together; Ctrl-C stops both. Ensures Postgres is up.
-start: up
+# Start API (:8000) and UI (:5173) together; Ctrl-C stops both. Ensures Postgres + schema.
+start: migrate
 	@echo "API  -> http://localhost:8000"
 	@echo "UI   -> http://localhost:5173"
 	@echo "(Ctrl-C stops both)"
@@ -69,6 +78,8 @@ E2E_RUNTIME ?= fake
 E2E_AUTONOMY ?= full_auto
 E2E_POLL    ?= 40
 E2E_SLEEP   ?= 1
+E2E_DB      ?= yaah_e2e
+E2E_QUEUE   ?= yaah-e2e
 
 e2e-fake:
 	@$(MAKE) --no-print-directory e2e-run E2E_RUNTIME=fake E2E_AUTONOMY=full_auto E2E_POLL=40 E2E_SLEEP=1
@@ -85,8 +96,13 @@ e2e-run:
 		echo "ERROR: $(E2E_API) is already serving — stop 'make start'/'make dev'/another worker first"; exit 1; fi
 	@echo ">> bringing up infra (postgres + temporal)…"
 	@docker compose up -d --wait postgres temporal
+	@echo ">> resetting throwaway database $(E2E_DB) (keeps your dev DB untouched)…"
+	@docker compose exec -T postgres psql -U yaah -d yaah -c "DROP DATABASE IF EXISTS $(E2E_DB);" -c "CREATE DATABASE $(E2E_DB);" >/dev/null
 	@set -e; \
 	API=$(E2E_API); REPO=$(E2E_REPO); RT=$(E2E_RUNTIME); \
+	DBURL="postgresql+psycopg://yaah:yaah@localhost:5433/$(E2E_DB)"; QUEUE="$(E2E_QUEUE)"; \
+	echo ">> applying migrations to $(E2E_DB)…"; \
+	YAAH_DATABASE_URL="$$DBURL" uv run alembic upgrade head >/tmp/yaah-e2e-alembic.log 2>&1 || { echo "ERROR: migration failed:"; cat /tmp/yaah-e2e-alembic.log; exit 1; }; \
 	echo ">> dummy git repo: $$REPO"; \
 	rm -rf "$$REPO"; mkdir -p "$$REPO"; \
 	git -C "$$REPO" init -q; \
@@ -95,14 +111,14 @@ e2e-run:
 	git -C "$$REPO" add -A; \
 	git -C "$$REPO" -c user.email=e2e@yaah.local -c user.name=e2e commit -qm init; \
 	echo ">> starting API (:$(E2E_PORT))…"; \
-	YAAH_PROFILE=local uv run uvicorn --app-dir src interactors.api.app:create_app --factory --port $(E2E_PORT) >/tmp/yaah-e2e-api.log 2>&1 & API_PID=$$!; \
+	YAAH_PROFILE=local YAAH_DATABASE_URL="$$DBURL" YAAH_TASK_QUEUE="$$QUEUE" uv run uvicorn --app-dir src interactors.api.app:create_app --factory --port $(E2E_PORT) >/tmp/yaah-e2e-api.log 2>&1 & API_PID=$$!; \
 	WK_PID=""; \
 	trap 'kill $$API_PID $$WK_PID 2>/dev/null || true' EXIT INT TERM; \
 	printf '>> waiting for API'; \
 	for i in $$(seq 1 30); do curl -sf $$API/health >/dev/null 2>&1 && break || true; printf '.'; sleep 1; done; echo; \
 	if ! curl -sf $$API/health >/dev/null 2>&1; then echo "ERROR: API did not start — log:"; tail -30 /tmp/yaah-e2e-api.log; exit 1; fi; \
 	echo ">> starting worker (runtime=$$RT)…"; \
-	PYTHONPATH=src YAAH_PROFILE=local YAAH_AGENT_RUNTIME=$$RT uv run python -m interactors.temporal.worker >/tmp/yaah-e2e-worker.log 2>&1 & WK_PID=$$!; \
+	PYTHONPATH=src YAAH_PROFILE=local YAAH_DATABASE_URL="$$DBURL" YAAH_TASK_QUEUE="$$QUEUE" YAAH_AGENT_RUNTIME=$$RT uv run python -m interactors.temporal.worker >/tmp/yaah-e2e-worker.log 2>&1 & WK_PID=$$!; \
 	post() { curl -s -X POST "$$API$$1" -H 'content-type: application/json' -d "$$2"; }; \
 	echo ">> creating project / team / epic→feature→task…"; \
 	PID=$$(post /projects "{\"name\":\"e2e-$$RT\",\"local_path\":\"$$REPO\",\"autonomy\":\"$(E2E_AUTONOMY)\"}" | jq -r .data.id); \
@@ -155,7 +171,7 @@ worker:
 
 # Run the Temporal worker as a host process (real Claude Code + local repo access).
 # Pin the runtime with YAAH_AGENT_RUNTIME=fake|claude_code; set ANTHROPIC_API_KEY for real agents.
-worker-local: infra
+worker-local: infra migrate
 	PYTHONPATH=src uv run python -m interactors.temporal.worker
 
 litellm:

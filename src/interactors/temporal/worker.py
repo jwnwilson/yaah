@@ -53,7 +53,9 @@ def _build_runtime(settings, storage):
 
 def build_activities(database_url: str, profile: str = "local") -> list:
     engine = make_engine(database_url)
-    Base.metadata.create_all(engine)
+    # SQLite (tests) builds the schema directly; Postgres is managed by Alembic migrations.
+    if engine.dialect.name == "sqlite":
+        Base.metadata.create_all(engine)
     factory = make_session_factory(engine)
     storage = LocalStorageAdapter(base_dir="data/workspaces")
     from adapters.git.local_git import LocalGit

@@ -12,3 +12,6 @@ htmlcov/
 
 # git worktrees created by agents
 .claude/worktrees/
+
+# agent run workspaces (runtime scratch; never commit)
+data/workspaces/
