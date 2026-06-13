@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Board } from "./Board";
 import { TicketPanel } from "../work-items/TicketPanel";
 import { HierarchyTree } from "../work-items/HierarchyTree";
+import { ChatRail } from "../chat/ChatRail";
 
 export default function BoardPage() {
   const { projectId } = useParams();
   const [params, setParams] = useSearchParams();
+  const [showChat, setShowChat] = useState(false);
   if (!projectId) return null;
 
   const openItem = (id: string) => {
@@ -24,12 +27,19 @@ export default function BoardPage() {
       <header className="flex items-center gap-3 border-b p-3">
         <Link to="/" className="text-sm text-blue-700">← Projects</Link>
         <h1 className="font-semibold">Board</h1>
+        <button
+          className="ml-auto rounded border px-2 py-1 text-sm"
+          onClick={() => setShowChat((v) => !v)}
+        >
+          {showChat ? "Hide chat" : "Team lead"}
+        </button>
       </header>
       <div className="flex flex-1 overflow-hidden">
         <HierarchyTree projectId={projectId} selectedFeature={selectedFeature} onSelectFeature={selectFeature} />
         <div className="flex-1 overflow-auto">
           <Board projectId={projectId} parentId={selectedFeature} onOpen={openItem} />
         </div>
+        {showChat && <ChatRail projectId={projectId} />}
       </div>
       {params.get("item") && (
         <TicketPanel
