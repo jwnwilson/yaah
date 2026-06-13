@@ -38,7 +38,9 @@ def build_activities(database_url: str, profile: str = "local") -> list:
             acts.cleanup_workspace, acts.provision_workspace, acts.open_pr]
 
 
-async def run_worker(config: TemporalConfig, database_url: str, profile: str) -> None:  # pragma: no cover
+async def run_worker(  # pragma: no cover
+    config: TemporalConfig, database_url: str, profile: str
+) -> None:
     client = await Client.connect(config.address, namespace=config.namespace)
     worker = Worker(
         client,
