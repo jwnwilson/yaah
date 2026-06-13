@@ -178,6 +178,8 @@ class AgentDefinition(BaseModel):
 
 class AuditAction(StrEnum):
     CAPABILITY_GRANTED = "capability_granted"
+    TOOL_ALLOWED = "tool_allowed"
+    TOOL_DENIED = "tool_denied"
 
 
 class AuditEvent(BaseModel):
