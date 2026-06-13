@@ -176,6 +176,21 @@ class AgentDefinition(BaseModel):
     secret_ids: list[str] = Field(default_factory=list)
 
 
+class AuditAction(StrEnum):
+    CAPABILITY_GRANTED = "capability_granted"
+
+
+class AuditEvent(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    run_id: str
+    stage: RunStage | None = None
+    actor: str = ""
+    action: AuditAction
+    detail: dict = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class Run(BaseModel):
     id: str = Field(default_factory=new_id)
     owner_id: str

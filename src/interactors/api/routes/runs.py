@@ -83,6 +83,19 @@ def list_run_events(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
     )
 
 
+@router.get("/runs/{run_id}/audit")
+def list_run_audit(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        uow.runs.get(run_id)  # 404 if unknown / cross-tenant
+        page = uow.audit_events.list(
+            filters={"run_id": run_id}, order_by="created_at", page_size=200
+        )
+    return ok(
+        [e.model_dump(mode="json") for e in page.results],
+        meta={"total": page.total, "page_size": page.page_size, "page_number": page.page_number},
+    )
+
+
 def _signal(
     run_id: str,
     name: str,
