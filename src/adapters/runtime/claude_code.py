@@ -12,6 +12,29 @@ from domain.capabilities import McpRef
 from domain.runtime import AgentEvent, RunContext, StageResult
 
 
+def _write_agent_settings(workspace_path: str) -> None:
+    """Write .claude/settings.json with a PreToolUse hook for the audit interceptor."""
+    settings_dir = os.path.join(workspace_path, ".claude")
+    os.makedirs(settings_dir, exist_ok=True)
+    settings = {
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": "*",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": "python -m adapters.runtime.pretooluse_hook",
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+    with open(os.path.join(settings_dir, "settings.json"), "w") as f:
+        json.dump(settings, f)
+
+
 def _write_mcp_config(workspace_path: str, servers: list[McpRef],
                       secret_env: dict | None = None) -> None:
     env = secret_env or {}
@@ -83,6 +106,15 @@ class ClaudeCodeRuntime:
         env = {**os.environ, **self._model.agent_env()}
         if ctx.agent is not None and ctx.agent.secret_env:
             env = {**env, **ctx.agent.secret_env}
+        if ctx.agent is not None:
+            _write_agent_settings(ctx.workspace_path)
+            env = {
+                **env,
+                "YAAH_ALLOWED_TOOLS": json.dumps(tools),
+                "YAAH_AUDIT_PATH": os.path.join(ctx.workspace_path, "audit.jsonl"),
+                "YAAH_RUN_ID": ctx.run_id,
+                "YAAH_STAGE": str(ctx.stage.value),
+            }
         proc = self._spawn(
             argv, cwd=ctx.workspace_path, env=env,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,
