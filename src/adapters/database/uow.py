@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from adapters.database.repositories import (
     AgentDefinitionRepository,
+    AuditEventRepository,
     McpServerRepository,
     ProjectRepository,
     RunEventRepository,
@@ -74,6 +75,10 @@ class SqlUnitOfWork:
     @property
     def run_events(self) -> RunEventRepository:
         return RunEventRepository(self.session, self._required_filters)
+
+    @property
+    def audit_events(self) -> AuditEventRepository:
+        return AuditEventRepository(self.session, self._required_filters)
 
     @property
     def skills(self) -> SkillRepository:

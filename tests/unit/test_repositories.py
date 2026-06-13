@@ -56,6 +56,27 @@ def test_capability_repos_owner_scoped_and_agent_grants():
         assert other.skills.list().total == 0   # cross-tenant hidden
 
 
+def test_audit_events_owner_scoped():
+    from adapters.database.engine import make_engine, make_session_factory
+    from adapters.database.orm import Base
+    from adapters.database.uow import SqlUnitOfWork
+    from domain.models import AuditAction, AuditEvent, RunStage
+
+    engine = make_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = make_session_factory(engine)
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        uow.audit_events.create(AuditEvent(run_id="r1", owner_id="u1", stage=RunStage.PLAN,
+                                           actor="lead", action=AuditAction.CAPABILITY_GRANTED,
+                                           detail={"tools": ["Read"]}))
+        page = uow.audit_events.list(filters={"run_id": "r1"})
+    assert page.total == 1 and page.results[0].detail["tools"] == ["Read"]
+    other = SqlUnitOfWork(factory, required_filters={"owner_id": "u2"})
+    with other.transaction():
+        assert other.audit_events.list(filters={"run_id": "r1"}).total == 0
+
+
 def test_secret_roundtrips_encrypted_value():
     from adapters.database.engine import make_engine, make_session_factory
     from adapters.database.orm import Base
