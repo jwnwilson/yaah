@@ -6,6 +6,7 @@ from adapters.database.orm import (
     ChatMessageRow,
     ChatSessionRow,
     McpServerRow,
+    NotificationRow,
     ProjectRow,
     RunEventRow,
     RunRow,
@@ -23,6 +24,7 @@ from domain.models import (
     ChatMessage,
     ChatSession,
     McpServer,
+    Notification,
     Project,
     Run,
     RunEvent,
@@ -98,6 +100,11 @@ class ChatMessageRepository(SqlRepository[ChatMessage]):
     orm_model = ChatMessageRow
     dto = ChatMessage
     default_order_by = "created_at"
+
+
+class NotificationRepository(SqlRepository[Notification]):
+    orm_model = NotificationRow
+    dto = Notification
 
 
 class UsageRecordRepository(SqlRepository[UsageRecord]):

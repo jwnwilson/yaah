@@ -9,6 +9,7 @@ from domain.models import (
     ChatMessage,
     ChatSession,
     McpServer,
+    Notification,
     Project,
     Run,
     RunEvent,
@@ -67,6 +68,8 @@ class UnitOfWork(Protocol):
     def mcp_servers(self) -> Repository[McpServer]: ...
     @property
     def secrets(self) -> Repository[Secret]: ...
+    @property
+    def notifications(self) -> Repository[Notification]: ...
     @property
     def usage(self) -> Repository[UsageRecord]: ...
     @property

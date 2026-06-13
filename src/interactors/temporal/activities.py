@@ -1,11 +1,16 @@
 from temporalio import activity
 
 from adapters.database.uow import SqlUnitOfWork
+from adapters.notify.ports import NotificationDispatcher
 from adapters.runtime.fake import result_of
 from adapters.storage.ports import StoragePort
 from domain.errors import IntegrityConflict
 from domain.models import (
     AgentRole,
+    Notification,
+    NotificationCategory,
+    NotificationSeverity,
+    NotificationSource,
     RunEvent,
     RunEventType,
     RunStage,
@@ -13,6 +18,7 @@ from domain.models import (
     UsageRecord,
     utc_now,
 )
+from domain.notifications import notification_for_event, resolves
 from domain.runtime import AgentRuntime, RunContext
 from domain.usage import TokenUsage
 
@@ -29,13 +35,15 @@ class RunActivities:
     The ONLY DB writer during a run."""
 
     def __init__(self, session_factory, runtime: AgentRuntime, storage: StoragePort,
-                 git, forge, *, cipher=None) -> None:
+                 git, forge, *, cipher=None,
+                 notifier: NotificationDispatcher | None = None) -> None:
         self._session_factory = session_factory
         self._runtime = runtime
         self._storage = storage
         self._git = git
         self._forge = forge
         self._cipher = cipher
+        self._notifier = notifier or NotificationDispatcher([])
 
     def _uow(self, owner_id: str) -> SqlUnitOfWork:
         return SqlUnitOfWork(self._session_factory, required_filters={"owner_id": owner_id})
@@ -105,18 +113,58 @@ class RunActivities:
 
     @activity.defn(name="record_event")
     def record_event(self, payload: dict) -> None:
-        uow = self._uow(payload["owner_id"])
+        owner_id = payload["owner_id"]
+        run_id = payload["run_id"]
+        ev_type = RunEventType(payload["type"])
+        stage = RunStage(payload["stage"]) if payload.get("stage") else None
+        to_deliver: list[Notification] = []
+        uow = self._uow(owner_id)
         with uow.transaction():
-            uow.run_events.create(
-                RunEvent(
-                    run_id=payload["run_id"],
-                    owner_id=payload["owner_id"],
-                    stage=RunStage(payload["stage"]) if payload.get("stage") else None,
-                    type=RunEventType(payload["type"]),
-                    message=payload.get("message", ""),
-                    created_at=utc_now(),
-                )
+            ev = RunEvent(run_id=run_id, owner_id=owner_id, stage=stage, type=ev_type,
+                          message=payload.get("message", ""), created_at=utc_now())
+            uow.run_events.create(ev)
+            if ev_type == RunEventType.GATE_RESOLVED:
+                open_notifs = uow.notifications.list(
+                    filters={"run_id": run_id, "resolved_at__isnull": True}, page_size=200
+                ).results
+                for n in open_notifs:
+                    if resolves(n, ev):
+                        uow.notifications.update(
+                            n.id, n.model_copy(update={"resolved_at": utc_now()}))
+            else:
+                run = uow.runs.get(run_id)
+                notif = notification_for_event(ev, run=run)
+                if notif is not None and not self._has_open_gate_notification(uow, run_id, notif):
+                    to_deliver.append(uow.notifications.create(notif))
+        for n in to_deliver:
+            self._notifier.deliver(n)
+
+    def _has_open_gate_notification(self, uow, run_id: str, candidate: Notification) -> bool:
+        if candidate.action is None:
+            return False
+        existing = uow.notifications.list(
+            filters={"run_id": run_id, "resolved_at__isnull": True}, page_size=200
+        ).results
+        return any(n.action is not None for n in existing)
+
+    @activity.defn(name="record_notification")
+    def record_notification(self, payload: dict) -> None:
+        owner_id = payload["owner_id"]
+        run_id = payload["run_id"]
+        category = NotificationCategory(payload.get("category", "update"))
+        severity = NotificationSeverity(payload.get("severity", "info"))
+        to_deliver: list[Notification] = []
+        uow = self._uow(owner_id)
+        with uow.transaction():
+            run = uow.runs.get(run_id)
+            notif = Notification(
+                owner_id=owner_id, source=NotificationSource.AGENT, category=category,
+                severity=severity, title=payload["title"], body=payload.get("body", ""),
+                run_id=run_id, work_item_id=run.task_id,
             )
+            to_deliver.append(uow.notifications.create(notif))
+        for n in to_deliver:
+            self._notifier.deliver(n)
 
     @activity.defn(name="record_usage")
     def record_usage(self, payload: dict) -> None:
@@ -229,15 +277,27 @@ class RunActivities:
         for event in self._runtime.run_stage(ctx):
             events.append(event)
             _heartbeat(event.message)
-            self.record_event(
-                {
-                    "run_id": payload["run_id"],
-                    "owner_id": payload["owner_id"],
-                    "stage": payload["stage"],
-                    "type": RunEventType.AGENT_EVENT,
-                    "message": event.message,
-                }
-            )
+            if event.type == "notification" and event.data.get("title"):
+                self.record_notification(
+                    {
+                        "run_id": payload["run_id"],
+                        "owner_id": payload["owner_id"],
+                        "category": event.data.get("category", "update"),
+                        "severity": event.data.get("severity", "info"),
+                        "title": event.data["title"],
+                        "body": event.data.get("body", ""),
+                    }
+                )
+            else:
+                self.record_event(
+                    {
+                        "run_id": payload["run_id"],
+                        "owner_id": payload["owner_id"],
+                        "stage": payload["stage"],
+                        "type": RunEventType.AGENT_EVENT,
+                        "message": event.message,
+                    }
+                )
         result = result_of(events)
         if result.model_usage:
             self.record_usage({

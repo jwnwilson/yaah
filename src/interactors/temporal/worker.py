@@ -53,7 +53,9 @@ def _build_runtime(settings, storage):
 
 def build_activities(database_url: str, profile: str = "local") -> list:
     engine = make_engine(database_url)
-    Base.metadata.create_all(engine)
+    # SQLite (tests) builds the schema directly; Postgres is managed by Alembic migrations.
+    if engine.dialect.name == "sqlite":
+        Base.metadata.create_all(engine)
     factory = make_session_factory(engine)
     storage = LocalStorageAdapter(base_dir="data/workspaces")
     from adapters.git.local_git import LocalGit
@@ -66,9 +68,13 @@ def build_activities(database_url: str, profile: str = "local") -> list:
     if settings.secret_key:
         from adapters.secrets.cipher import FernetCipher
         cipher = FernetCipher(settings.secret_key)
-    acts = RunActivities(factory, runtime, storage, git, forge, cipher=cipher)
+    from adapters.notify.inapp import InAppChannel
+    from adapters.notify.ports import NotificationDispatcher
+    notifier = NotificationDispatcher([InAppChannel()])
+    acts = RunActivities(factory, runtime, storage, git, forge, cipher=cipher, notifier=notifier)
     return [acts.persist_run_state, acts.record_event, acts.record_usage, acts.run_stage,
-            acts.cleanup_workspace, acts.provision_workspace, acts.open_pr]
+            acts.cleanup_workspace, acts.provision_workspace, acts.open_pr,
+            acts.record_notification]
 
 
 async def run_worker(  # pragma: no cover
