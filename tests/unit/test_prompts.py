@@ -39,3 +39,14 @@ def test_implement_prompt_points_to_project_memory():
 def test_verify_prompt_has_no_memory_pointer():
     prompt, _ = for_stage(RunStage.VERIFY, "Add login", ["works"])
     assert "CLAUDE.md" not in prompt
+
+
+# Task 2: LEARN prompt tests
+def test_learn_prompt_requests_additions_and_deletions():
+    prompt, tools = for_stage(RunStage.LEARN, "Add login", ["works"])
+    lowered = prompt.lower()
+    assert "additions" in lowered or "add" in lowered
+    assert "deletion" in lowered or "remove" in lowered
+    assert "CLAUDE.md" in prompt
+    assert "docs/adr" in prompt
+    assert "Edit" in tools  # editing existing memory files

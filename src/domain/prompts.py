@@ -32,7 +32,14 @@ def for_stage(stage: RunStage, task_title: str, acceptance_criteria: list[str],
             list(_READ_TOOLS),
         )
     if stage == RunStage.LEARN:
-        return ("Summarise what changed in this run for project memory.", ["Read", "Write"])
+        return (
+            "Update project memory with durable learnings from this run. Edit CLAUDE.md "
+            "or AGENTS.md at the repo root (keep each concise, ~120 lines max) and add or "
+            "update entries under docs/adr/ for architectural decisions. Propose additions "
+            "AND deletions: remove stale or wrong guidance, record new conventions and "
+            "gotchas. Only durable, project-wide knowledge belongs here.",
+            ["Read", "Edit", "Write"],
+        )
     # provision/pr are handled by dedicated activities, not the agent runtime
     return (f"{stage} stage for: {task_title}", ["Read"])
 
