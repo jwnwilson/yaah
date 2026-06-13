@@ -1,0 +1,88 @@
+# --- PostgreSQL for the yaah application ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yaah-db
+spec:
+  clusterIP: None
+  selector:
+    app: yaah-db
+  ports:
+    - port: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: yaah-db
+spec:
+  serviceName: yaah-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yaah-db
+  template:
+    metadata:
+      labels:
+        app: yaah-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_USER
+              value: yaah
+            - name: POSTGRES_DB
+              value: yaah
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: yaah-db-secret
+                  key: postgres-password
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "yaah"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 5Gi
+---
+# Only yaah-api and yaah-temporal-worker pods may reach the DB.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: yaah-db-ingress-only
+spec:
+  podSelector:
+    matchLabels:
+      app: yaah-db
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: yaah-api
+        - podSelector:
+            matchLabels:
+              app: yaah-temporal-worker
+      ports:
+        - port: 5432
