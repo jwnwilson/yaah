@@ -8,7 +8,7 @@ from domain.usage import TokenUsage
 
 
 class AgentEvent(BaseModel):
-    type: Literal["progress", "heartbeat", "artifact", "result"]
+    type: Literal["progress", "heartbeat", "artifact", "result", "notification"]
     stage: RunStage
     message: str = ""
     data: dict = {}

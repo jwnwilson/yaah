@@ -4,6 +4,7 @@ from adapters.database.orm import (
     AgentDefinitionRow,
     AuditEventRow,
     McpServerRow,
+    NotificationRow,
     ProjectRow,
     RunEventRow,
     RunRow,
@@ -19,6 +20,7 @@ from domain.models import (
     AgentDefinition,
     AuditEvent,
     McpServer,
+    Notification,
     Project,
     Run,
     RunEvent,
@@ -83,6 +85,11 @@ class McpServerRepository(SqlRepository[McpServer]):
 class SecretRepository(SqlRepository[Secret]):
     orm_model = SecretRow
     dto = Secret
+
+
+class NotificationRepository(SqlRepository[Notification]):
+    orm_model = NotificationRow
+    dto = Notification
 
 
 class UsageRecordRepository(SqlRepository[UsageRecord]):

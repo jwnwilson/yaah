@@ -16,6 +16,23 @@ def _assistant_text(obj: dict) -> str:
     ).strip()
 
 
+_NOTIFY_TOOL = "yaah_notify"
+
+
+def _notification_events(obj: dict, stage: RunStage) -> list[AgentEvent]:
+    content = obj.get("message", {}).get("content", [])
+    out: list[AgentEvent] = []
+    for p in content:
+        if not isinstance(p, dict) or p.get("type") != "tool_use" or p.get("name") != _NOTIFY_TOOL:
+            continue
+        data = p.get("input") or {}
+        title = str(data.get("title") or "").strip()
+        if not title:
+            continue  # malformed: drop
+        out.append(AgentEvent(type="notification", stage=stage, message=title[:200], data=data))
+    return out
+
+
 def _usage_from_top_level(obj: dict) -> TokenUsage:
     u = obj.get("usage") or {}
     return TokenUsage(
@@ -57,6 +74,7 @@ def parse(lines: Iterable[str], stage: RunStage) -> tuple[list[AgentEvent], Stag
             text = _assistant_text(obj)
             if text:
                 events.append(AgentEvent(type="progress", stage=stage, message=text[:500]))
+            events.extend(_notification_events(obj, stage))
         elif kind == "result":
             outcome = "fail" if obj.get("is_error") else "ok"
             usage = _usage_from_top_level(obj)

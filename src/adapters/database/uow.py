@@ -7,6 +7,7 @@ from adapters.database.repositories import (
     AgentDefinitionRepository,
     AuditEventRepository,
     McpServerRepository,
+    NotificationRepository,
     ProjectRepository,
     RunEventRepository,
     RunRepository,
@@ -92,6 +93,10 @@ class SqlUnitOfWork:
     @property
     def secrets(self) -> SecretRepository:
         return SecretRepository(self.session, self._required_filters)
+
+    @property
+    def notifications(self) -> NotificationRepository:
+        return NotificationRepository(self.session, self._required_filters)
 
     @property
     def usage(self) -> UsageRecordRepository:
