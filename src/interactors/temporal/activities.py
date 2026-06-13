@@ -40,6 +40,34 @@ class RunActivities:
     def _uow(self, owner_id: str) -> SqlUnitOfWork:
         return SqlUnitOfWork(self._session_factory, required_filters={"owner_id": owner_id})
 
+    def _ingest_tool_audit(self, owner_id: str, run_id: str) -> None:
+        import json
+
+        from domain.models import AuditAction, AuditEvent, RunStage, utc_now
+        try:
+            raw = self._storage.read_text(f"runs/{run_id}/audit.jsonl")
+            if not raw:
+                return
+            uow = self._uow(owner_id)
+            with uow.transaction():
+                for line in raw.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    rec = json.loads(line)
+                    action = (AuditAction.TOOL_ALLOWED if rec.get("decision") == "allow"
+                              else AuditAction.TOOL_DENIED)
+                    stage_val = rec.get("stage")
+                    uow.audit_events.create(AuditEvent(
+                        run_id=run_id, owner_id=owner_id,
+                        stage=RunStage(stage_val) if stage_val else None,
+                        actor="", action=action,
+                        detail={"tool": rec.get("tool", ""), "reason": rec.get("reason", "")},
+                        created_at=utc_now(),
+                    ))
+        except Exception:  # noqa: BLE001 - audit ingest is best-effort, never fails the stage
+            pass
+
     def _record_audit(
         self, owner_id: str, run_id: str, stage: str, actor: str, detail: dict
     ) -> None:
@@ -218,6 +246,7 @@ class RunActivities:
                 "agent_role": agent_role.value if agent_role else None,
                 "model_usage": {m: u.model_dump() for m, u in result.model_usage.items()},
             })
+        self._ingest_tool_audit(payload["owner_id"], payload["run_id"])
         return result.model_dump()
 
     @activity.defn(name="cleanup_workspace")

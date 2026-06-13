@@ -292,3 +292,60 @@ def test_run_stage_records_capability_audit_without_secret_values():
     assert detail["model_alias"] == "engineer-model"
     assert detail["secret_count"] == 1
     assert "ghp_SECRET" not in json.dumps(detail)  # no secret value in the audit
+
+
+def test_run_stage_ingests_tool_audit_jsonl():
+    import json
+    import tempfile
+
+    from adapters.database.uow import SqlUnitOfWork
+    from adapters.forge.fake import FakeGitForge
+    from adapters.git.fake import FakeGit
+    from adapters.storage.local import LocalStorageAdapter
+    from domain.models import AgentDefinition, Team
+    from interactors.temporal.activities import RunActivities
+
+    factory = _factory()
+    run_id = _seed_run(factory)
+    storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        team = uow.teams.create(Team(owner_id="u1", name="T"))
+        uow.agents.create(AgentDefinition(team_id=team.id, role="backend", name="E",
+                                          model_alias="m", allowed_tools=["Read"]))
+
+    class _Spy:
+        def __init__(self, storage):
+            self._s = storage
+
+        def run_stage(self, ctx):
+            # simulate the hook having written decisions during the run
+            self._s.write_bytes(
+                f"runs/{ctx.run_id}/audit.jsonl",
+                (
+                    json.dumps({"tool": "Read", "decision": "allow", "reason": "granted"}) + "\n"
+                    + json.dumps({"tool": "Bash", "decision": "deny",
+                                  "reason": "not in allowlist"}) + "\n"
+                ).encode(),
+            )
+            from domain.runtime import AgentEvent, StageResult
+            yield AgentEvent(type="result", stage=ctx.stage, message="ok",
+                             data=StageResult(outcome="ok").model_dump())
+
+        def cancel(self, run_id):  # noqa: ARG002
+            pass
+
+    acts = RunActivities(factory, _Spy(storage), storage, FakeGit(), FakeGitForge())
+    acts.run_stage({"run_id": run_id, "owner_id": "u1", "stage": "implement",
+                    "task_title": "T", "acceptance_criteria": [], "team_id": team.id})
+
+    uow2 = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow2.transaction():
+        evs = uow2.audit_events.list(filters={"run_id": run_id}).results
+    actions = sorted(e.action for e in evs if e.action in ("tool_allowed", "tool_denied"))
+    assert actions == ["tool_allowed", "tool_denied"]
+    denied = [e for e in evs if e.action == "tool_denied"][0]
+    assert denied.detail["tool"] == "Bash"
+    assert "reason" in denied.detail
+    # detail must not contain tool inputs — only tool name and reason
+    assert set(denied.detail.keys()) == {"tool", "reason"}
