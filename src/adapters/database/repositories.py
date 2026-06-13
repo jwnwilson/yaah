@@ -3,6 +3,8 @@ from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 from adapters.database.orm import (
     AgentDefinitionRow,
     AuditEventRow,
+    ChatMessageRow,
+    ChatSessionRow,
     McpServerRow,
     ProjectRow,
     RunEventRow,
@@ -18,6 +20,8 @@ from domain.errors import IntegrityConflict
 from domain.models import (
     AgentDefinition,
     AuditEvent,
+    ChatMessage,
+    ChatSession,
     McpServer,
     Project,
     Run,
@@ -83,6 +87,17 @@ class McpServerRepository(SqlRepository[McpServer]):
 class SecretRepository(SqlRepository[Secret]):
     orm_model = SecretRow
     dto = Secret
+
+
+class ChatSessionRepository(SqlRepository[ChatSession]):
+    orm_model = ChatSessionRow
+    dto = ChatSession
+
+
+class ChatMessageRepository(SqlRepository[ChatMessage]):
+    orm_model = ChatMessageRow
+    dto = ChatMessage
+    default_order_by = "created_at"
 
 
 class UsageRecordRepository(SqlRepository[UsageRecord]):
