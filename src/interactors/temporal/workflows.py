@@ -110,6 +110,7 @@ class RunWorkflow:
                         "stage": stage,
                         "task_title": inp["task_title"],
                         "acceptance_criteria": inp.get("acceptance_criteria", []),
+                        "team_id": inp.get("team_id"),
                     },
                     start_to_close_timeout=_STAGE_TIMEOUT,
                     retry_policy=_RETRY,

@@ -48,6 +48,7 @@ def start_run(
             "profile": settings.profile,
             "repo_ref": repo_ref,
             "base": settings.github_base_branch,
+            "team_id": run.team_id,
         }
     temporal.start_run_workflow(run_input)  # after commit: run row exists for the worker
     return ok(run.model_dump(mode="json"))
