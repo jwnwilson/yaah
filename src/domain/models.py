@@ -292,3 +292,21 @@ class ChatMessage(BaseModel):
     role: ChatRole
     content: str
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class MemoryProposalStatus(StrEnum):
+    PROPOSED = "proposed"
+    APPLIED = "applied"
+    REJECTED = "rejected"
+
+
+class MemoryProposal(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    run_id: str
+    project_id: str
+    branch: str
+    diff: str = ""
+    files: list[str] = Field(default_factory=list)
+    status: MemoryProposalStatus = MemoryProposalStatus.PROPOSED
+    created_at: datetime = Field(default_factory=utc_now)
