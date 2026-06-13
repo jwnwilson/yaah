@@ -2,9 +2,9 @@ from temporalio import activity
 
 from adapters.database.uow import SqlUnitOfWork
 from adapters.runtime.fake import result_of
+from adapters.storage.ports import StoragePort
 from domain.models import RunEvent, RunEventType, RunStage, RunStatus, utc_now
 from domain.runtime import AgentRuntime, RunContext
-from domain.storage import StoragePort
 
 
 def _heartbeat(detail: str) -> None:

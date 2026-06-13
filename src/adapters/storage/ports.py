@@ -2,8 +2,12 @@ from typing import Protocol
 
 
 class StoragePort(Protocol):
-    """Key/value-ish blob storage. Keys are relative paths like 'runs/{id}/plan.md'.
-    LocalStorageAdapter backs this now; an S3 adapter can drop in later (A4)."""
+    """Blob storage port. Keys are relative paths like 'runs/{id}/plan.md'.
+
+    Co-located with its implementation in the adapters layer (same convention as
+    adapters/database/ports.py). LocalStorageAdapter backs this now; an
+    S3StorageAdapter can drop in later (A4) with no caller changes.
+    """
 
     def write_bytes(self, key: str, content: bytes) -> None: ...
     def read_text(self, key: str, *, encoding: str = "utf-8") -> str: ...
