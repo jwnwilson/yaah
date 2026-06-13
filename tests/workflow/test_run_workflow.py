@@ -9,8 +9,8 @@ from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
 from adapters.runtime.fake import FakeAgentRuntime
-from adapters.temporal.activities import RunActivities
-from adapters.temporal.workflow import RunWorkflow
+from interactors.temporal.activities import RunActivities
+from interactors.temporal.workflows import RunWorkflow
 from domain.models import AutonomyLevel, Run, RunStage, RunStatus
 from domain.runtime import AgentEvent, StageResult
 

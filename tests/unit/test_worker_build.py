@@ -1,4 +1,4 @@
-from adapters.temporal.worker import build_activities
+from interactors.temporal.worker import build_activities
 
 
 def test_build_activities_returns_three_callables():

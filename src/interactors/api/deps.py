@@ -2,8 +2,8 @@ from fastapi import Depends, Request
 
 from adapters.database.ports import UnitOfWork
 from adapters.database.uow import SqlUnitOfWork
-from adapters.temporal.client import TemporalRunClient
-from adapters.temporal.config import TemporalConfig
+from interactors.temporal.client import TemporalRunClient
+from interactors.temporal.config import TemporalConfig
 from interactors.api.auth import current_user_id
 
 

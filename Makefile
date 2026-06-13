@@ -28,4 +28,4 @@ temporal:
 	docker compose up -d temporal
 
 worker:
-	uv run python -m interactors.worker_main
+	uv run python -m interactors.temporal.worker

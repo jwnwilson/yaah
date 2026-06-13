@@ -2,7 +2,7 @@ from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
 from adapters.runtime.fake import FakeAgentRuntime
-from adapters.temporal.activities import RunActivities
+from interactors.temporal.activities import RunActivities
 from domain.models import Run, RunStage, RunStatus
 
 

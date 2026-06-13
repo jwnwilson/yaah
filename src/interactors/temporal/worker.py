@@ -7,9 +7,9 @@ from temporalio.worker import Worker
 from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.runtime.fake import FakeAgentRuntime
-from adapters.temporal.activities import RunActivities
-from adapters.temporal.config import TemporalConfig
-from adapters.temporal.workflow import RunWorkflow
+from interactors.temporal.activities import RunActivities
+from interactors.temporal.config import TemporalConfig
+from interactors.temporal.workflows import RunWorkflow
 
 
 def build_activities(database_url: str) -> list:
@@ -34,3 +34,13 @@ async def run_worker(config: TemporalConfig, database_url: str) -> None:  # prag
 
 def main(config: TemporalConfig, database_url: str) -> None:  # pragma: no cover
     asyncio.run(run_worker(config, database_url))
+
+
+def run() -> None:  # pragma: no cover
+    from interactors.api.settings import Settings
+    settings = Settings()
+    main(TemporalConfig.from_settings(settings), settings.database_url)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    run()

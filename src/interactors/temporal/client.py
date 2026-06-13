@@ -2,7 +2,7 @@ import asyncio
 
 from temporalio.client import Client
 
-from adapters.temporal.config import TemporalConfig
+from interactors.temporal.config import TemporalConfig
 
 
 class TemporalRunClient:

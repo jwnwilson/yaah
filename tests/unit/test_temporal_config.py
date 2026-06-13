@@ -1,4 +1,4 @@
-from adapters.temporal.config import TemporalConfig
+from interactors.temporal.config import TemporalConfig
 from interactors.api.settings import Settings
 
 
