@@ -1,13 +1,16 @@
 from adapters.database.orm import (
     AgentDefinitionRow,
+    McpServerRow,
     ProjectRow,
     RunEventRow,
     RunRow,
+    SecretRow,
+    SkillRow,
     TeamRow,
     WorkItemRow,
 )
 from adapters.database.repository import SqlRepository
-from domain.models import AgentDefinition, Project, Run, RunEvent, Team, WorkItem
+from domain.models import AgentDefinition, McpServer, Project, Run, RunEvent, Secret, Skill, Team, WorkItem
 
 
 class ProjectRepository(SqlRepository[Project]):
@@ -42,3 +45,18 @@ class RunEventRepository(SqlRepository[RunEvent]):
     orm_model = RunEventRow
     dto = RunEvent
     default_order_by = "created_at"
+
+
+class SkillRepository(SqlRepository[Skill]):
+    orm_model = SkillRow
+    dto = Skill
+
+
+class McpServerRepository(SqlRepository[McpServer]):
+    orm_model = McpServerRow
+    dto = McpServer
+
+
+class SecretRepository(SqlRepository[Secret]):
+    orm_model = SecretRow
+    dto = Secret
