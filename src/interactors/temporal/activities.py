@@ -4,6 +4,7 @@ from adapters.database.uow import SqlUnitOfWork
 from adapters.runtime.fake import result_of
 from domain.models import RunEvent, RunEventType, RunStage, RunStatus, utc_now
 from domain.runtime import AgentRuntime, RunContext
+from domain.storage import StoragePort
 
 
 def _heartbeat(detail: str) -> None:
@@ -14,12 +15,13 @@ def _heartbeat(detail: str) -> None:
 
 
 class RunActivities:
-    """Holds the session factory + runtime; exposes Temporal activities.
+    """Holds the session factory, runtime, and storage; exposes Temporal activities.
     The ONLY DB writer during a run."""
 
-    def __init__(self, session_factory, runtime: AgentRuntime):
+    def __init__(self, session_factory, runtime: AgentRuntime, storage: StoragePort) -> None:
         self._session_factory = session_factory
         self._runtime = runtime
+        self._storage = storage
 
     def _uow(self, owner_id: str) -> SqlUnitOfWork:
         return SqlUnitOfWork(self._session_factory, required_filters={"owner_id": owner_id})
@@ -56,12 +58,13 @@ class RunActivities:
 
     @activity.defn(name="run_stage")
     def run_stage(self, payload: dict) -> dict:
+        workspace_path = self._storage.local_path(f"runs/{payload['run_id']}")
         ctx = RunContext(
             run_id=payload["run_id"],
             stage=RunStage(payload["stage"]),
             task_title=payload["task_title"],
             acceptance_criteria=payload.get("acceptance_criteria", []),
-            workspace_path=payload["workspace_path"],
+            workspace_path=workspace_path,
             prior_artifacts=payload.get("prior_artifacts", {}),
         )
         events = []
@@ -78,3 +81,7 @@ class RunActivities:
                 }
             )
         return result_of(events).model_dump()
+
+    @activity.defn(name="cleanup_workspace")
+    def cleanup_workspace(self, payload: dict) -> None:
+        self._storage.delete_directory(f"runs/{payload['run_id']}/")

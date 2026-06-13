@@ -54,6 +54,14 @@ class RunWorkflow:
             retry_policy=_RETRY,
         )
 
+    async def _cleanup(self, run_id: str, owner_id: str) -> None:
+        await workflow.execute_activity(
+            "cleanup_workspace",
+            {"run_id": run_id, "owner_id": owner_id},
+            start_to_close_timeout=_STAGE_TIMEOUT,
+            retry_policy=_RETRY,
+        )
+
     @workflow.run
     async def run(self, inp: dict) -> str:
         run_id = inp["run_id"]
@@ -67,6 +75,7 @@ class RunWorkflow:
         while i < len(pipeline.STAGES):
             if self._cancelled:
                 await self._persist(run_id, owner_id, status=RunStatus.CANCELLED)
+                await self._cleanup(run_id, owner_id)
                 return RunStatus.CANCELLED
 
             stage = pipeline.STAGES[i]
@@ -81,7 +90,6 @@ class RunWorkflow:
                     "stage": stage,
                     "task_title": inp["task_title"],
                     "acceptance_criteria": inp.get("acceptance_criteria", []),
-                    "workspace_path": f"/tmp/{run_id}",
                 },
                 start_to_close_timeout=_STAGE_TIMEOUT,
                 retry_policy=_RETRY,
@@ -93,6 +101,7 @@ class RunWorkflow:
             if result["outcome"] == "blocked":
                 await self._persist(run_id, owner_id, status=RunStatus.BLOCKED)
                 await self._event(run_id, owner_id, stage, RunEventType.BLOCKED)
+                await self._cleanup(run_id, owner_id)
                 return RunStatus.BLOCKED
 
             if stage == RunStage.VERIFY and result["outcome"] == "fail":
@@ -104,6 +113,7 @@ class RunWorkflow:
                 await self._event(
                     run_id, owner_id, stage, RunEventType.BLOCKED, "verify exhausted"
                 )
+                await self._cleanup(run_id, owner_id)
                 return RunStatus.BLOCKED
 
             if stage in gates:
@@ -114,12 +124,14 @@ class RunWorkflow:
                 )
                 if self._cancelled:
                     await self._persist(run_id, owner_id, status=RunStatus.CANCELLED)
+                    await self._cleanup(run_id, owner_id)
                     return RunStatus.CANCELLED
                 if self._rejected:
                     await self._persist(run_id, owner_id, status=RunStatus.FAILED)
                     await self._event(
                         run_id, owner_id, stage, RunEventType.GATE_RESOLVED, "rejected"
                     )
+                    await self._cleanup(run_id, owner_id)
                     return RunStatus.FAILED
                 self._approved = False  # reset for the next gate
                 await self._event(
@@ -129,4 +141,5 @@ class RunWorkflow:
             i += 1
 
         await self._persist(run_id, owner_id, status=RunStatus.DONE, stage=RunStage.LEARN)
+        await self._cleanup(run_id, owner_id)
         return RunStatus.DONE

@@ -1,4 +1,5 @@
 import asyncio
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -9,10 +10,11 @@ from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
 from adapters.runtime.fake import FakeAgentRuntime
-from interactors.temporal.activities import RunActivities
-from interactors.temporal.workflows import RunWorkflow
+from adapters.storage.local import LocalStorageAdapter
 from domain.models import AutonomyLevel, Run, RunStage, RunStatus
 from domain.runtime import AgentEvent, StageResult
+from interactors.temporal.activities import RunActivities
+from interactors.temporal.workflows import RunWorkflow
 
 
 def _factory():
@@ -46,12 +48,16 @@ def _input(run_id, autonomy):
 
 
 async def _worker(env, factory, runtime):
-    acts = RunActivities(factory, runtime)
+    storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
+    acts = RunActivities(factory, runtime, storage)
     return Worker(
         env.client,
         task_queue="test-q",
         workflows=[RunWorkflow],
-        activities=[acts.persist_run_state, acts.record_event, acts.run_stage],
+        activities=[
+                acts.persist_run_state, acts.record_event,
+                acts.run_stage, acts.cleanup_workspace,
+            ],
         activity_executor=ThreadPoolExecutor(max_workers=4),
     )
 

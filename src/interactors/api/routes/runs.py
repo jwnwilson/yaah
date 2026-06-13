@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
-from interactors.temporal.client import TemporalRunClient
 from domain.models import Run, RunStatus, WorkItemKind, WorkItemStatus, utc_now
 from domain.transitions import validate_transition
 from interactors.api.deps import get_uow, temporal_client
 from interactors.api.envelope import ok
+from interactors.temporal.client import TemporalRunClient
 
 router = APIRouter(tags=["runs"])
 

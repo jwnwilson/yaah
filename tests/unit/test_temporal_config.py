@@ -1,5 +1,5 @@
-from interactors.temporal.config import TemporalConfig
 from interactors.api.settings import Settings
+from interactors.temporal.config import TemporalConfig
 
 
 def test_temporal_config_from_settings_defaults():

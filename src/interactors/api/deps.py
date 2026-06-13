@@ -2,9 +2,9 @@ from fastapi import Depends, Request
 
 from adapters.database.ports import UnitOfWork
 from adapters.database.uow import SqlUnitOfWork
+from interactors.api.auth import current_user_id
 from interactors.temporal.client import TemporalRunClient
 from interactors.temporal.config import TemporalConfig
-from interactors.api.auth import current_user_id
 
 
 def get_uow(request: Request, user_id: str = Depends(current_user_id)) -> UnitOfWork:
