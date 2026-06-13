@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from domain.models import (
     AgentDefinition,
     McpServer,
+    Notification,
     Project,
     Run,
     RunEvent,
@@ -61,3 +62,5 @@ class UnitOfWork(Protocol):
     def mcp_servers(self) -> Repository[McpServer]: ...
     @property
     def secrets(self) -> Repository[Secret]: ...
+    @property
+    def notifications(self) -> Repository[Notification]: ...
