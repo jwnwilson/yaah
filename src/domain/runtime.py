@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from domain.capabilities import AgentManifest
 from domain.models import RunStage
+from domain.usage import TokenUsage
 
 
 class AgentEvent(BaseModel):
@@ -17,6 +18,8 @@ class StageResult(BaseModel):
     outcome: Literal["ok", "fail", "blocked"]
     artifacts: dict = {}
     cost_usd: float = 0.0
+    usage: TokenUsage = TokenUsage()
+    model_usage: dict[str, TokenUsage] = {}
 
 
 class RunContext(BaseModel):

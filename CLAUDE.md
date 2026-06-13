@@ -69,3 +69,5 @@ docker compose up -d litellm   # LiteLLM gateway on :4000 (set YAAH_LITELLM_BASE
 ## Roadmap (phase A spine → C management plane → B full team)
 
 A1 control-plane foundation (this plan) → A2 board UI → A3 Temporal pipeline + FakeAgentRuntime → A4 sandbox/egress proxy/GitHub App → A5 Claude Code runtime adapter + LiteLLM → A5d token/usage tracking → A5e notification system → A6 refinement chat + memory. Then C (secrets/capabilities/model/budget UIs — budget builds on A5d usage data), then B (full team roles, parallel engineers, RAG).
+
+> **A5 status (single-user local):** A4a (GitHub App + workspaces + real PR), A5a/b (Claude Code runtime in a containerized worker), and A5c (agent capability model — C1 grants, C2 runtime composition, C3a encrypted secret values + scoped injection, C3b-1 LiteLLM routing, C3d-1/2 capability + tool audit) are merged. **C3c (egress proxy / credential broker) is descoped:** for single-user local, secret access is controlled by per-agent grants + per-stage scoped injection, and open egress is acceptable; the network chokepoint / zero-secret-container work returns only if/when multi-tenant or remote hardening is needed.

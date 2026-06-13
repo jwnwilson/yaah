@@ -7,7 +7,15 @@ from adapters.forge.fake import FakeGitForge
 from adapters.git.fake import FakeGit
 from adapters.runtime.fake import FakeAgentRuntime
 from adapters.storage.local import LocalStorageAdapter
-from domain.models import Run, RunStage, RunStatus
+from domain.models import (
+    Project,
+    Run,
+    RunStage,
+    RunStatus,
+    WorkItem,
+    WorkItemKind,
+    WorkItemStatus,
+)
 from interactors.temporal.activities import RunActivities
 
 
@@ -24,6 +32,10 @@ def _storage():
 def _seed_run(factory) -> str:
     uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
     with uow.transaction():
+        uow.projects.create(Project(id="p1", owner_id="u1", name="P", local_path="/tmp/x"))
+        uow.work_items.create(WorkItem(id="t1", owner_id="u1", project_id="p1",
+                                       kind=WorkItemKind.TASK, parent_id="f1", title="T",
+                                       status=WorkItemStatus.IN_PROGRESS))
         run = uow.runs.create(Run(owner_id="u1", task_id="t1", team_id="tm1"))
     return run.id
 
@@ -231,3 +243,109 @@ def test_run_stage_injects_secret_env_without_leaking():
     assert captured["ctx"].agent.secret_env == {"GH_TOKEN": "ghp_TOPSECRET"}
     assert "ghp_TOPSECRET" not in json.dumps(result)
     assert "ghp_TOPSECRET" not in json.dumps(recorded)
+
+
+def test_run_stage_records_capability_audit_without_secret_values():
+    import json
+    import tempfile
+
+    from cryptography.fernet import Fernet
+
+    from adapters.secrets.cipher import FernetCipher
+    from domain.models import AgentDefinition, Secret, Team
+    from domain.runtime import AgentEvent, StageResult
+
+    factory = _factory()
+    run_id = _seed_run(factory)
+    cipher = FernetCipher(Fernet.generate_key().decode())
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        team = uow.teams.create(Team(owner_id="u1", name="T"))
+        sec = uow.secrets.create(Secret(owner_id="u1", name="GH",
+                                        encrypted_value=cipher.encrypt("ghp_SECRET")))
+        uow.agents.create(AgentDefinition(
+            team_id=team.id, role="backend", name="E",
+            model_alias="engineer-model", allowed_tools=["Read", "Edit"],
+            secret_ids=[sec.id],
+        ))
+
+    class _Spy:
+        def run_stage(self, ctx):
+            yield AgentEvent(type="result", stage=ctx.stage, message="ok",
+                             data=StageResult(outcome="ok").model_dump())
+
+        def cancel(self, run_id):  # noqa: ARG002
+            pass
+
+    storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
+    acts = RunActivities(factory, _Spy(), storage,
+                         FakeGit(), FakeGitForge(), cipher=cipher)
+    acts.run_stage({"run_id": run_id, "owner_id": "u1", "stage": "implement",
+                    "task_title": "T", "acceptance_criteria": [], "team_id": team.id})
+
+    uow2 = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow2.transaction():
+        events = uow2.audit_events.list(filters={"run_id": run_id}).results
+    assert len(events) == 1
+    detail = events[0].detail
+    assert detail["tools"] == ["Read", "Edit"]
+    assert detail["model_alias"] == "engineer-model"
+    assert detail["secret_count"] == 1
+    assert "ghp_SECRET" not in json.dumps(detail)  # no secret value in the audit
+
+
+def test_run_stage_ingests_tool_audit_jsonl():
+    import json
+    import tempfile
+
+    from adapters.database.uow import SqlUnitOfWork
+    from adapters.forge.fake import FakeGitForge
+    from adapters.git.fake import FakeGit
+    from adapters.storage.local import LocalStorageAdapter
+    from domain.models import AgentDefinition, Team
+    from interactors.temporal.activities import RunActivities
+
+    factory = _factory()
+    run_id = _seed_run(factory)
+    storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        team = uow.teams.create(Team(owner_id="u1", name="T"))
+        uow.agents.create(AgentDefinition(team_id=team.id, role="backend", name="E",
+                                          model_alias="m", allowed_tools=["Read"]))
+
+    class _Spy:
+        def __init__(self, storage):
+            self._s = storage
+
+        def run_stage(self, ctx):
+            # simulate the hook having written decisions during the run
+            self._s.write_bytes(
+                f"runs/{ctx.run_id}/audit.jsonl",
+                (
+                    json.dumps({"tool": "Read", "decision": "allow", "reason": "granted"}) + "\n"
+                    + json.dumps({"tool": "Bash", "decision": "deny",
+                                  "reason": "not in allowlist"}) + "\n"
+                ).encode(),
+            )
+            from domain.runtime import AgentEvent, StageResult
+            yield AgentEvent(type="result", stage=ctx.stage, message="ok",
+                             data=StageResult(outcome="ok").model_dump())
+
+        def cancel(self, run_id):  # noqa: ARG002
+            pass
+
+    acts = RunActivities(factory, _Spy(storage), storage, FakeGit(), FakeGitForge())
+    acts.run_stage({"run_id": run_id, "owner_id": "u1", "stage": "implement",
+                    "task_title": "T", "acceptance_criteria": [], "team_id": team.id})
+
+    uow2 = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow2.transaction():
+        evs = uow2.audit_events.list(filters={"run_id": run_id}).results
+    actions = sorted(e.action for e in evs if e.action in ("tool_allowed", "tool_denied"))
+    assert actions == ["tool_allowed", "tool_denied"]
+    denied = [e for e in evs if e.action == "tool_denied"][0]
+    assert denied.detail["tool"] == "Bash"
+    assert "reason" in denied.detail
+    # detail must not contain tool inputs — only tool name and reason
+    assert set(denied.detail.keys()) == {"tool", "reason"}

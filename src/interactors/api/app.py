@@ -64,6 +64,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         projects,
         runs,
         teams,
+        usage,
         work_items,
     )
 
@@ -76,6 +77,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(capabilities.secrets_router)
     app.include_router(agents.router)
     app.include_router(notifications.router)
+    app.include_router(usage.router)
 
     ui_dist = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ui", "dist")
     if os.path.isdir(ui_dist):

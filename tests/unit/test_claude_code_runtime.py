@@ -282,3 +282,60 @@ def test_no_agent_path_unchanged():
     assert argv.count("--model") == 1
     assert "--append-system-prompt" not in argv
     assert "--mcp-config" not in argv
+
+
+def test_runtime_writes_pretooluse_hook_and_env():
+    from adapters.skills.fake import FakeSkillFetcher
+    from domain.capabilities import AgentManifest
+
+    ws = tempfile.mkdtemp()
+    man = AgentManifest(allowed_tools=["Read", "Edit"])
+    ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="T",
+                     acceptance_criteria=[], workspace_path=ws, agent=man)
+    captured = {}
+
+    class _P:
+        def __init__(s):
+            result = json.dumps({"type": "result", "is_error": False, "total_cost_usd": 0})
+            s.stdout = iter([result])
+            s.stderr = iter([])
+            s.pid = 1
+
+        def wait(s):
+            return 0
+
+    def spawn(argv, **kw):
+        captured["env"] = kw.get("env", {})
+        return _P()
+
+    rt = ClaudeCodeRuntime(FakeModelProvider(), spawn=spawn, skills=FakeSkillFetcher())
+    list(rt.run_stage(ctx))
+
+    settings = json.load(open(os.path.join(ws, ".claude", "settings.json")))
+    assert "PreToolUse" in settings["hooks"]
+    assert "pretooluse_hook" in json.dumps(settings["hooks"])
+    assert json.loads(captured["env"]["YAAH_ALLOWED_TOOLS"]) == ["Read", "Edit"]
+    assert captured["env"]["YAAH_AUDIT_PATH"].endswith("audit.jsonl")
+    assert captured["env"]["YAAH_RUN_ID"] == "r1"
+    assert captured["env"]["YAAH_STAGE"] == "implement"
+
+
+def test_no_agent_no_settings_no_yaah_env():
+    """ctx.agent=None: no settings.json written, no YAAH_* env vars injected."""
+    captured = {}
+
+    def spawn(argv, **kw):
+        captured["env"] = kw.get("env", {})
+        return _FakeProc([json.dumps({"type": "result", "is_error": False, "total_cost_usd": 0.0})])
+
+    ws = tempfile.mkdtemp()
+    ctx = RunContext(run_id="r2", stage=RunStage.IMPLEMENT, task_title="T",
+                     acceptance_criteria=[], workspace_path=ws)
+    rt = ClaudeCodeRuntime(FakeModelProvider(), spawn=spawn)
+    list(rt.run_stage(ctx))
+
+    assert not os.path.exists(os.path.join(ws, ".claude", "settings.json"))
+    assert "YAAH_ALLOWED_TOOLS" not in captured["env"]
+    assert "YAAH_AUDIT_PATH" not in captured["env"]
+    assert "YAAH_RUN_ID" not in captured["env"]
+    assert "YAAH_STAGE" not in captured["env"]

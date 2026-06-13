@@ -176,6 +176,23 @@ class AgentDefinition(BaseModel):
     secret_ids: list[str] = Field(default_factory=list)
 
 
+class AuditAction(StrEnum):
+    CAPABILITY_GRANTED = "capability_granted"
+    TOOL_ALLOWED = "tool_allowed"
+    TOOL_DENIED = "tool_denied"
+
+
+class AuditEvent(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    run_id: str
+    stage: RunStage | None = None
+    actor: str = ""
+    action: AuditAction
+    detail: dict = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class Run(BaseModel):
     id: str = Field(default_factory=new_id)
     owner_id: str
@@ -186,6 +203,10 @@ class Run(BaseModel):
     branch: str | None = None
     pr_url: str | None = None
     cost_usd: float = 0.0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_creation_tokens: int = 0
     created_at: datetime = Field(default_factory=utc_now)
 
 
@@ -227,3 +248,25 @@ class Notification(BaseModel):
     read_at: datetime | None = None
     resolved_at: datetime | None = None
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class UsageRecord(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    run_id: str
+    work_item_id: str
+    project_id: str
+    stage: RunStage
+    agent_role: AgentRole | None = None
+    model_id: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_creation_tokens: int = 0
+    cost_usd: float = 0.0
+    created_at: datetime = Field(default_factory=utc_now)
+
+    @property
+    def dedupe_key(self) -> str:
+        role = self.agent_role.value if self.agent_role else "none"
+        return f"{self.run_id}:{self.stage.value}:{role}:{self.model_id}"

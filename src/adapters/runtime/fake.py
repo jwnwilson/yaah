@@ -2,8 +2,17 @@ from typing import Iterator
 
 from domain.models import RunStage
 from domain.runtime import AgentEvent, RunContext, StageResult
+from domain.usage import TokenUsage
 
 _DEFAULT_COST = 0.25
+_FAKE_MODEL = "fake-model"
+_FAKE_USAGE = TokenUsage(
+    input_tokens=1000,
+    output_tokens=200,
+    cache_read_tokens=0,
+    cache_creation_tokens=0,
+    cost_usd=_DEFAULT_COST,
+)
 
 
 def result_of(events: list[AgentEvent]) -> StageResult:
@@ -22,7 +31,12 @@ def _default_events(stage: RunStage) -> list[AgentEvent]:
             type="result",
             stage=stage,
             message=f"{stage} complete",
-            data=StageResult(outcome="ok", cost_usd=_DEFAULT_COST).model_dump(),
+            data=StageResult(
+                outcome="ok",
+                cost_usd=_DEFAULT_COST,
+                usage=_FAKE_USAGE,
+                model_usage={_FAKE_MODEL: _FAKE_USAGE},
+            ).model_dump(),
         ),
     ]
 

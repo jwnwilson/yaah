@@ -17,7 +17,13 @@ services:
 
   temporal:
     image: temporalio/admin-tools:1.25
-    command: ["temporal", "server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/data/temporal.db"]
+    # admin-tools' default entrypoint is `tini -- sleep infinity`, which would swallow the
+    # command below; override it so `temporal server start-dev` is actually executed.
+    entrypoint: ["temporal"]
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/data/temporal.db"]
+    # admin-tools runs as a non-root user that cannot write the root-owned named volume;
+    # run as root so start-dev can create /data/temporal.db.
+    user: root
     ports:
       - "7233:7233"
       - "8233:8233"   # Web UI

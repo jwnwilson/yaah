@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from adapters.database.repositories import (
     AgentDefinitionRepository,
+    AuditEventRepository,
     McpServerRepository,
     NotificationRepository,
     ProjectRepository,
@@ -13,6 +14,7 @@ from adapters.database.repositories import (
     SecretRepository,
     SkillRepository,
     TeamRepository,
+    UsageRecordRepository,
     WorkItemRepository,
 )
 
@@ -77,6 +79,10 @@ class SqlUnitOfWork:
         return RunEventRepository(self.session, self._required_filters)
 
     @property
+    def audit_events(self) -> AuditEventRepository:
+        return AuditEventRepository(self.session, self._required_filters)
+
+    @property
     def skills(self) -> SkillRepository:
         return SkillRepository(self.session, self._required_filters)
 
@@ -91,3 +97,7 @@ class SqlUnitOfWork:
     @property
     def notifications(self) -> NotificationRepository:
         return NotificationRepository(self.session, self._required_filters)
+
+    @property
+    def usage(self) -> UsageRecordRepository:
+        return UsageRecordRepository(self.session, self._required_filters)

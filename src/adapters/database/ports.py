@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from domain.models import (
     AgentDefinition,
+    AuditEvent,
     McpServer,
     Notification,
     Project,
@@ -13,6 +14,7 @@ from domain.models import (
     Secret,
     Skill,
     Team,
+    UsageRecord,
     WorkItem,
 )
 
@@ -57,6 +59,8 @@ class UnitOfWork(Protocol):
     @property
     def run_events(self) -> Repository[RunEvent]: ...
     @property
+    def audit_events(self) -> Repository[AuditEvent]: ...
+    @property
     def skills(self) -> Repository[Skill]: ...
     @property
     def mcp_servers(self) -> Repository[McpServer]: ...
@@ -64,3 +68,5 @@ class UnitOfWork(Protocol):
     def secrets(self) -> Repository[Secret]: ...
     @property
     def notifications(self) -> Repository[Notification]: ...
+    @property
+    def usage(self) -> Repository[UsageRecord]: ...

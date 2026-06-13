@@ -70,7 +70,7 @@ def build_activities(database_url: str, profile: str = "local") -> list:
     from adapters.notify.ports import NotificationDispatcher
     notifier = NotificationDispatcher([InAppChannel()])
     acts = RunActivities(factory, runtime, storage, git, forge, cipher=cipher, notifier=notifier)
-    return [acts.persist_run_state, acts.record_event, acts.run_stage,
+    return [acts.persist_run_state, acts.record_event, acts.record_usage, acts.run_stage,
             acts.cleanup_workspace, acts.provision_workspace, acts.open_pr,
             acts.record_notification]
 

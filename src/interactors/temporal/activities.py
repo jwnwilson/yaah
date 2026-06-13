@@ -4,7 +4,9 @@ from adapters.database.uow import SqlUnitOfWork
 from adapters.notify.ports import NotificationDispatcher
 from adapters.runtime.fake import result_of
 from adapters.storage.ports import StoragePort
+from domain.errors import IntegrityConflict
 from domain.models import (
+    AgentRole,
     Notification,
     NotificationCategory,
     NotificationSeverity,
@@ -13,10 +15,12 @@ from domain.models import (
     RunEventType,
     RunStage,
     RunStatus,
+    UsageRecord,
     utc_now,
 )
 from domain.notifications import notification_for_event, resolves
 from domain.runtime import AgentRuntime, RunContext
+from domain.usage import TokenUsage
 
 
 def _heartbeat(detail: str) -> None:
@@ -43,6 +47,50 @@ class RunActivities:
 
     def _uow(self, owner_id: str) -> SqlUnitOfWork:
         return SqlUnitOfWork(self._session_factory, required_filters={"owner_id": owner_id})
+
+    def _ingest_tool_audit(self, owner_id: str, run_id: str) -> None:
+        import json
+
+        from domain.models import AuditAction, AuditEvent, RunStage, utc_now
+        try:
+            raw = self._storage.read_text(f"runs/{run_id}/audit.jsonl")
+            if not raw:
+                return
+            uow = self._uow(owner_id)
+            with uow.transaction():
+                for line in raw.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    rec = json.loads(line)
+                    action = (AuditAction.TOOL_ALLOWED if rec.get("decision") == "allow"
+                              else AuditAction.TOOL_DENIED)
+                    stage_val = rec.get("stage")
+                    uow.audit_events.create(AuditEvent(
+                        run_id=run_id, owner_id=owner_id,
+                        stage=RunStage(stage_val) if stage_val else None,
+                        actor="", action=action,
+                        detail={"tool": rec.get("tool", ""), "reason": rec.get("reason", "")},
+                        created_at=utc_now(),
+                    ))
+        except Exception:  # noqa: BLE001 - audit ingest is best-effort, never fails the stage
+            pass
+
+    def _record_audit(
+        self, owner_id: str, run_id: str, stage: str, actor: str, detail: dict
+    ) -> None:
+        from domain.models import AuditAction, AuditEvent, RunStage, utc_now
+        try:
+            uow = self._uow(owner_id)
+            with uow.transaction():
+                uow.audit_events.create(AuditEvent(
+                    run_id=run_id, owner_id=owner_id,
+                    stage=RunStage(stage) if stage else None,
+                    actor=actor, action=AuditAction.CAPABILITY_GRANTED,
+                    detail=detail, created_at=utc_now(),
+                ))
+        except Exception:  # noqa: BLE001 - audit is best-effort, never fails the stage
+            pass
 
     @activity.defn(name="persist_run_state")
     def persist_run_state(self, payload: dict) -> None:
@@ -118,11 +166,57 @@ class RunActivities:
         for n in to_deliver:
             self._notifier.deliver(n)
 
+    @activity.defn(name="record_usage")
+    def record_usage(self, payload: dict) -> None:
+        """Write one UsageRecord per model for a stage execution and recompute the run's
+        token counters from all its rows. Idempotent: duplicate (run, stage, role, model)
+        inserts are swallowed; counters are recomputed, never incremented."""
+        owner_id = payload["owner_id"]
+        run_id = payload["run_id"]
+        stage = RunStage(payload["stage"])
+        role = AgentRole(payload["agent_role"]) if payload.get("agent_role") else None
+        uow = self._uow(owner_id)
+        with uow.transaction():
+            run = uow.runs.get(run_id)
+            task = uow.work_items.get(run.task_id)
+            for model_id, u in (payload.get("model_usage") or {}).items():
+                usage = TokenUsage(**u)
+                record = UsageRecord(
+                    owner_id=owner_id, run_id=run_id, work_item_id=run.task_id,
+                    project_id=task.project_id, stage=stage, agent_role=role,
+                    model_id=model_id,
+                    input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
+                    cache_read_tokens=usage.cache_read_tokens,
+                    cache_creation_tokens=usage.cache_creation_tokens,
+                    cost_usd=usage.cost_usd,
+                )
+                try:
+                    # Savepoint: a duplicate (retry) conflict rolls back only this
+                    # insert, leaving the session usable for the recompute below.
+                    with uow.session.begin_nested():
+                        uow.usage.create(record)
+                except IntegrityConflict:
+                    pass  # already recorded on a prior attempt
+            rows = uow.usage.list(filters={"run_id": run_id}, page_size=1000).results
+            totals = TokenUsage()
+            for r in rows:
+                totals = totals.combine(TokenUsage(
+                    input_tokens=r.input_tokens, output_tokens=r.output_tokens,
+                    cache_read_tokens=r.cache_read_tokens,
+                    cache_creation_tokens=r.cache_creation_tokens))
+            uow.runs.update(run_id, run.model_copy(update={
+                "input_tokens": totals.input_tokens,
+                "output_tokens": totals.output_tokens,
+                "cache_read_tokens": totals.cache_read_tokens,
+                "cache_creation_tokens": totals.cache_creation_tokens,
+            }))
+
     @activity.defn(name="run_stage")
     def run_stage(self, payload: dict) -> dict:
         workspace_path = self._storage.local_path(f"runs/{payload['run_id']}")
 
         agent_manifest = None
+        agent_role = None
         team_id = payload.get("team_id")
         if team_id:
             from domain import capabilities
@@ -143,6 +237,7 @@ class RunActivities:
                         except Exception:  # noqa: BLE001
                             pass
                     agent_manifest = capabilities.assemble(selected, skills, mcps)
+                    agent_role = selected.role
                     if self._cipher is not None and selected.secret_ids:
                         secret_env = {}
                         for sec_id in selected.secret_ids:
@@ -155,6 +250,19 @@ class RunActivities:
                         agent_manifest = agent_manifest.model_copy(
                             update={"secret_env": secret_env}
                         )
+
+        if agent_manifest is not None:
+            self._record_audit(
+                payload["owner_id"], payload["run_id"], payload["stage"],
+                selected.role,
+                {
+                    "tools": list(agent_manifest.allowed_tools),
+                    "skills": [s.name for s in agent_manifest.skills],
+                    "mcp_servers": [m.name for m in agent_manifest.mcp_servers],
+                    "model_alias": agent_manifest.model_alias,
+                    "secret_count": len(agent_manifest.secret_env),
+                },
+            )
 
         ctx = RunContext(
             run_id=payload["run_id"],
@@ -190,7 +298,16 @@ class RunActivities:
                         "message": event.message,
                     }
                 )
-        return result_of(events).model_dump()
+        result = result_of(events)
+        if result.model_usage:
+            self.record_usage({
+                "run_id": payload["run_id"], "owner_id": payload["owner_id"],
+                "stage": payload["stage"],
+                "agent_role": agent_role.value if agent_role else None,
+                "model_usage": {m: u.model_dump() for m, u in result.model_usage.items()},
+            })
+        self._ingest_tool_audit(payload["owner_id"], payload["run_id"])
+        return result.model_dump()
 
     @activity.defn(name="cleanup_workspace")
     def cleanup_workspace(self, payload: dict) -> None:
