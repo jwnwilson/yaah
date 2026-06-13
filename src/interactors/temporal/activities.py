@@ -3,8 +3,18 @@ from temporalio import activity
 from adapters.database.uow import SqlUnitOfWork
 from adapters.runtime.fake import result_of
 from adapters.storage.ports import StoragePort
-from domain.models import RunEvent, RunEventType, RunStage, RunStatus, utc_now
+from domain.errors import IntegrityConflict
+from domain.models import (
+    AgentRole,
+    RunEvent,
+    RunEventType,
+    RunStage,
+    RunStatus,
+    UsageRecord,
+    utc_now,
+)
 from domain.runtime import AgentRuntime, RunContext
+from domain.usage import TokenUsage
 
 
 def _heartbeat(detail: str) -> None:
@@ -64,11 +74,57 @@ class RunActivities:
                 )
             )
 
+    @activity.defn(name="record_usage")
+    def record_usage(self, payload: dict) -> None:
+        """Write one UsageRecord per model for a stage execution and recompute the run's
+        token counters from all its rows. Idempotent: duplicate (run, stage, role, model)
+        inserts are swallowed; counters are recomputed, never incremented."""
+        owner_id = payload["owner_id"]
+        run_id = payload["run_id"]
+        stage = RunStage(payload["stage"])
+        role = AgentRole(payload["agent_role"]) if payload.get("agent_role") else None
+        uow = self._uow(owner_id)
+        with uow.transaction():
+            run = uow.runs.get(run_id)
+            task = uow.work_items.get(run.task_id)
+            for model_id, u in (payload.get("model_usage") or {}).items():
+                usage = TokenUsage(**u)
+                record = UsageRecord(
+                    owner_id=owner_id, run_id=run_id, work_item_id=run.task_id,
+                    project_id=task.project_id, stage=stage, agent_role=role,
+                    model_id=model_id,
+                    input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
+                    cache_read_tokens=usage.cache_read_tokens,
+                    cache_creation_tokens=usage.cache_creation_tokens,
+                    cost_usd=usage.cost_usd,
+                )
+                try:
+                    # Savepoint: a duplicate (retry) conflict rolls back only this
+                    # insert, leaving the session usable for the recompute below.
+                    with uow.session.begin_nested():
+                        uow.usage.create(record)
+                except IntegrityConflict:
+                    pass  # already recorded on a prior attempt
+            rows = uow.usage.list(filters={"run_id": run_id}, page_size=1000).results
+            totals = TokenUsage()
+            for r in rows:
+                totals = totals.combine(TokenUsage(
+                    input_tokens=r.input_tokens, output_tokens=r.output_tokens,
+                    cache_read_tokens=r.cache_read_tokens,
+                    cache_creation_tokens=r.cache_creation_tokens))
+            uow.runs.update(run_id, run.model_copy(update={
+                "input_tokens": totals.input_tokens,
+                "output_tokens": totals.output_tokens,
+                "cache_read_tokens": totals.cache_read_tokens,
+                "cache_creation_tokens": totals.cache_creation_tokens,
+            }))
+
     @activity.defn(name="run_stage")
     def run_stage(self, payload: dict) -> dict:
         workspace_path = self._storage.local_path(f"runs/{payload['run_id']}")
 
         agent_manifest = None
+        agent_role = None
         team_id = payload.get("team_id")
         if team_id:
             from domain import capabilities
@@ -89,6 +145,7 @@ class RunActivities:
                         except Exception:  # noqa: BLE001
                             pass
                     agent_manifest = capabilities.assemble(selected, skills, mcps)
+                    agent_role = selected.role
                     if self._cipher is not None and selected.secret_ids:
                         secret_env = {}
                         for sec_id in selected.secret_ids:
@@ -124,7 +181,15 @@ class RunActivities:
                     "message": event.message,
                 }
             )
-        return result_of(events).model_dump()
+        result = result_of(events)
+        if result.model_usage:
+            self.record_usage({
+                "run_id": payload["run_id"], "owner_id": payload["owner_id"],
+                "stage": payload["stage"],
+                "agent_role": agent_role.value if agent_role else None,
+                "model_usage": {m: u.model_dump() for m, u in result.model_usage.items()},
+            })
+        return result.model_dump()
 
     @activity.defn(name="cleanup_workspace")
     def cleanup_workspace(self, payload: dict) -> None:

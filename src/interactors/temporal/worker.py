@@ -61,7 +61,7 @@ def build_activities(database_url: str, profile: str = "local") -> list:
         from adapters.secrets.cipher import FernetCipher
         cipher = FernetCipher(settings.secret_key)
     acts = RunActivities(factory, runtime, storage, git, forge, cipher=cipher)
-    return [acts.persist_run_state, acts.record_event, acts.run_stage,
+    return [acts.persist_run_state, acts.record_event, acts.record_usage, acts.run_stage,
             acts.cleanup_workspace, acts.provision_workspace, acts.open_pr]
 
 
