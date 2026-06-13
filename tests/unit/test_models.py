@@ -72,6 +72,16 @@ def test_capability_models_and_agent_grants():
     assert a.allowed_tools == ["Read", "Write"]
 
 
+def test_audit_event_model():
+    from domain.models import AuditAction, AuditEvent, RunStage
+    ev = AuditEvent(run_id="r1", owner_id="u", stage=RunStage.IMPLEMENT, actor="backend",
+                    action=AuditAction.CAPABILITY_GRANTED,
+                    detail={"tools": ["Read"], "model_alias": "engineer-model"})
+    assert ev.id and ev.created_at
+    assert ev.action == "capability_granted"
+    assert ev.detail["tools"] == ["Read"]
+
+
 def test_run_stage_and_event_types_exist():
     from domain.models import RunEvent, RunEventType, RunStage
 
