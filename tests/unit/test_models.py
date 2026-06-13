@@ -55,6 +55,23 @@ def test_roles_enum_has_core_roles():
     }
 
 
+def test_capability_models_and_agent_grants():
+    from domain.models import AgentDefinition, McpServer, Secret, Skill
+
+    s = Skill(owner_id="u", name="pytest", source="git@x/skills.git")
+    m = McpServer(owner_id="u", name="fs", transport="stdio", command_or_url="npx mcp-fs",
+                  tool_allowlist=["mcp__fs__read"])
+    sec = Secret(owner_id="u", name="GH_TOKEN", description="github")
+    assert s.id and m.tool_allowlist == ["mcp__fs__read"] and sec.name == "GH_TOKEN"
+
+    a = AgentDefinition(team_id="t", role="lead", name="Lead", model_alias="lead-model",
+                        purpose="run the show", system_prompt="You are the lead.",
+                        allowed_tools=["Read", "Write"], skill_ids=[s.id],
+                        mcp_server_ids=[m.id], secret_ids=[sec.id])
+    assert a.purpose == "run the show" and a.skill_ids == [s.id]
+    assert a.allowed_tools == ["Read", "Write"]
+
+
 def test_run_stage_and_event_types_exist():
     from domain.models import RunEvent, RunEventType, RunStage
 

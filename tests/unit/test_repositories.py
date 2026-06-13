@@ -30,3 +30,27 @@ def test_agent_repo_is_not_owner_scoped_and_orders_by_id():
     repo = AgentDefinitionRepository(s, required_filters={"owner_id": "u1"})
     repo.create(AgentDefinition(team_id="t1", role=AgentRole.LEAD, name="L", model_alias="m"))
     assert repo.list(filters={"team_id": "t1"}).total == 1
+
+
+def test_capability_repos_owner_scoped_and_agent_grants():
+    from adapters.database.engine import make_engine, make_session_factory
+    from adapters.database.orm import Base
+    from adapters.database.uow import SqlUnitOfWork
+    from domain.models import AgentDefinition, Skill, Team
+
+    engine = make_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = make_session_factory(engine)
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        sk = uow.skills.create(Skill(owner_id="u1", name="pytest"))
+        team = uow.teams.create(Team(owner_id="u1", name="T"))
+        uow.agents.create(AgentDefinition(team_id=team.id, role="lead", name="L",
+                                          model_alias="m", skill_ids=[sk.id]))
+        skills_page = uow.skills.list()
+        agent = uow.agents.list(filters={"team_id": team.id}).results[0]
+    assert skills_page.total == 1 and agent.skill_ids == [sk.id]
+
+    other = SqlUnitOfWork(factory, required_filters={"owner_id": "u2"})
+    with other.transaction():
+        assert other.skills.list().total == 0   # cross-tenant hidden

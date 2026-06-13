@@ -46,6 +46,39 @@ class TeamRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class SkillRow(Base):
+    __tablename__ = "skills"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    source: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class McpServerRow(Base):
+    __tablename__ = "mcp_servers"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    transport: Mapped[str] = mapped_column(String(10), nullable=False, default="stdio")
+    command_or_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    tool_allowlist: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class SecretRow(Base):
+    __tablename__ = "secrets"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class AgentDefinitionRow(Base):
     __tablename__ = "agent_definitions"
 
@@ -56,6 +89,12 @@ class AgentDefinitionRow(Base):
     persona: Mapped[str] = mapped_column(Text, nullable=False, default="")
     model_alias: Mapped[str] = mapped_column(String(100), nullable=False)
     runtime: Mapped[str] = mapped_column(String(50), nullable=False)
+    purpose: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    system_prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    allowed_tools: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    skill_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    mcp_server_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    secret_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
 
 class RunRow(Base):

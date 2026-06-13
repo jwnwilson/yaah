@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from enum import StrEnum
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, model_validator
@@ -131,6 +132,33 @@ class Team(BaseModel):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class Skill(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    name: str
+    description: str = ""
+    source: str = ""
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class McpServer(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    name: str
+    transport: Literal["stdio", "http"] = "stdio"
+    command_or_url: str = ""
+    tool_allowlist: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class Secret(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    name: str
+    description: str = ""
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class AgentDefinition(BaseModel):
     id: str = Field(default_factory=new_id)
     team_id: str
@@ -139,6 +167,12 @@ class AgentDefinition(BaseModel):
     persona: str = ""
     model_alias: str
     runtime: str = "claude_code"
+    purpose: str = ""
+    system_prompt: str = ""
+    allowed_tools: list[str] = Field(default_factory=list)
+    skill_ids: list[str] = Field(default_factory=list)
+    mcp_server_ids: list[str] = Field(default_factory=list)
+    secret_ids: list[str] = Field(default_factory=list)
 
 
 class Run(BaseModel):
