@@ -123,3 +123,16 @@ class RunEventRow(Base):
     type: Mapped[str] = mapped_column(String(30), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AuditEventRow(Base):
+    __tablename__ = "audit_events"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    run_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    stage: Mapped[str | None] = mapped_column(String(30))
+    actor: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    action: Mapped[str] = mapped_column(String(40), nullable=False)
+    detail: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

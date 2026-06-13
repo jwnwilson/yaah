@@ -1,5 +1,6 @@
 from adapters.database.orm import (
     AgentDefinitionRow,
+    AuditEventRow,
     McpServerRow,
     ProjectRow,
     RunEventRow,
@@ -12,6 +13,7 @@ from adapters.database.orm import (
 from adapters.database.repository import SqlRepository
 from domain.models import (
     AgentDefinition,
+    AuditEvent,
     McpServer,
     Project,
     Run,
@@ -54,6 +56,12 @@ class RunRepository(SqlRepository[Run]):
 class RunEventRepository(SqlRepository[RunEvent]):
     orm_model = RunEventRow
     dto = RunEvent
+    default_order_by = "created_at"
+
+
+class AuditEventRepository(SqlRepository[AuditEvent]):
+    orm_model = AuditEventRow
+    dto = AuditEvent
     default_order_by = "created_at"
 
 
