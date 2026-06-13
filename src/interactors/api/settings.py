@@ -12,3 +12,9 @@ class Settings(BaseSettings):
     temporal_address: str = "localhost:7233"
     temporal_namespace: str = "default"
     task_queue: str = "yaah-runs"
+
+    github_app_id: str | None = None
+    github_private_key: str | None = None      # PEM contents or a file path
+    github_installation_id: str | None = None
+    github_repo: str | None = None             # "owner/name" for the PR API
+    github_base_branch: str = "main"

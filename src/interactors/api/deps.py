@@ -16,3 +16,7 @@ def get_uow(request: Request, user_id: str = Depends(current_user_id)) -> UnitOf
 
 def temporal_client(request: Request) -> TemporalRunClient:
     return TemporalRunClient(TemporalConfig.from_settings(request.app.state.settings))
+
+
+def settings(request: Request):
+    return request.app.state.settings

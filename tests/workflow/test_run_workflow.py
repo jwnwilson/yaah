@@ -9,6 +9,8 @@ from temporalio.worker import Worker
 from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
+from adapters.forge.fake import FakeGitForge
+from adapters.git.fake import FakeGit
 from adapters.runtime.fake import FakeAgentRuntime
 from adapters.storage.local import LocalStorageAdapter
 from domain.models import AutonomyLevel, Run, RunStage, RunStatus
@@ -44,20 +46,28 @@ def _input(run_id, autonomy):
         "autonomy": autonomy,
         "task_title": "T",
         "acceptance_criteria": [],
+        "profile": "remote",
+        "repo_ref": "x",
+        "base": "main",
     }
 
 
-async def _worker(env, factory, runtime):
+async def _worker(env, factory, runtime=None):
     storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
-    acts = RunActivities(factory, runtime, storage)
+    rt = runtime or FakeAgentRuntime(storage=storage)
+    acts = RunActivities(factory, rt, storage, FakeGit(), FakeGitForge())
     return Worker(
         env.client,
         task_queue="test-q",
         workflows=[RunWorkflow],
         activities=[
-                acts.persist_run_state, acts.record_event,
-                acts.run_stage, acts.cleanup_workspace,
-            ],
+            acts.persist_run_state,
+            acts.record_event,
+            acts.run_stage,
+            acts.cleanup_workspace,
+            acts.provision_workspace,
+            acts.open_pr,
+        ],
         activity_executor=ThreadPoolExecutor(max_workers=4),
     )
 
@@ -67,7 +77,7 @@ async def test_full_auto_runs_to_done():
     factory = _factory()
     run_id = _seed(factory)
     async with await WorkflowEnvironment.start_time_skipping() as env:
-        async with await _worker(env, factory, FakeAgentRuntime()):
+        async with await _worker(env, factory):
             await env.client.execute_workflow(
                 RunWorkflow.run,
                 _input(run_id, AutonomyLevel.FULL_AUTO),
@@ -82,7 +92,7 @@ async def test_gated_all_waits_then_approves_to_done():
     factory = _factory()
     run_id = _seed(factory)
     async with await WorkflowEnvironment.start_time_skipping() as env:
-        async with await _worker(env, factory, FakeAgentRuntime()):
+        async with await _worker(env, factory):
             handle = await env.client.start_workflow(
                 RunWorkflow.run,
                 _input(run_id, AutonomyLevel.GATED_ALL),
@@ -117,7 +127,7 @@ async def test_reject_ends_failed():
     factory = _factory()
     run_id = _seed(factory)
     async with await WorkflowEnvironment.start_time_skipping() as env:
-        async with await _worker(env, factory, FakeAgentRuntime()):
+        async with await _worker(env, factory):
             handle = await env.client.start_workflow(
                 RunWorkflow.run,
                 _input(run_id, AutonomyLevel.GATED_ALL),
@@ -151,3 +161,24 @@ async def test_verify_exhausted_blocks():
                 task_queue="test-q",
             )
     assert _run_status(factory, run_id) == RunStatus.BLOCKED
+
+
+@pytest.mark.asyncio
+async def test_remote_run_opens_pr(tmp_path):
+    factory = _factory()
+    run_id = _seed(factory)
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with await _worker(env, factory):
+            await env.client.execute_workflow(
+                RunWorkflow.run,
+                {"run_id": run_id, "owner_id": "u1", "task_id": "t1",
+                 "autonomy": AutonomyLevel.FULL_AUTO, "task_title": "T",
+                 "acceptance_criteria": [], "profile": "remote",
+                 "repo_ref": "https://example/r.git", "base": "main"},
+                id=run_id, task_queue="test-q",
+            )
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        run = uow.runs.get(run_id)
+    assert run.status == RunStatus.DONE
+    assert run.pr_url == "https://github.com/fake/fake/pull/1"

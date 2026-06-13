@@ -4,7 +4,7 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
-    from domain import pipeline
+    from domain import pipeline, scm
     from domain.models import AutonomyLevel, RunEventType, RunStage, RunStatus
 
 _STAGE_TIMEOUT = timedelta(hours=24)
@@ -71,6 +71,11 @@ class RunWorkflow:
         cost = 0.0
         verify_loops = 0
 
+        _branch = scm.branch_name(inp["task_id"])
+        _pr_title = scm.pr_title(inp["task_title"])
+        _pr_body = scm.pr_body(inp["task_title"], inp.get("body", ""),
+                               inp.get("acceptance_criteria", []))
+
         i = 0
         while i < len(pipeline.STAGES):
             if self._cancelled:
@@ -82,18 +87,34 @@ class RunWorkflow:
             await self._persist(run_id, owner_id, status=RunStatus.RUNNING, stage=stage)
             await self._event(run_id, owner_id, stage, RunEventType.STAGE_STARTED)
 
-            result = await workflow.execute_activity(
-                "run_stage",
-                {
-                    "run_id": run_id,
-                    "owner_id": owner_id,
-                    "stage": stage,
-                    "task_title": inp["task_title"],
-                    "acceptance_criteria": inp.get("acceptance_criteria", []),
-                },
-                start_to_close_timeout=_STAGE_TIMEOUT,
-                retry_policy=_RETRY,
-            )
+            if stage == RunStage.PROVISION:
+                await workflow.execute_activity(
+                    "provision_workspace",
+                    {"run_id": run_id, "owner_id": owner_id, "profile": inp["profile"],
+                     "repo_ref": inp["repo_ref"], "branch": _branch},
+                    start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+                result = {"outcome": "ok"}
+            elif stage == RunStage.PR:
+                result = await workflow.execute_activity(
+                    "open_pr",
+                    {"run_id": run_id, "owner_id": owner_id, "profile": inp["profile"],
+                     "branch": _branch, "base": inp.get("base", "main"),
+                     "title": _pr_title, "body": _pr_body},
+                    start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+            else:
+                result = await workflow.execute_activity(
+                    "run_stage",
+                    {
+                        "run_id": run_id,
+                        "owner_id": owner_id,
+                        "stage": stage,
+                        "task_title": inp["task_title"],
+                        "acceptance_criteria": inp.get("acceptance_criteria", []),
+                    },
+                    start_to_close_timeout=_STAGE_TIMEOUT,
+                    retry_policy=_RETRY,
+                )
+
             cost += float(result.get("cost_usd", 0.0))
             await self._persist(run_id, owner_id, cost_usd=cost)
             await self._event(run_id, owner_id, stage, RunEventType.STAGE_COMPLETED)
