@@ -226,3 +226,26 @@ def test_start_run_passes_team_id():
     task_id, _t, _p = _ready_task(c)
     c.post(f"/work-items/{task_id}/runs")
     assert "team_id" in fake.started[0] and fake.started[0]["team_id"]
+
+
+# --- A5c-3d-1 T4: GET /runs/{id}/audit ---
+
+def test_list_run_audit():
+    c, _fake = _client_with_fake_temporal()
+    run_id = _seed_awaiting_run(c)
+    from adapters.database.uow import SqlUnitOfWork
+    from domain.models import AuditAction, AuditEvent, RunStage
+    uow = SqlUnitOfWork(c.app.state.session_factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        uow.audit_events.create(AuditEvent(run_id=run_id, owner_id="dev-user", stage=RunStage.PLAN,
+                                           actor="lead", action=AuditAction.CAPABILITY_GRANTED,
+                                           detail={"tools": ["Read"]}))
+    resp = c.get(f"/runs/{run_id}/audit")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert len(data) == 1 and data[0]["action"] == "capability_granted"
+
+
+def test_audit_unknown_run_404():
+    c, _fake = _client_with_fake_temporal()
+    assert c.get("/runs/deadbeef/audit").status_code == 404
