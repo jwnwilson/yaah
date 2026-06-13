@@ -82,6 +82,12 @@ def test_audit_event_model():
     assert ev.detail["tools"] == ["Read"]
 
 
+def test_audit_action_tool_values():
+    from domain.models import AuditAction
+    assert AuditAction.TOOL_ALLOWED == "tool_allowed"
+    assert AuditAction.TOOL_DENIED == "tool_denied"
+
+
 def test_run_stage_and_event_types_exist():
     from domain.models import RunEvent, RunEventType, RunStage
 
