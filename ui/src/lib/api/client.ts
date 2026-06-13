@@ -58,6 +58,10 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   return (await request<T>(path, { method: "PATCH", body: JSON.stringify(body) })).data as T;
 }
 
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  return (await request<T>(path, { method: "PUT", body: JSON.stringify(body) })).data as T;
+}
+
 export async function apiDelete<T>(path: string): Promise<T> {
   return (await request<T>(path, { method: "DELETE" })).data as T;
 }
