@@ -57,7 +57,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def health() -> dict:
         return ok({"status": "ok"})
 
-    from interactors.api.routes import capabilities, projects, runs, teams, work_items
+    from interactors.api.routes import agents, capabilities, projects, runs, teams, work_items
 
     app.include_router(projects.router)
     app.include_router(work_items.router)
@@ -66,6 +66,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(capabilities.skills_router)
     app.include_router(capabilities.mcp_router)
     app.include_router(capabilities.secrets_router)
+    app.include_router(agents.router)
 
     ui_dist = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ui", "dist")
     if os.path.isdir(ui_dist):
