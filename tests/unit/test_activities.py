@@ -231,3 +231,52 @@ def test_run_stage_injects_secret_env_without_leaking():
     assert captured["ctx"].agent.secret_env == {"GH_TOKEN": "ghp_TOPSECRET"}
     assert "ghp_TOPSECRET" not in json.dumps(result)
     assert "ghp_TOPSECRET" not in json.dumps(recorded)
+
+
+def test_run_stage_records_capability_audit_without_secret_values():
+    import json
+    import tempfile
+
+    from cryptography.fernet import Fernet
+
+    from adapters.secrets.cipher import FernetCipher
+    from domain.models import AgentDefinition, Secret, Team
+    from domain.runtime import AgentEvent, StageResult
+
+    factory = _factory()
+    run_id = _seed_run(factory)
+    cipher = FernetCipher(Fernet.generate_key().decode())
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        team = uow.teams.create(Team(owner_id="u1", name="T"))
+        sec = uow.secrets.create(Secret(owner_id="u1", name="GH",
+                                        encrypted_value=cipher.encrypt("ghp_SECRET")))
+        uow.agents.create(AgentDefinition(
+            team_id=team.id, role="backend", name="E",
+            model_alias="engineer-model", allowed_tools=["Read", "Edit"],
+            secret_ids=[sec.id],
+        ))
+
+    class _Spy:
+        def run_stage(self, ctx):
+            yield AgentEvent(type="result", stage=ctx.stage, message="ok",
+                             data=StageResult(outcome="ok").model_dump())
+
+        def cancel(self, run_id):  # noqa: ARG002
+            pass
+
+    storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
+    acts = RunActivities(factory, _Spy(), storage,
+                         FakeGit(), FakeGitForge(), cipher=cipher)
+    acts.run_stage({"run_id": run_id, "owner_id": "u1", "stage": "implement",
+                    "task_title": "T", "acceptance_criteria": [], "team_id": team.id})
+
+    uow2 = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow2.transaction():
+        events = uow2.audit_events.list(filters={"run_id": run_id}).results
+    assert len(events) == 1
+    detail = events[0].detail
+    assert detail["tools"] == ["Read", "Edit"]
+    assert detail["model_alias"] == "engineer-model"
+    assert detail["secret_count"] == 1
+    assert "ghp_SECRET" not in json.dumps(detail)  # no secret value in the audit
