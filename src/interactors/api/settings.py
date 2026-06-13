@@ -25,3 +25,7 @@ class Settings(BaseSettings):
     agent_runtime: Literal["auto", "fake", "claude_code"] = "auto"
 
     secret_key: str | None = None
+
+    litellm_base_url: str | None = None
+    litellm_api_key: str | None = None
+    model_gateway: Literal["anthropic", "litellm", "auto"] = "auto"

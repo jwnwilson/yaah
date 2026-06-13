@@ -35,3 +35,10 @@ def test_agent_runtime_defaults():
 def test_secret_key_defaults_none():
     from interactors.api.settings import Settings
     assert Settings(_env_file=None).secret_key is None
+
+
+def test_model_gateway_defaults():
+    from interactors.api.settings import Settings
+    s = Settings(_env_file=None)
+    assert s.model_gateway == "auto"
+    assert s.litellm_base_url is None and s.litellm_api_key is None
