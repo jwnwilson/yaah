@@ -1,5 +1,6 @@
 from domain import prompts
 from domain.models import RunStage
+from domain.prompts import for_stage
 
 
 def test_implement_prompt_has_edit_tools_and_criteria():
@@ -19,9 +20,6 @@ def test_max_turns_implement_highest():
 
 
 # Task 1: Memory pointer tests
-from domain.prompts import for_stage
-
-
 def test_plan_prompt_points_to_project_memory():
     prompt, tools = for_stage(RunStage.PLAN, "Add login", ["works"])
     assert "CLAUDE.md" in prompt
