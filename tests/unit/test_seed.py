@@ -3,7 +3,7 @@ from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
 from domain.models import WorkItemKind, WorkItemStatus
 from interactors.api.auth import DEV_USER_ID
-from interactors.seed import SAMPLE_PROJECT_NAME, seed
+from interactors.cli.seed import SAMPLE_PROJECT_NAME, seed
 
 _REPO = "/tmp/seed-test-repo"
 

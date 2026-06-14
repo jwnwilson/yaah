@@ -25,7 +25,7 @@ def settings(request: Request):
 def memory_applier(request: Request):
     s = request.app.state.settings
     from adapters.git.local_git import LocalGit
-    from interactors.memory_apply import MemoryApplier
+    from interactors.cli.memory_apply import MemoryApplier
     from interactors.temporal.worker import _build_forge
 
     return MemoryApplier(LocalGit(), _build_forge(s.profile), profile=s.profile)

@@ -61,7 +61,7 @@ seed:
 		git -C "$$REPO" add -A; \
 		git -C "$$REPO" -c user.email=seed@yaah.local -c user.name=seed commit -qm init; \
 	fi; \
-	YAAH_SEED_REPO="$$REPO" PYTHONPATH=src uv run python -m interactors.seed
+	YAAH_SEED_REPO="$$REPO" PYTHONPATH=src uv run python -m interactors.cli.seed
 
 dev:
 	uv run uvicorn --app-dir src interactors.api.app:create_app --factory --reload
