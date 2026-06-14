@@ -69,3 +69,37 @@ def test_monitor_verdict_complete_and_incomplete():
     assert ok.unmet == [] and ok.pending_mailboxes == []
     bad = MonitorVerdict(complete=False, unmet=["no tests"], pending_mailboxes=["qa"])
     assert bad.unmet == ["no tests"]
+
+
+def test_state_records_wave_report_and_cost_immutably():
+    from domain.orchestration import AgentOutcome, AgentReport, OrchestrationState
+
+    s0 = OrchestrationState()
+    s1 = s0.record_wave(dispatch_count=2, messages=2, cost=1.5)
+    s2 = s1.record_report(AgentReport(role=AgentRole.BACKEND, outcome=AgentOutcome.OK))
+    assert s0.waves == 0 and s0.total_dispatches == 0          # original untouched
+    assert s1.waves == 1 and s1.total_dispatches == 2 and s1.total_cost_usd == 1.5
+    assert s2.reports[0].role == AgentRole.BACKEND
+
+
+def test_guard_exceeded_flags_each_limit():
+    from domain.orchestration import (
+        OrchestrationLimits,
+        OrchestrationState,
+        guard_exceeded,
+    )
+
+    limits = OrchestrationLimits(max_waves=2, max_dispatches=3, max_messages=5, max_cost_usd=10.0)
+    assert guard_exceeded(OrchestrationState(waves=2, total_dispatches=3), limits) is None
+    assert guard_exceeded(OrchestrationState(waves=3), limits) == "max_waves"
+    assert guard_exceeded(OrchestrationState(total_dispatches=4), limits) == "max_dispatches"
+    assert guard_exceeded(OrchestrationState(messages_sent=6), limits) == "max_messages"
+    assert guard_exceeded(OrchestrationState(total_cost_usd=10.5), limits) == "max_cost_usd"
+
+
+def test_is_quiescent_only_when_idle_and_no_inflight():
+    from domain.orchestration import is_quiescent
+
+    assert is_quiescent(active_agents=0, in_flight_messages=0) is True
+    assert is_quiescent(active_agents=1, in_flight_messages=0) is False
+    assert is_quiescent(active_agents=0, in_flight_messages=2) is False

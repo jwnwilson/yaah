@@ -100,3 +100,59 @@ class MonitorVerdict(BaseModel):
     unmet: list[str] = Field(default_factory=list)
     pending_mailboxes: list[str] = Field(default_factory=list)
     notes: str = ""
+
+
+class OrchestrationLimits(BaseModel):
+    """Anti-runaway bounds enforced by the workflow."""
+
+    max_waves: int = 8
+    max_dispatches: int = 20
+    max_messages: int = 200
+    max_cost_usd: float = 25.0
+
+
+class OrchestrationState(BaseModel):
+    """Immutable snapshot of a run's orchestration progress, fed to invoke_lead."""
+
+    waves: int = 0
+    total_dispatches: int = 0
+    messages_sent: int = 0
+    total_cost_usd: float = 0.0
+    reports: list[AgentReport] = Field(default_factory=list)
+    verdicts: list[MonitorVerdict] = Field(default_factory=list)
+
+    def record_wave(
+        self, *, dispatch_count: int, messages: int, cost: float
+    ) -> "OrchestrationState":
+        return self.model_copy(
+            update={
+                "waves": self.waves + 1,
+                "total_dispatches": self.total_dispatches + dispatch_count,
+                "messages_sent": self.messages_sent + messages,
+                "total_cost_usd": self.total_cost_usd + cost,
+            }
+        )
+
+    def record_report(self, report: AgentReport) -> "OrchestrationState":
+        return self.model_copy(update={"reports": [*self.reports, report]})
+
+    def record_verdict(self, verdict: MonitorVerdict) -> "OrchestrationState":
+        return self.model_copy(update={"verdicts": [*self.verdicts, verdict]})
+
+
+def guard_exceeded(state: OrchestrationState, limits: OrchestrationLimits) -> str | None:
+    """Return the name of the first exceeded limit, or None. Used to force a BLOCK."""
+    if state.waves > limits.max_waves:
+        return "max_waves"
+    if state.total_dispatches > limits.max_dispatches:
+        return "max_dispatches"
+    if state.messages_sent > limits.max_messages:
+        return "max_messages"
+    if state.total_cost_usd > limits.max_cost_usd:
+        return "max_cost_usd"
+    return None
+
+
+def is_quiescent(active_agents: int, in_flight_messages: int) -> bool:
+    """The system is quiescent when no agent is working and no message is in flight."""
+    return active_agents == 0 and in_flight_messages == 0
