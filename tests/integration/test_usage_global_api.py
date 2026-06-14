@@ -81,3 +81,22 @@ def test_global_usage_includes_records_within_time_window():
     data = client.get("/usage", params={"since": "2000-01-01T00:00:00Z",
                                         "until": "2999-01-01T00:00:00Z"}).json()["data"]
     assert data["totals"]["input_tokens"] == 100
+
+
+def test_global_usage_excludes_other_owner_records():
+    client = _client()
+    _seed(client)
+    app = client.app
+    from adapters.database.uow import SqlUnitOfWork
+    from domain.models import Project, Run, RunStage, UsageRecord, WorkItem, WorkItemKind
+    other = SqlUnitOfWork(app.state.session_factory, required_filters={"owner_id": "other-user"})
+    with other.transaction():
+        other.projects.create(Project(id="po", owner_id="other-user", name="po", local_path="/x"))
+        other.work_items.create(WorkItem(id="t-po", owner_id="other-user", project_id="po",
+                                         kind=WorkItemKind.TASK, parent_id="parent-po", title="T"))
+        other.runs.create(Run(id="r-po", owner_id="other-user", task_id="t-po", team_id="tm"))
+        other.usage.create(UsageRecord(owner_id="other-user", run_id="r-po", work_item_id="t-po",
+                                       project_id="po", stage=RunStage.PLAN, model_id="mo",
+                                       input_tokens=500, output_tokens=50, cost_usd=5.0))
+    data = client.get("/usage").json()["data"]
+    assert data["totals"]["input_tokens"] == 100

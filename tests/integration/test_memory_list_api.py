@@ -72,3 +72,20 @@ def test_memory_empty():
     client = _client()
     body = client.get("/memory-proposals").json()
     assert body["data"] == []
+
+
+def test_memory_excludes_other_owner_proposals():
+    client = _client()
+    _seed(client)
+    app = client.app
+    from adapters.database.uow import SqlUnitOfWork
+    from domain.models import MemoryProposal, MemoryProposalStatus
+    other = SqlUnitOfWork(app.state.session_factory, required_filters={"owner_id": "other-user"})
+    with other.transaction():
+        other.memory_proposals.create(MemoryProposal(
+            owner_id="other-user", run_id="ro", project_id="po", branch="bo",
+            diff="--- a\n+++ b\n", files=["OTHER.md"],
+            status=MemoryProposalStatus.PROPOSED))
+    body = client.get("/memory-proposals").json()
+    assert body["meta"]["total"] == 3
+    assert all(p["run_id"] != "ro" for p in body["data"])

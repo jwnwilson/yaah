@@ -69,3 +69,18 @@ def test_audit_empty():
     body = client.get("/audit").json()
     assert body["data"] == []
     assert body["meta"]["total"] == 0
+
+
+def test_audit_excludes_other_owner_events():
+    client = _client()
+    _seed(client)
+    app = client.app
+    from adapters.database.uow import SqlUnitOfWork
+    from domain.models import AuditAction, AuditEvent
+    other = SqlUnitOfWork(app.state.session_factory, required_filters={"owner_id": "other-user"})
+    with other.transaction():
+        other.audit_events.create(AuditEvent(owner_id="other-user", run_id="ro", actor="lead",
+                                             action=AuditAction.TOOL_ALLOWED, detail={}))
+    body = client.get("/audit").json()
+    assert body["meta"]["total"] == 3
+    assert all(e["run_id"] != "ro" for e in body["data"])
