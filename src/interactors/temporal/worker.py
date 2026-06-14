@@ -12,7 +12,11 @@ from adapters.database.orm import Base
 from adapters.storage.local import LocalStorageAdapter
 from interactors.temporal.activities import RunActivities
 from interactors.temporal.config import TemporalConfig
-from interactors.temporal.workflows import AgentWorkflow, RunWorkflow
+from interactors.temporal.workflows import (
+    AgentWorkflow,
+    OrchestratorWorkflow,
+    RunWorkflow,
+)
 
 
 def _build_forge(profile: str):
@@ -85,7 +89,7 @@ async def run_worker(  # pragma: no cover
     worker = Worker(
         client,
         task_queue=config.task_queue,
-        workflows=[RunWorkflow, AgentWorkflow],
+        workflows=[RunWorkflow, AgentWorkflow, OrchestratorWorkflow],
         activities=build_activities(database_url, profile=profile),
         activity_executor=ThreadPoolExecutor(max_workers=8),
     )
