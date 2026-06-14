@@ -1,3 +1,4 @@
+import json
 from typing import Iterator
 
 from domain.models import RunStage
@@ -51,7 +52,27 @@ class FakeAgentRuntime:
         self._storage = storage
 
     def run_stage(self, ctx: RunContext) -> Iterator[AgentEvent]:
-        if ctx.stage == RunStage.IMPLEMENT and self._storage is not None:
+        instr = ctx.instructions or ""
+        if self._storage is not None and "decision.json" in instr:
+            # Acting as the orchestrator lead: dispatch once, then ask to verify.
+            decision = (
+                {"intent": "continue",
+                 "dispatches": [{"target_role": "backend",
+                                 "instructions": "implement the task"}]}
+                if "wave 0" in instr
+                else {"intent": "verify"}
+            )
+            self._storage.write_bytes(
+                f"runs/{ctx.run_id}/.orchestration/decision.json",
+                json.dumps(decision).encode(),
+            )
+        elif self._storage is not None and "verdict.json" in instr:
+            # Acting as the completion monitor.
+            self._storage.write_bytes(
+                f"runs/{ctx.run_id}/.orchestration/verdict.json",
+                json.dumps({"complete": True}).encode(),
+            )
+        elif ctx.stage == RunStage.IMPLEMENT and self._storage is not None:
             self._storage.write_bytes(
                 f"runs/{ctx.run_id}/IMPLEMENTED.md",
                 f"# {ctx.task_title}\n\nImplemented by a faked yaah run.\n".encode(),
