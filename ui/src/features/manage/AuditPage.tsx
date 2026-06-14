@@ -1,13 +1,15 @@
 import { useState } from "react";
 import type { AuditAction } from "../../lib/api/audit";
+import { Badge, type BadgeTone } from "../../ui/Badge";
+import { Button } from "../../ui/Button";
 import { useAudit } from "./useAudit";
 
 const ACTIONS: AuditAction[] = ["capability_granted", "tool_allowed", "tool_denied"];
 
-const badgeClass: Record<AuditAction, string> = {
-  capability_granted: "bg-blue-100 text-blue-800",
-  tool_allowed: "bg-green-100 text-green-800",
-  tool_denied: "bg-red-100 text-red-800",
+const actionTone: Record<AuditAction, BadgeTone> = {
+  capability_granted: "info",
+  tool_allowed: "success",
+  tool_denied: "danger",
 };
 
 export function AuditPage() {
@@ -22,11 +24,11 @@ export function AuditPage() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Audit log</h1>
+        <h1 className="text-xl font-semibold text-fg">Audit log</h1>
         <label className="text-sm">
           Action{" "}
           <select
-            className="rounded border p-1"
+            className="rounded-md border border-line bg-surface px-2 py-1 text-sm text-fg"
             value={action}
             onChange={(e) => {
               setAction(e.target.value as AuditAction | "");
@@ -42,15 +44,15 @@ export function AuditPage() {
           </select>
         </label>
       </div>
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
-      {isError && <p className="text-sm text-red-600">{(error as Error).message}</p>}
+      {isLoading && <p className="text-sm text-subtle">Loading…</p>}
+      {isError && <p className="text-sm text-danger">{(error as Error).message}</p>}
       {!isLoading && rows.length === 0 && (
-        <p className="text-sm text-gray-500">No audit events.</p>
+        <p className="text-sm text-subtle">No audit events.</p>
       )}
       {rows.length > 0 && (
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-gray-500">
+            <tr className="border-b border-line text-left text-subtle">
               <th className="py-2">Time</th>
               <th>Actor</th>
               <th>Action</th>
@@ -60,19 +62,17 @@ export function AuditPage() {
           </thead>
           <tbody>
             {rows.map((e) => (
-              <tr key={e.id} className="border-b align-top">
-                <td className="py-2 text-gray-600">{new Date(e.created_at).toLocaleString()}</td>
+              <tr key={e.id} className="border-b border-line align-top">
+                <td className="py-2 text-muted">{new Date(e.created_at).toLocaleString()}</td>
                 <td>{e.actor}</td>
                 <td>
-                  <span className={`rounded px-1.5 py-0.5 text-xs ${badgeClass[e.action]}`}>
-                    {e.action}
-                  </span>
+                  <Badge tone={actionTone[e.action]}>{e.action}</Badge>
                 </td>
                 <td className="font-mono text-xs">{e.run_id}</td>
-                <td className="text-gray-600">
+                <td className="text-muted">
                   {Object.entries(e.detail).map(([k, v]) => (
                     <span key={k} className="mr-2">
-                      <span className="text-gray-400">{k}:</span> {String(v)}
+                      <span className="text-subtle">{k}:</span> {String(v)}
                     </span>
                   ))}
                 </td>
@@ -82,21 +82,13 @@ export function AuditPage() {
         </table>
       )}
       <div className="mt-4 flex items-center gap-3 text-sm">
-        <button
-          disabled={page <= 1}
-          onClick={() => setPage((p) => p - 1)}
-          className="rounded border px-2 py-1 disabled:opacity-50"
-        >
+        <Button size="sm" variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
           Prev
-        </button>
+        </Button>
         <span>Page {page}</span>
-        <button
-          disabled={page * pageSize >= total}
-          onClick={() => setPage((p) => p + 1)}
-          className="rounded border px-2 py-1 disabled:opacity-50"
-        >
+        <Button size="sm" variant="secondary" disabled={page * pageSize >= total} onClick={() => setPage((p) => p + 1)}>
           Next
-        </button>
+        </Button>
       </div>
     </div>
   );

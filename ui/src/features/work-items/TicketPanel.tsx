@@ -3,6 +3,8 @@ import { useWorkItem } from "./useWorkItem";
 import { useUpdateWorkItem } from "./useUpdateWorkItem";
 import { AcceptanceCriteria } from "./AcceptanceCriteria";
 import { RunSection } from "../runs/RunSection";
+import { Button } from "../../ui/Button";
+import { Input, Textarea } from "../../ui/Field";
 
 export function TicketPanel({
   projectId,
@@ -28,29 +30,23 @@ export function TicketPanel({
   }, [data]);
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-[28rem] overflow-y-auto border-l bg-white p-4 shadow-xl">
+    <aside className="fixed right-0 top-0 h-screen w-[28rem] overflow-y-auto border-l border-line bg-surface p-4 shadow-xl">
       <div className="mb-3 flex justify-between">
-        <h2 className="font-semibold">Ticket</h2>
-        <button onClick={onClose} className="text-sm text-gray-500">Close</button>
+        <h2 className="font-semibold text-fg">Ticket</h2>
+        <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
       </div>
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
-      {isError && <p className="text-sm text-red-600">{(error as Error).message}</p>}
+      {isLoading && <p className="text-sm text-subtle">Loading…</p>}
+      {isError && <p className="text-sm text-danger">{(error as Error).message}</p>}
       {data && (
         <div className="space-y-4">
-          <input className="w-full rounded border p-2 text-sm font-medium" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <textarea className="h-28 w-full rounded border p-2 text-sm" value={body} onChange={(e) => setBody(e.target.value)} />
+          <Input className="font-medium" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Textarea className="h-28" value={body} onChange={(e) => setBody(e.target.value)} />
           <div>
-            <h3 className="mb-1 text-xs font-semibold uppercase text-gray-500">Acceptance criteria</h3>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-subtle">Acceptance criteria</h3>
             <AcceptanceCriteria value={criteria} onChange={setCriteria} />
           </div>
-          {update.isError && <p className="text-sm text-red-600">{(update.error as Error).message}</p>}
-          <button
-            className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
-            disabled={update.isPending}
-            onClick={() => update.mutate({ title, body, acceptance_criteria: criteria })}
-          >
-            Save
-          </button>
+          {update.isError && <p className="text-sm text-danger">{(update.error as Error).message}</p>}
+          <Button size="sm" loading={update.isPending} onClick={() => update.mutate({ title, body, acceptance_criteria: criteria })}>Save</Button>
           <RunSection projectId={projectId} taskId={itemId} taskStatus={data.status} />
         </div>
       )}

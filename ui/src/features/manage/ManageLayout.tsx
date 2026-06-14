@@ -11,12 +11,14 @@ const items = [
 ];
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `block rounded px-3 py-2 text-sm ${isActive ? "bg-blue-50 font-medium text-blue-700" : "text-gray-700 hover:bg-gray-50"}`;
+  `block rounded-md px-3 py-2 text-sm transition-colors ${
+    isActive ? "bg-accent-subtle font-medium text-accent" : "text-muted hover:bg-surface-hover hover:text-fg"
+  }`;
 
 export function ManageLayout() {
   return (
-    <div className="flex h-full">
-      <aside className="w-48 shrink-0 border-r p-3">
+    <div className="flex h-full bg-canvas">
+      <aside className="w-48 shrink-0 border-r border-line bg-panel p-3">
         <nav className="space-y-1">
           {items.map((i) => (
             <NavLink key={i.to} to={i.to} className={linkClass}>{i.label}</NavLink>

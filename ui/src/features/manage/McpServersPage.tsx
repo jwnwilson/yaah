@@ -2,6 +2,9 @@ import { useState } from "react";
 import type { McpServer, McpTransport } from "../../lib/api/types";
 import { ResourceTable } from "../components/ResourceTable";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { Button } from "../../ui/Button";
+import { Dialog } from "../../ui/Dialog";
+import { Field, Input, Select } from "../../ui/Field";
 import { useCreateMcpServer, useDeleteMcpServer, useMcpServers, useUpdateMcpServer } from "./useMcpServers";
 
 interface Draft { name: string; transport: McpTransport; command_or_url: string; tool_allowlist: string[] }
@@ -45,59 +48,60 @@ export function McpServersPage() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">MCP servers</h1>
-        <button onClick={openNew} className="rounded bg-blue-600 px-3 py-1 text-sm text-white">New MCP server</button>
+        <h1 className="text-xl font-semibold text-fg">MCP servers</h1>
+        <Button size="sm" onClick={openNew}>New MCP server</Button>
       </div>
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
-      {isError && <p className="text-sm text-red-600">{(error as Error).message}</p>}
+      {isLoading && <p className="text-sm text-subtle">Loading…</p>}
+      {isError && <p className="text-sm text-danger">{(error as Error).message}</p>}
       <ResourceTable
         rows={data}
         rowKey={(s) => s.id}
         empty="No MCP servers yet."
         columns={[
           { header: "Name", render: (s) => <span className="font-medium">{s.name}</span> },
-          { header: "Transport", render: (s) => <span className="text-gray-600">{s.transport}</span> },
-          { header: "Command / URL", render: (s) => <span className="text-gray-600">{s.command_or_url}</span> },
-          { header: "Tools", render: (s) => <span className="text-gray-600">{s.tool_allowlist.length}</span> },
+          { header: "Transport", render: (s) => <span className="text-muted">{s.transport}</span> },
+          { header: "Command / URL", render: (s) => <span className="text-muted">{s.command_or_url}</span> },
+          { header: "Tools", render: (s) => <span className="text-muted">{s.tool_allowlist.length}</span> },
         ]}
         actions={(s) => (
-          <div className="flex justify-end gap-2 text-sm">
-            <button onClick={() => openEdit(s)} className="text-blue-700">Edit</button>
-            <button onClick={() => setDeleting(s)} className="text-red-600">Delete</button>
+          <div className="flex justify-end gap-3 text-sm">
+            <button onClick={() => openEdit(s)} className="text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">Edit</button>
+            <button onClick={() => setDeleting(s)} className="text-danger hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">Delete</button>
           </div>
         )}
       />
 
       {editing && (
-        <div className="fixed inset-0 grid place-items-center bg-black/30">
-          <form onSubmit={submit} className="w-[28rem] space-y-3 rounded bg-white p-4 shadow">
-            <h2 className="text-lg font-semibold">{editing === "new" ? "New MCP server" : "Edit MCP server"}</h2>
-            <label className="block text-sm">Name<input className="mt-1 w-full rounded border p-2" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
-            <label className="block text-sm">Transport
-              <select className="mt-1 w-full rounded border p-2" value={draft.transport} onChange={(e) => setDraft({ ...draft, transport: e.target.value as McpTransport })}>
+        <Dialog title={editing === "new" ? "New MCP server" : "Edit MCP server"} onClose={() => setEditing(null)}>
+          <form onSubmit={submit} className="space-y-3">
+            <Field label="Name"><Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></Field>
+            <Field label="Transport">
+              <Select value={draft.transport} onChange={(e) => setDraft({ ...draft, transport: e.target.value as McpTransport })}>
                 <option value="stdio">stdio</option>
                 <option value="http">http</option>
-              </select>
-            </label>
-            <label className="block text-sm">Command or URL<input className="mt-1 w-full rounded border p-2" value={draft.command_or_url} onChange={(e) => setDraft({ ...draft, command_or_url: e.target.value })} /></label>
-            <label className="block text-sm">Add tool
-              <input className="mt-1 w-full rounded border p-2" placeholder="mcp__server__tool (Enter to add)" value={tool} onChange={(e) => setTool(e.target.value)} onKeyDown={addTool} />
-            </label>
+              </Select>
+            </Field>
+            <Field label="Command or URL"><Input value={draft.command_or_url} onChange={(e) => setDraft({ ...draft, command_or_url: e.target.value })} /></Field>
+            <Field label="Add tool">
+              <Input placeholder="mcp__server__tool (Enter to add)" value={tool} onChange={(e) => setTool(e.target.value)} onKeyDown={addTool} />
+            </Field>
             <div className="flex flex-wrap gap-1">
               {draft.tool_allowlist.map((t) => (
-                <span key={t} className="flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-xs">
+                <span key={t} className="flex items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-xs text-muted">
                   {t}
-                  <button type="button" aria-label={`remove ${t}`} onClick={() => removeTool(t)} className="text-gray-500">✕</button>
+                  <button type="button" aria-label={`remove ${t}`} onClick={() => removeTool(t)} className="text-subtle hover:text-fg">✕</button>
                 </span>
               ))}
             </div>
-            {mutError && <p className="text-xs text-red-600">{mutError.message}</p>}
+            {mutError && <p className="text-xs text-danger">{mutError.message}</p>}
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setEditing(null)} className="rounded px-3 py-1 text-sm">Cancel</button>
-              <button type="submit" disabled={draft.name.trim() === "" || mutating} className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50">{editing === "new" ? "Create" : "Save"}</button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(null)}>Cancel</Button>
+              <Button type="submit" size="sm" disabled={draft.name.trim() === ""} loading={mutating}>
+                {editing === "new" ? "Create" : "Save"}
+              </Button>
             </div>
           </form>
-        </div>
+        </Dialog>
       )}
 
       {deleting && (

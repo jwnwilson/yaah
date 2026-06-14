@@ -16,11 +16,14 @@ export function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`flex w-56 shrink-0 flex-col rounded bg-gray-50 p-2 ${isOver ? "ring-2 ring-blue-400" : ""}`}
+      className={`flex w-60 shrink-0 flex-col rounded-lg border border-line bg-panel p-2 transition-shadow ${
+        isOver ? "ring-2 ring-accent" : ""
+      }`}
     >
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {column.title}
-      </h2>
+      <div className="mb-2 flex items-center justify-between px-1">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-subtle">{column.title}</h2>
+        <span className="rounded-full bg-surface-hover px-1.5 text-xs text-fg">{items.length}</span>
+      </div>
       {items.map((item) => (
         <TaskCard key={item.id} item={item} onOpen={onOpen} />
       ))}
