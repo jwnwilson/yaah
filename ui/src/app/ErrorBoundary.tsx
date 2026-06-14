@@ -8,7 +8,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
   render() {
     if (this.state.error) {
       return (
-        <div className="p-6 text-red-600">
+        <div className="p-6 text-danger">
           Something went wrong: {this.state.error.message}
         </div>
       );
