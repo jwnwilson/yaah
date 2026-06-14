@@ -19,7 +19,7 @@ export function AcceptanceCriteria({
           />
           <button
             type="button"
-            className="text-sm text-danger hover:text-danger/80"
+            className="text-sm text-danger hover:text-danger/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
             onClick={() => onChange(value.filter((_, j) => j !== i))}
           >
             ×

@@ -35,7 +35,7 @@ export function HierarchyTree({
   return (
     <div className="w-60 shrink-0 border-r border-line bg-panel p-3 text-sm">
       <div className="mb-2 flex items-center justify-between">
-        <span className="font-semibold">Hierarchy</span>
+        <span className="font-semibold text-fg">Hierarchy</span>
       </div>
       <button className="mb-2 block text-left text-xs text-accent hover:underline" onClick={() => onSelectFeature(undefined)}>
         All tasks

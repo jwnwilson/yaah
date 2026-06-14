@@ -22,11 +22,11 @@ export function MemoryProposalCard({ runId }: { runId: string }) {
           <li key={f}>{f}</li>
         ))}
       </ul>
-      <button className="mt-1 text-accent hover:underline" onClick={() => setOpen((v) => !v)}>
+      <button className="mt-1 text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded" onClick={() => setOpen((v) => !v)}>
         {open ? "Hide diff" : "Show diff"}
       </button>
       {open && (
-        <pre className="mt-1 max-h-64 overflow-auto rounded bg-surface p-2 text-[11px] text-fg">{proposal.diff}</pre>
+        <pre className="mt-1 max-h-64 overflow-auto rounded bg-canvas p-2 text-[11px] text-fg">{proposal.diff}</pre>
       )}
       {isProposed && (
         <div className="mt-2 flex gap-2">
