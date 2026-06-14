@@ -4,6 +4,7 @@ import { Board } from "./Board";
 import { TicketPanel } from "../work-items/TicketPanel";
 import { HierarchyTree } from "../work-items/HierarchyTree";
 import { ChatRail } from "../chat/ChatRail";
+import { Button } from "../../ui/Button";
 
 export default function BoardPage() {
   const { projectId } = useParams();
@@ -24,16 +25,13 @@ export default function BoardPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-3 border-b p-3">
-        <Link to="/" className="text-sm text-blue-700">← Projects</Link>
-        <h1 className="font-semibold">Board</h1>
+      <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3">
+        <Link to="/" className="text-sm text-accent hover:underline">← Projects</Link>
+        <h1 className="font-semibold text-fg">Board</h1>
         <div className="ml-auto flex items-center gap-2">
-          <button
-            className="rounded border px-2 py-1 text-sm"
-            onClick={() => setShowChat((v) => !v)}
-          >
+          <Button size="sm" variant="secondary" onClick={() => setShowChat((v) => !v)}>
             {showChat ? "Hide chat" : "Team lead"}
-          </button>
+          </Button>
         </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
