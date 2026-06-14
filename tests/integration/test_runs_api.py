@@ -265,6 +265,8 @@ def test_start_run_uses_pipeline_workflow_by_default():
     workflow_name, run_input = fake.started[0]
     assert workflow_name == "RunWorkflow"
     assert "backend" in run_input["available_roles"]  # default team roles are passed
+    role_map = run_input["role_to_agent_id"]
+    assert set(role_map) >= {"lead", "backend", "qa"} and all(role_map.values())
 
 
 def test_start_run_uses_orchestrator_when_enabled():

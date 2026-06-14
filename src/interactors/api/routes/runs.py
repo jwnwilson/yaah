@@ -42,6 +42,7 @@ def start_run(
             filters={"team_id": project.team_id}, page_size=100
         ).results
         available_roles = sorted({a.role.value for a in team_agents})
+        role_to_agent_id = {a.role.value: a.id for a in team_agents}
         run = uow.runs.create(
             Run(owner_id=project.owner_id, task_id=task_id, team_id=project.team_id)
         )
@@ -64,6 +65,7 @@ def start_run(
             "base": settings.github_base_branch,
             "team_id": run.team_id,
             "available_roles": available_roles,
+            "role_to_agent_id": role_to_agent_id,
         }
     workflow_name = "OrchestratorWorkflow" if settings.orchestrator_enabled else "RunWorkflow"
     temporal.start_run_workflow(run_input, workflow_name)  # after commit: run row exists

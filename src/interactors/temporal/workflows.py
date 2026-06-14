@@ -341,6 +341,7 @@ class OrchestratorWorkflow:
         autonomy = AutonomyLevel(inp["autonomy"])
         gates = pipeline.gates_for(autonomy)
         roles = inp.get("available_roles", [])
+        role_to_agent_id = inp.get("role_to_agent_id", {})
         limits = OrchestrationLimits()
         state = OrchestrationState()
         cost = 0.0
@@ -365,7 +366,9 @@ class OrchestratorWorkflow:
                 {"run_id": run_id, "owner_id": owner_id, "task_title": inp["task_title"],
                  "acceptance_criteria": inp.get("acceptance_criteria", []),
                  "body": inp.get("body", ""), "team_id": inp.get("team_id"),
-                 "available_roles": roles, "state": state.model_dump(mode="json")},
+                 "available_roles": roles, "state": state.model_dump(mode="json"),
+                 "role_to_agent_id": role_to_agent_id,
+                 "work_item_id": inp.get("task_id"), "project_id": inp.get("project_id")},
                 start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
             cost += res.get("cost_usd", 0.0)
             await self._persist(run_id, owner_id, cost_usd=cost)
@@ -428,11 +431,12 @@ class OrchestratorWorkflow:
                                   f"dispatch {role}")
                 child = await workflow.start_child_workflow(
                     AgentWorkflow.run,
-                    {"run_id": run_id, "owner_id": owner_id, "role": role, "agent_id": role,
+                    {"run_id": run_id, "owner_id": owner_id, "role": role,
+                     "agent_id": role_to_agent_id.get(role, role),
                      "parent_workflow_id": workflow.info().workflow_id,
                      "task_title": inp["task_title"],
                      "acceptance_criteria": inp.get("acceptance_criteria", []),
-                     "team_id": inp.get("team_id"), "role_to_agent_id": {},
+                     "team_id": inp.get("team_id"), "role_to_agent_id": role_to_agent_id,
                      "project_id": inp.get("project_id"), "work_item_id": inp.get("task_id")},
                     id=f"agent-{run_id}-{role}-{wave}")
                 await child.signal("deliver", {"body": d["instructions"]})

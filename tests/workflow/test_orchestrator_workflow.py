@@ -100,7 +100,8 @@ def _input(autonomy):
     return {"run_id": "r1", "owner_id": "u1", "task_id": "t1", "project_id": "p1",
             "autonomy": autonomy, "task_title": "T", "acceptance_criteria": ["works"],
             "body": "", "profile": "remote", "repo_ref": "x", "base": "main",
-            "team_id": None, "available_roles": ["backend", "qa"]}
+            "team_id": None, "available_roles": ["backend", "qa"],
+            "role_to_agent_id": {"lead": "a-lead", "backend": "a-eng", "qa": "a-qa"}}
 
 
 @pytest.mark.asyncio
@@ -148,3 +149,21 @@ async def test_orchestrator_gated_pr_waits_then_approves():
                 await _approve()
             await handle.result()
     assert _status(factory) == RunStatus.DONE
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_persists_lead_dispatch_message():
+    factory = _factory()
+    _seed(factory)
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        dispatched = uow.messages.list(filters={"kind": "dispatch"}).results
+    assert any(
+        m.sender_agent_id == "a-lead" and m.recipient_agent_id == "a-eng"
+        for m in dispatched
+    ), "lead's dispatch should be persisted as a Message for the inbox"
