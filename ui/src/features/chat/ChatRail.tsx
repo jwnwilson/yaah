@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Field";
 import { useChat } from "./useChat";
 
 interface ChatRailProps {
@@ -18,31 +20,28 @@ export function ChatRail({ projectId }: ChatRailProps) {
   };
 
   return (
-    <aside className="flex h-full w-80 shrink-0 flex-col border-l">
-      <h2 className="border-b p-2 text-sm font-semibold">Team lead</h2>
+    <aside className="flex h-full w-80 shrink-0 flex-col border-l border-line bg-panel">
+      <h2 className="border-b border-line p-2 text-sm font-semibold text-fg">Team lead</h2>
       <div className="flex-1 space-y-2 overflow-y-auto p-2 text-sm">
         {turns.map((t, i) => (
           <div key={i} className={t.role === "user" ? "text-right" : ""}>
-            <span className="inline-block rounded bg-gray-100 px-2 py-1">
+            <span
+              className={`inline-block rounded-lg px-2 py-1 ${
+                t.role === "user" ? "bg-accent text-accent-fg" : "bg-surface text-fg"
+              }`}
+            >
               {t.content}
             </span>
           </div>
         ))}
       </div>
-      <form className="flex gap-1 border-t p-2" onSubmit={handleSubmit}>
-        <input
-          className="flex-1 rounded border p-1 text-sm"
+      <form className="flex gap-1 border-t border-line p-2" onSubmit={handleSubmit}>
+        <Input
           placeholder="Message the team lead…"
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
-        <button
-          type="submit"
-          className="rounded bg-blue-600 px-3 py-1 text-sm text-white"
-          disabled={send.isPending}
-        >
-          Send
-        </button>
+        <Button type="submit" size="sm" loading={send.isPending}>Send</Button>
       </form>
     </aside>
   );
