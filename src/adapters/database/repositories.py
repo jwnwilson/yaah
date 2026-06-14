@@ -114,6 +114,7 @@ class NotificationRepository(SqlRepository[Notification]):
 class MessageRepository(SqlRepository[Message]):
     orm_model = MessageRow
     dto = Message
+    default_order_by = "-created_at"  # newest-first inbox
 
 
 class MemoryProposalRepository(SqlRepository[MemoryProposal]):

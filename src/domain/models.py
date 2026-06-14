@@ -293,6 +293,10 @@ class Message(BaseModel):
             raise ValueError("agent sender requires sender_agent_id")
         if self.recipient_kind == MessageRecipientKind.AGENT and not self.recipient_agent_id:
             raise ValueError("agent recipient requires recipient_agent_id")
+        if self.sender_kind != MessageSenderKind.AGENT and self.sender_agent_id is not None:
+            raise ValueError("non-agent sender must not carry sender_agent_id")
+        if self.recipient_kind != MessageRecipientKind.AGENT and self.recipient_agent_id is not None:
+            raise ValueError("non-agent recipient must not carry recipient_agent_id")
         return self
 
 
