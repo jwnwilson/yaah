@@ -33,6 +33,7 @@ class WorkItemRow(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
     acceptance_criteria: Mapped[list] = mapped_column(JSON, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    assignee_agent_id: Mapped[str | None] = mapped_column(String(32), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -145,6 +146,27 @@ class NotificationRow(Base):
     action: Mapped[dict | None] = mapped_column(JSON)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class MessageRow(Base):
+    __tablename__ = "messages"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    sender_kind: Mapped[str] = mapped_column(String(10), nullable=False)
+    sender_agent_id: Mapped[str | None] = mapped_column(String(32), index=True)
+    recipient_kind: Mapped[str] = mapped_column(String(10), nullable=False)
+    recipient_agent_id: Mapped[str | None] = mapped_column(String(32), index=True)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False, default="chat")
+    subject: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    run_id: Mapped[str | None] = mapped_column(String(32), index=True)
+    work_item_id: Mapped[str | None] = mapped_column(String(32))
+    project_id: Mapped[str | None] = mapped_column(String(32))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

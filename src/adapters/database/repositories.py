@@ -7,6 +7,7 @@ from adapters.database.orm import (
     ChatSessionRow,
     McpServerRow,
     MemoryProposalRow,
+    MessageRow,
     NotificationRow,
     ProjectRow,
     RunEventRow,
@@ -26,6 +27,7 @@ from domain.models import (
     ChatSession,
     McpServer,
     MemoryProposal,
+    Message,
     Notification,
     Project,
     Run,
@@ -107,6 +109,12 @@ class ChatMessageRepository(SqlRepository[ChatMessage]):
 class NotificationRepository(SqlRepository[Notification]):
     orm_model = NotificationRow
     dto = Notification
+
+
+class MessageRepository(SqlRepository[Message]):
+    orm_model = MessageRow
+    dto = Message
+    default_order_by = "-created_at"  # newest-first inbox
 
 
 class MemoryProposalRepository(SqlRepository[MemoryProposal]):

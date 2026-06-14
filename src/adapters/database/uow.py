@@ -10,6 +10,7 @@ from adapters.database.repositories import (
     ChatSessionRepository,
     McpServerRepository,
     MemoryProposalRepository,
+    MessageRepository,
     NotificationRepository,
     ProjectRepository,
     RunEventRepository,
@@ -100,6 +101,10 @@ class SqlUnitOfWork:
     @property
     def notifications(self) -> NotificationRepository:
         return NotificationRepository(self.session, self._required_filters)
+
+    @property
+    def messages(self) -> MessageRepository:
+        return MessageRepository(self.session, self._required_filters)
 
     @property
     def usage(self) -> UsageRecordRepository:
