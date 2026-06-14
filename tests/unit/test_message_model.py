@@ -50,3 +50,28 @@ def test_system_to_user_message_needs_no_agent_ids():
         body="done",
     )
     assert msg.kind == MessageKind.CHAT  # default
+
+
+def test_work_item_assignee_defaults_to_none():
+    from domain.models import WorkItem, WorkItemKind
+
+    item = WorkItem(
+        owner_id="dev-user",
+        project_id="p1",
+        kind=WorkItemKind.EPIC,
+        title="epic",
+    )
+    assert item.assignee_agent_id is None
+
+
+def test_work_item_accepts_assignee():
+    from domain.models import WorkItem, WorkItemKind
+
+    item = WorkItem(
+        owner_id="dev-user",
+        project_id="p1",
+        kind=WorkItemKind.EPIC,
+        title="epic",
+        assignee_agent_id="a-eng",
+    )
+    assert item.assignee_agent_id == "a-eng"

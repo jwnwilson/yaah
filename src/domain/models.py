@@ -74,6 +74,7 @@ class WorkItem(BaseModel):
     body: str = ""
     acceptance_criteria: list[str] = Field(default_factory=list)
     status: WorkItemStatus = WorkItemStatus.DRAFT
+    assignee_agent_id: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 
