@@ -1,3 +1,53 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --canvas: 255 255 255;
+  --panel: 248 249 251;
+  --surface: 255 255 255;
+  --surface-hover: 244 245 247;
+  --fg: 17 24 39;
+  --muted: 75 85 99;
+  --subtle: 156 163 175;
+  --line: 229 231 235;
+  --line-strong: 209 213 219;
+  --accent: 79 70 229;
+  --accent-fg: 255 255 255;
+  --accent-subtle: 238 242 255;
+  --success: 22 163 74;
+  --success-subtle: 220 252 231;
+  --warning: 180 83 9;
+  --warning-subtle: 254 243 199;
+  --danger: 220 38 38;
+  --danger-subtle: 254 226 226;
+  --info: 37 99 235;
+  --info-subtle: 219 234 254;
+}
+
+.dark {
+  --canvas: 9 9 11;
+  --panel: 24 24 27;
+  --surface: 24 24 27;
+  --surface-hover: 39 39 42;
+  --fg: 244 244 245;
+  --muted: 161 161 170;
+  --subtle: 113 113 122;
+  --line: 39 39 42;
+  --line-strong: 63 63 70;
+  --accent: 129 140 248;
+  --accent-fg: 9 9 11;
+  --accent-subtle: 30 27 75;
+  --success: 74 222 128;
+  --success-subtle: 20 51 33;
+  --warning: 250 204 21;
+  --warning-subtle: 55 42 10;
+  --danger: 248 113 113;
+  --danger-subtle: 60 24 24;
+  --info: 96 165 250;
+  --info-subtle: 23 37 64;
+}
+
+body {
+  @apply bg-canvas text-fg antialiased;
+}
