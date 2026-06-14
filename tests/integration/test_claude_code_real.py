@@ -4,9 +4,9 @@ import tempfile
 
 import pytest
 
-from adapters.model.anthropic import AnthropicProvider
-from adapters.runtime.claude_code import ClaudeCodeRuntime
-from adapters.runtime.fake import result_of
+from adapters.agent.model.anthropic import AnthropicProvider
+from adapters.agent.runtime.claude_code import ClaudeCodeRuntime
+from adapters.agent.runtime.fake import result_of
 from domain.models import RunStage
 from domain.runtime import RunContext
 

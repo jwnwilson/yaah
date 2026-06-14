@@ -105,3 +105,26 @@ def project_usage(
         uow.projects.get(project_id)  # 404 / owner scope
         records = uow.usage.list(filters=filters, page_size=10000).results
     return ok(_payload(records, group_by))
+
+
+@router.get("/usage")
+def global_usage(
+    project_id: str | None = Query(default=None),
+    group_by: str | None = Query(default=None),
+    since: datetime | None = Query(default=None),
+    until: datetime | None = Query(default=None),
+    uow: UnitOfWork = Depends(get_uow),
+) -> dict:
+    _validate_group(group_by)
+    if since and until and since > until:
+        raise HTTPException(status_code=422, detail="since must be <= until")
+    filters: dict = {}
+    if project_id:
+        filters["project_id"] = project_id
+    if since:
+        filters["created_at__gte"] = since
+    if until:
+        filters["created_at__lte"] = until
+    with uow.transaction():
+        records = uow.usage.list(filters=filters, page_size=10000).results
+    return ok(_payload(records, group_by))

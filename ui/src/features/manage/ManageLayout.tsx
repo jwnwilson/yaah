@@ -4,6 +4,10 @@ const items = [
   { to: "/manage/secrets", label: "Secrets" },
   { to: "/manage/skills", label: "Skills" },
   { to: "/manage/mcp-servers", label: "MCP servers" },
+  { to: "/manage/usage", label: "Budget" },
+  { to: "/manage/models", label: "Models" },
+  { to: "/manage/audit", label: "Audit" },
+  { to: "/manage/memory", label: "Memory" },
 ];
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>

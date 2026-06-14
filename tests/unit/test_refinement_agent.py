@@ -1,9 +1,9 @@
 import httpx
 
-from adapters.model.fake import FakeModelProvider
-from adapters.refinement.anthropic import AnthropicRefinementAgent
-from adapters.refinement.fake import FakeRefinementAgent
-from adapters.refinement.ports import RefinementContext
+from adapters.agent.model.fake import FakeModelProvider
+from adapters.agent.refinement.anthropic import AnthropicRefinementAgent
+from adapters.agent.refinement.fake import FakeRefinementAgent
+from adapters.agent.refinement.ports import RefinementContext
 from domain.models import ChatMessage, ChatRole
 
 

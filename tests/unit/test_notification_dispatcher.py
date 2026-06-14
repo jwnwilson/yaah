@@ -1,5 +1,5 @@
-from adapters.notify.inapp import FakeChannel, InAppChannel
-from adapters.notify.ports import NotificationDispatcher
+from adapters.agent.notify.inapp import FakeChannel, InAppChannel
+from adapters.agent.notify.ports import NotificationDispatcher
 from domain.models import Notification, NotificationCategory, NotificationSource
 
 

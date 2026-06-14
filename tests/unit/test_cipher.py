@@ -1,7 +1,7 @@
 import pytest
 from cryptography.fernet import Fernet
 
-from adapters.secrets.cipher import FernetCipher
+from lib.secrets import FernetCipher
 
 
 def test_round_trip():
