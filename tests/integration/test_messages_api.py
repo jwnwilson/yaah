@@ -48,3 +48,20 @@ def test_patch_work_item_sets_assignee():
     c.patch(f"/work-items/{epic['id']}", json={"assignee_agent_id": "a-eng"})
     got = c.get(f"/work-items/{epic['id']}").json()["data"]
     assert got["assignee_agent_id"] == "a-eng"
+
+
+def test_list_messages_by_sender_shows_agent_output():
+    from adapters.database.uow import SqlUnitOfWork
+    from domain.models import Message, MessageKind, MessageRecipientKind, MessageSenderKind
+
+    c = _client()
+    uow = SqlUnitOfWork(c.app.state.session_factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        uow.messages.create(Message(
+            owner_id="dev-user", sender_kind=MessageSenderKind.AGENT, sender_agent_id="a-lead",
+            recipient_kind=MessageRecipientKind.AGENT, recipient_agent_id="a-eng",
+            kind=MessageKind.DISPATCH, body="build the widget", run_id="r1",
+        ))
+    sent = c.get("/messages", params={"sender": "a-lead"}).json()["data"]
+    assert len(sent) == 1 and sent[0]["body"] == "build the widget"
+    assert c.get("/messages", params={"sender": "nobody"}).json()["data"] == []

@@ -36,12 +36,15 @@ def _status_filters(status: str | None) -> dict:
 @router.get("/messages")
 def list_messages(
     box: str | None = Query(default=None),
+    sender: str | None = Query(default=None),
     status: str | None = Query(default=None),
     page_size: int = Query(default=50),
     page_number: int = Query(default=1),
     uow: UnitOfWork = Depends(get_uow),
 ) -> dict:
     filters = {**_box_filters(box), **_status_filters(status)}
+    if sender:
+        filters["sender_agent_id"] = sender
     with uow.transaction():
         page = uow.messages.list(filters=filters, page_size=page_size,
                                  page_number=page_number, order_by="-created_at")

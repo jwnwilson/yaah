@@ -25,7 +25,7 @@ export function TeamPage() {
         {agents.data?.map((a) => {
           const v = roleVisual(a.role);
           return (
-            <div key={a.id} className="rounded-lg border border-line bg-surface p-4">
+            <Link key={a.id} to={`/team/${a.id}`} className="block rounded-lg border border-line bg-surface p-4 hover:border-accent">
               <div className="flex items-center gap-3">
                 <span
                   className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white"
@@ -42,7 +42,7 @@ export function TeamPage() {
                 </div>
               </div>
               {a.purpose && <p className="mt-3 text-sm text-muted">{a.purpose}</p>}
-            </div>
+            </Link>
           );
         })}
       </div>
