@@ -1,4 +1,4 @@
-import { apiGetPage, apiPatch } from "./client";
+import { apiGet, apiGetPage, apiPatch } from "./client";
 
 export interface Agent {
   id: string;
@@ -27,10 +27,15 @@ export interface UpdateAgentInput {
 
 export const agentKeys = {
   forTeam: (teamId: string) => ["agents", teamId] as const,
+  detail: (id: string) => ["agents", "detail", id] as const,
 };
 
 export async function listAgents(teamId: string): Promise<Agent[]> {
   return (await apiGetPage<Agent[]>(`/teams/${teamId}/agents?page_size=200`)).data;
+}
+
+export async function getAgent(id: string): Promise<Agent> {
+  return apiGet<Agent>(`/agents/${id}`);
 }
 
 export async function updateAgent(id: string, input: UpdateAgentInput): Promise<Agent> {

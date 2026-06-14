@@ -29,11 +29,17 @@ export interface SendMessageInput {
 export const messageKeys = {
   list: (box: string) => ["messages", "list", box] as const,
   unread: (box: string) => ["messages", "unread", box] as const,
+  sent: (agentId: string) => ["messages", "sent", agentId] as const,
 };
 
 export async function listMessages(box: string): Promise<Message[]> {
   const q = encodeURIComponent(box);
   return (await apiGetPage<Message[]>(`/messages?box=${q}&page_size=100`)).data;
+}
+
+export async function listSentMessages(agentId: string): Promise<Message[]> {
+  const q = encodeURIComponent(agentId);
+  return (await apiGetPage<Message[]>(`/messages?sender=${q}&page_size=100`)).data;
 }
 
 export async function getMessageUnreadCount(box: string): Promise<number> {
