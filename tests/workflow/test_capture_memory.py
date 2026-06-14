@@ -67,3 +67,37 @@ def test_capture_memory_noop_when_no_memory_changes(factory):
         proposals = uow.memory_proposals.list(filters={"run_id": "r1"}).results
     assert proposals == []
     assert git.committed_to_branch == []
+
+
+_DIFF = "diff --git a/CLAUDE.md b/CLAUDE.md\n+++ b/CLAUDE.md\n+x\n"
+
+
+def test_capture_memory_auto_applies_in_full_auto(factory):
+    _seed(factory)
+    with tempfile.TemporaryDirectory() as tmp:
+        git = FakeGit(memory_diff=_DIFF)
+        acts = _acts(factory, git, tmp)
+        acts.capture_memory({"run_id": "r1", "owner_id": "dev-user", "project_id": "p1",
+                             "base": "main", "profile": "local", "autonomy": "full_auto",
+                             "repo_ref": "/repo"})
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        proposal = uow.memory_proposals.list(filters={"run_id": "r1"}).results[0]
+    assert proposal.status == "applied"
+    assert proposal.resolved_at is not None
+    assert git.merged_into_base == [("/repo", "agent/memory-r1", "main")]
+
+
+def test_capture_memory_stays_proposed_when_gated(factory):
+    _seed(factory)
+    with tempfile.TemporaryDirectory() as tmp:
+        git = FakeGit(memory_diff=_DIFF)
+        acts = _acts(factory, git, tmp)
+        acts.capture_memory({"run_id": "r1", "owner_id": "dev-user", "project_id": "p1",
+                             "base": "main", "profile": "local", "autonomy": "gated_all",
+                             "repo_ref": "/repo"})
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        proposal = uow.memory_proposals.list(filters={"run_id": "r1"}).results[0]
+    assert proposal.status == "proposed"
+    assert git.merged_into_base == []

@@ -2,11 +2,21 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
-from domain.models import Run, RunStatus, WorkItemKind, WorkItemStatus, utc_now
+from adapters.forge.ports import ForgeError
+from adapters.git.ports import GitError
+from domain.models import (
+    MemoryProposalStatus,
+    Run,
+    RunStatus,
+    WorkItemKind,
+    WorkItemStatus,
+    utc_now,
+)
 from domain.transitions import validate_transition
-from interactors.api.deps import get_uow, temporal_client
+from interactors.api.deps import get_uow, memory_applier, temporal_client
 from interactors.api.deps import settings as get_settings
 from interactors.api.envelope import ok
+from interactors.memory_apply import MemoryApplier
 from interactors.temporal.client import TemporalRunClient
 
 router = APIRouter(tags=["runs"])
@@ -105,6 +115,48 @@ def get_run_memory(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
             filters={"run_id": run_id}, order_by="-created_at", page_size=1)
     data = page.results[0].model_dump(mode="json") if page.results else None
     return ok(data)
+
+
+def _proposed_or_error(uow: UnitOfWork, run_id: str):
+    uow.runs.get(run_id)  # 404 if unknown / cross-tenant
+    page = uow.memory_proposals.list(
+        filters={"run_id": run_id}, order_by="-created_at", page_size=1)
+    if not page.results:
+        raise HTTPException(status_code=404, detail="no memory proposal")
+    proposal = page.results[0]
+    if proposal.status != MemoryProposalStatus.PROPOSED:
+        raise HTTPException(status_code=409, detail=f"proposal is {proposal.status}")
+    return proposal
+
+
+@router.post("/runs/{run_id}/memory/apply", status_code=202)
+def apply_run_memory(
+    run_id: str,
+    uow: UnitOfWork = Depends(get_uow),
+    applier: MemoryApplier = Depends(memory_applier),
+    settings=Depends(get_settings),
+) -> dict:
+    with uow.transaction():
+        proposal = _proposed_or_error(uow, run_id)
+        project = uow.projects.get(proposal.project_id)
+        repo_ref = project.local_path if settings.profile == "local" else project.repo_url
+        try:
+            applied = applier.apply(proposal, repo_ref=repo_ref,
+                                    base=settings.github_base_branch)
+        except (GitError, ForgeError) as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        result = uow.memory_proposals.update(proposal.id, applied)
+    return ok(result.model_dump(mode="json"))
+
+
+@router.post("/runs/{run_id}/memory/reject", status_code=202)
+def reject_run_memory(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        proposal = _proposed_or_error(uow, run_id)
+        rejected = proposal.model_copy(update={
+            "status": MemoryProposalStatus.REJECTED, "resolved_at": utc_now()})
+        result = uow.memory_proposals.update(proposal.id, rejected)
+    return ok(result.model_dump(mode="json"))
 
 
 def _signal(

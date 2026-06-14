@@ -73,3 +73,18 @@ class LocalGit:
             return False
         self._run([*_AUTHOR, "commit", "-m", message], cwd=workspace_path)
         return True
+
+    def merge_into_base(
+        self, repo_ref: str, *, branch: str, base: str, token: str | None = None
+    ) -> bool:
+        # Fast-forward base to branch when branch is a descendant of base.
+        base_sha = self._run(["rev-parse", base], cwd=repo_ref).strip()
+        branch_sha = self._run(["rev-parse", branch], cwd=repo_ref).strip()
+        if base_sha == branch_sha:
+            return True
+        merge_base = self._run(["merge-base", base, branch], cwd=repo_ref).strip()
+        if merge_base != base_sha:
+            raise GitError(f"{base} has diverged from {branch}; manual merge required")
+        # ff: point the base ref at the branch tip (compare-and-swap on the old sha).
+        self._run(["update-ref", f"refs/heads/{base}", branch_sha, base_sha], cwd=repo_ref)
+        return True

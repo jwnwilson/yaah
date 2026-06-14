@@ -41,3 +41,14 @@ def test_fake_commit_to_branch_noop_when_no_memory_changes():
     assert git.commit_to_branch("/ws", branch="b", base="main",
                                 paths=["CLAUDE.md"], message="m") is False
     assert git.committed_to_branch == []
+
+
+def test_fake_merge_into_base_records_and_returns_result():
+    git = FakeGit(merge_ok=True)
+    assert git.merge_into_base("/repo", branch="agent/memory-r1", base="main") is True
+    assert git.merged_into_base == [("/repo", "agent/memory-r1", "main")]
+
+
+def test_fake_merge_into_base_can_report_failure():
+    git = FakeGit(merge_ok=False)
+    assert git.merge_into_base("/repo", branch="b", base="main") is False

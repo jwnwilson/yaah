@@ -4,13 +4,15 @@ from typing import Literal
 class FakeGit:
     """Records git calls; deterministic. No filesystem/network."""
 
-    def __init__(self, has_changes: bool = True, memory_diff: str = ""):
+    def __init__(self, has_changes: bool = True, memory_diff: str = "", merge_ok: bool = True):
         self._has_changes = has_changes
         self._memory_diff = memory_diff
+        self._merge_ok = merge_ok
         self.prepared: list[tuple] = []
         self.committed: list[tuple] = []
         self.pushed: list[tuple] = []
         self.committed_to_branch: list[tuple] = []
+        self.merged_into_base: list[tuple] = []
         self._branch = ""
 
     def prepare(
@@ -48,3 +50,9 @@ class FakeGit:
                 (workspace_path, branch, base, tuple(paths), message))
             return True
         return False
+
+    def merge_into_base(
+        self, repo_ref: str, *, branch: str, base: str, token: str | None = None
+    ) -> bool:
+        self.merged_into_base.append((repo_ref, branch, base))
+        return self._merge_ok

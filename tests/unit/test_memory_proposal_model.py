@@ -7,6 +7,8 @@ def test_memory_proposal_defaults():
     assert p.status == MemoryProposalStatus.PROPOSED
     assert p.diff == ""
     assert p.files == []
+    assert p.pr_url is None
+    assert p.resolved_at is None
     assert p.created_at is not None
 
 

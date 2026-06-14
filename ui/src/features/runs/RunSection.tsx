@@ -2,6 +2,7 @@ import { useRuns } from "./useRuns";
 import { useStartRun } from "./useStartRun";
 import { RunStatusBadge } from "./RunStatusBadge";
 import { RunActions } from "./RunActions";
+import { MemoryProposalCard } from "./MemoryProposalCard";
 import type { WorkItemStatus } from "../../lib/api/types";
 
 export function RunSection({
@@ -39,6 +40,7 @@ export function RunSection({
               <span className="text-xs text-gray-500">{run.stage ?? "—"}</span>
             </div>
             <RunActions taskId={taskId} run={run} />
+            <MemoryProposalCard runId={run.id} />
           </li>
         ))}
       </ul>

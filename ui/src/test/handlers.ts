@@ -5,6 +5,10 @@ export const handlers = [
   http.get("/api/projects", () =>
     HttpResponse.json({ success: true, data: [], error: null, meta: { total: 0, page_size: 100, page_number: 1 } }),
   ),
+  // Default: a run has no memory proposal unless a test overrides this.
+  http.get("/api/runs/:runId/memory", () =>
+    HttpResponse.json({ success: true, data: null, error: null }),
+  ),
   http.get("/api/notifications/unread-count", () =>
     HttpResponse.json({ success: true, data: { count: 0 }, error: null }),
   ),

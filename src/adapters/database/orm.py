@@ -214,4 +214,6 @@ class MemoryProposalRow(Base):
     diff: Mapped[str] = mapped_column(Text, nullable=False, default="")
     files: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="proposed")
+    pr_url: Mapped[str | None] = mapped_column(String(500))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

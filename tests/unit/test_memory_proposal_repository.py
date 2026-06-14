@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
-from domain.models import MemoryProposal
+from domain.models import MemoryProposal, MemoryProposalStatus, utc_now
 
 
 @pytest.fixture
@@ -12,6 +12,20 @@ def factory():
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)
+
+
+def test_memory_proposal_apply_fields_round_trip(factory):
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    resolved = utc_now()
+    with uow.transaction():
+        created = uow.memory_proposals.create(MemoryProposal(
+            owner_id="u1", run_id="r1", project_id="p1", branch="b",
+            status=MemoryProposalStatus.APPLIED, pr_url="http://pr/1", resolved_at=resolved))
+    with uow.transaction():
+        fetched = uow.memory_proposals.get(created.id)
+    assert fetched.status == "applied"
+    assert fetched.pr_url == "http://pr/1"
+    assert fetched.resolved_at is not None
 
 
 def test_memory_proposal_round_trips(factory):
