@@ -5,8 +5,8 @@ import os
 
 from pydantic import BaseModel
 
-from domain import prompts
-from domain.runtime import RunContext
+from domain.agent import prompts
+from domain.agent.runtime import RunContext
 
 _HOOK_COMMAND = "python -m adapters.agent.runtime.pretooluse_hook"
 _SETTINGS = {

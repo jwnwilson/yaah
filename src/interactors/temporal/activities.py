@@ -4,6 +4,7 @@ from adapters.agent.notify.ports import NotificationDispatcher
 from adapters.agent.runtime.fake import result_of
 from adapters.database.uow import SqlUnitOfWork
 from adapters.storage.ports import StoragePort
+from domain.agent import AgentRuntime, RunContext
 from domain.errors import IntegrityConflict
 from domain.models import (
     AgentRole,
@@ -19,7 +20,6 @@ from domain.models import (
     utc_now,
 )
 from domain.notifications import notification_for_event, resolves
-from domain.runtime import AgentRuntime, RunContext
 from domain.usage import TokenUsage
 
 _MAX_LEAD_RETRIES = 2  # bounded re-prompts when the lead emits an invalid decision
@@ -221,7 +221,7 @@ class RunActivities:
         agent_role = None
         team_id = payload.get("team_id")
         if team_id:
-            from domain import capabilities
+            from domain.agent import capabilities
             uow = self._uow(payload["owner_id"])
             with uow.transaction():
                 agents = uow.agents.list(filters={"team_id": team_id}, page_size=100).results
@@ -330,7 +330,7 @@ class RunActivities:
         mirroring run_stage's assembly. Returns (manifest, role) or (None, None)."""
         if not team_id or role is None:
             return None, None
-        from domain import capabilities
+        from domain.agent import capabilities
         uow = self._uow(owner_id)
         with uow.transaction():
             agents = uow.agents.list(filters={"team_id": team_id}, page_size=100).results
@@ -423,9 +423,9 @@ class RunActivities:
     @activity.defn(name="invoke_lead")
     def invoke_lead(self, payload: dict) -> dict:
         from domain.models import AgentRole, RunStage
-        from domain.orchestration import OrchestrationState
-        from domain.orchestration_prompts import (
+        from domain.orchestration import (
             OrchestrationContractError,
+            OrchestrationState,
             build_orchestrator_prompt,
             parse_decision,
         )
@@ -509,8 +509,7 @@ class RunActivities:
     @activity.defn(name="run_monitor")
     def run_monitor(self, payload: dict) -> dict:
         from domain.models import AgentRole, RunStage
-        from domain.orchestration import MonitorVerdict
-        from domain.orchestration_prompts import OrchestrationContractError, parse_verdict
+        from domain.orchestration import MonitorVerdict, OrchestrationContractError, parse_verdict
         run_id, owner_id = payload["run_id"], payload["owner_id"]
         role = AgentRole(payload["role"]) if payload.get("role") else AgentRole.QA
         ac = "\n".join(f"- {c}" for c in payload.get("acceptance_criteria", []))

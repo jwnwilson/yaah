@@ -2,7 +2,7 @@ from typing import Iterator, Literal, Protocol
 
 from pydantic import BaseModel
 
-from domain.capabilities import AgentManifest
+from domain.agent.capabilities import AgentManifest
 from domain.models import RunStage
 from domain.usage import TokenUsage
 

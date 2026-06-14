@@ -4,6 +4,7 @@ from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
 from adapters.storage.local import LocalStorageAdapter
+from domain.agent import AgentEvent, StageResult
 from domain.models import (
     MessageKind,
     MessageRecipientKind,
@@ -15,7 +16,6 @@ from domain.models import (
     WorkItemKind,
     WorkItemStatus,
 )
-from domain.runtime import AgentEvent, StageResult
 
 
 def _factory():

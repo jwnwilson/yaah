@@ -1,4 +1,4 @@
-from domain import capabilities as cap
+from domain.agent import capabilities as cap
 from domain.models import AgentDefinition, AgentRole, McpServer, RunStage, Skill
 
 
@@ -34,14 +34,14 @@ def test_assemble_manifest_from_grants():
 
 
 def test_manifest_has_secret_env_default_empty():
-    from domain.capabilities import AgentManifest
+    from domain.agent import AgentManifest
     assert AgentManifest().secret_env == {}
     m = AgentManifest(secret_env={"GH_TOKEN": "x"})
     assert m.secret_env["GH_TOKEN"] == "x"
 
 
 def test_assemble_sets_model_alias():
-    from domain.capabilities import assemble
+    from domain.agent import assemble
     from domain.models import AgentDefinition, AgentRole
     agent = AgentDefinition(team_id="t", role=AgentRole.BACKEND, name="E",
                             model_alias="engineer-model")

@@ -37,7 +37,9 @@ ui/              # UI code
 src/
   domain/        # pure business logic, no I/O
     models.py    # Project, WorkItem (epic/feature/task), Team, AgentDefinition, Run
-    transitions.py  # work-item status state machine
+    transitions/    # state-progression rules (work-item + run state machines, run-stage pipeline)
+    orchestration/  # lead-driven orchestration DTOs, guards, mappings + orchestrator prompt/parse contract
+    agent/          # agent-execution policy (runtime protocol/DTOs, capability manifest, per-stage prompts, CLI invocation)
     teams.py     # default team factory (lead + engineer + QA)
     errors.py    # typed persistence errors (RecordNotFound, IntegrityConflict, InvalidFilter)
   adapters/      # concrete port implementations

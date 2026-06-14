@@ -1,5 +1,5 @@
-from domain import pipeline
 from domain.models import AutonomyLevel, RunStage
+from domain.transitions import pipeline
 
 
 def test_stage_order():

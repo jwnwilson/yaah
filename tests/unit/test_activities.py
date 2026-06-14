@@ -170,7 +170,7 @@ def test_run_stage_populates_ctx_agent_from_team():
     class _Spy:
         def run_stage(self, ctx):
             captured["ctx"] = ctx
-            from domain.runtime import AgentEvent, StageResult
+            from domain.agent import AgentEvent, StageResult
             yield AgentEvent(type="result", stage=ctx.stage, message="ok",
                              data=StageResult(outcome="ok").model_dump())
 
@@ -201,8 +201,8 @@ def test_run_stage_injects_secret_env_without_leaking():
 
     from cryptography.fernet import Fernet
 
+    from domain.agent import AgentEvent, StageResult
     from domain.models import AgentDefinition, Secret, Team
-    from domain.runtime import AgentEvent, StageResult
     from lib.secrets import FernetCipher
 
     factory = _factory()
@@ -250,8 +250,8 @@ def test_run_stage_records_capability_audit_without_secret_values():
 
     from cryptography.fernet import Fernet
 
+    from domain.agent import AgentEvent, StageResult
     from domain.models import AgentDefinition, Secret, Team
-    from domain.runtime import AgentEvent, StageResult
     from lib.secrets import FernetCipher
 
     factory = _factory()
@@ -326,7 +326,7 @@ def test_run_stage_ingests_tool_audit_jsonl():
                                   "reason": "not in allowlist"}) + "\n"
                 ).encode(),
             )
-            from domain.runtime import AgentEvent, StageResult
+            from domain.agent import AgentEvent, StageResult
             yield AgentEvent(type="result", stage=ctx.stage, message="ok",
                              data=StageResult(outcome="ok").model_dump())
 
