@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { Secret } from "../../lib/api/types";
 import { ResourceTable } from "../components/ResourceTable";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -24,8 +24,6 @@ export function SecretsPage() {
     await create.mutateAsync({ name: name.trim(), description: description.trim() });
     setName(""); setDescription(""); setCreating(false);
   }
-
-  const closeCreate = useCallback(() => setCreating(false), []);
 
   return (
     <div>
@@ -53,7 +51,7 @@ export function SecretsPage() {
       />
 
       {creating && (
-        <Dialog title="New secret" onClose={closeCreate}>
+        <Dialog title="New secret" onClose={() => setCreating(false)}>
           <form onSubmit={submitCreate} className="space-y-3">
             <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
             <Field label="Description"><Input value={description} onChange={(e) => setDescription(e.target.value)} /></Field>

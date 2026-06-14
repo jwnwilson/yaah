@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { Skill } from "../../lib/api/types";
 import { ResourceTable } from "../components/ResourceTable";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -33,8 +33,6 @@ export function SkillsPage() {
   const mutating = create.isPending || update.isPending;
   const mutError = (create.error || update.error) as Error | null;
 
-  const closeEditing = useCallback(() => setEditing(null), []);
-
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -61,7 +59,7 @@ export function SkillsPage() {
       />
 
       {editing && (
-        <Dialog title={editing === "new" ? "New skill" : "Edit skill"} onClose={closeEditing}>
+        <Dialog title={editing === "new" ? "New skill" : "Edit skill"} onClose={() => setEditing(null)}>
           <form onSubmit={submit} className="space-y-3">
             <Field label="Name"><Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></Field>
             <Field label="Description"><Input value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /></Field>
