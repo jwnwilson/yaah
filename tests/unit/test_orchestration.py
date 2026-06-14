@@ -1,11 +1,26 @@
 import pytest
 
-from domain.models import AgentRole, MessageKind, MessageRecipientKind
+from domain.models import (
+    AgentRole,
+    MessageKind,
+    MessageRecipientKind,
+    MessageSenderKind,
+)
 from domain.orchestration import (
+    AgentOutcome,
+    AgentReport,
+    AgentStepResult,
     Dispatch,
+    MonitorVerdict,
     OrchestrationDecision,
     OrchestrationIntent,
+    OrchestrationLimits,
+    OrchestrationState,
     OutboundMessage,
+    decision_to_messages,
+    guard_exceeded,
+    is_quiescent,
+    resolve_assignee,
 )
 
 
@@ -47,8 +62,6 @@ def test_outbound_user_message_is_valid():
 
 
 def test_agent_step_result_defaults():
-    from domain.orchestration import AgentOutcome, AgentStepResult
-
     r = AgentStepResult()
     assert r.outcome == AgentOutcome.OK
     assert r.completed_brief is False
@@ -56,8 +69,6 @@ def test_agent_step_result_defaults():
 
 
 def test_agent_report_carries_outcome_and_cost():
-    from domain.orchestration import AgentOutcome, AgentReport
-
     rep = AgentReport(
         role=AgentRole.QA, outcome=AgentOutcome.FAIL, summary="2 failing", cost_usd=0.5
     )
@@ -65,8 +76,6 @@ def test_agent_report_carries_outcome_and_cost():
 
 
 def test_monitor_verdict_complete_and_incomplete():
-    from domain.orchestration import MonitorVerdict
-
     ok = MonitorVerdict(complete=True)
     assert ok.unmet == [] and ok.pending_mailboxes == []
     bad = MonitorVerdict(complete=False, unmet=["no tests"], pending_mailboxes=["qa"])
@@ -74,8 +83,6 @@ def test_monitor_verdict_complete_and_incomplete():
 
 
 def test_state_records_wave_report_and_cost_immutably():
-    from domain.orchestration import AgentOutcome, AgentReport, OrchestrationState
-
     s0 = OrchestrationState()
     s1 = s0.record_wave(dispatch_count=2, messages=2, cost=1.5)
     s2 = s1.record_report(AgentReport(role=AgentRole.BACKEND, outcome=AgentOutcome.OK))
@@ -85,23 +92,19 @@ def test_state_records_wave_report_and_cost_immutably():
 
 
 def test_guard_exceeded_flags_each_limit():
-    from domain.orchestration import (
-        OrchestrationLimits,
-        OrchestrationState,
-        guard_exceeded,
-    )
-
     limits = OrchestrationLimits(max_waves=2, max_dispatches=3, max_messages=5, max_cost_usd=10.0)
-    assert guard_exceeded(OrchestrationState(waves=2, total_dispatches=3), limits) is None
-    assert guard_exceeded(OrchestrationState(waves=3), limits) == "max_waves"
-    assert guard_exceeded(OrchestrationState(total_dispatches=4), limits) == "max_dispatches"
-    assert guard_exceeded(OrchestrationState(messages_sent=6), limits) == "max_messages"
-    assert guard_exceeded(OrchestrationState(total_cost_usd=10.5), limits) == "max_cost_usd"
+    below = OrchestrationState(
+        waves=1, total_dispatches=2, messages_sent=4, total_cost_usd=9.0
+    )
+    assert guard_exceeded(below, limits) is None
+    # Hard caps: a state AT the limit blocks (>=).
+    assert guard_exceeded(OrchestrationState(waves=2), limits) == "max_waves"
+    assert guard_exceeded(OrchestrationState(total_dispatches=3), limits) == "max_dispatches"
+    assert guard_exceeded(OrchestrationState(messages_sent=5), limits) == "max_messages"
+    assert guard_exceeded(OrchestrationState(total_cost_usd=10.0), limits) == "max_cost_usd"
 
 
 def test_is_quiescent_only_when_idle_and_no_inflight():
-    from domain.orchestration import is_quiescent
-
     assert is_quiescent(active_agents=0, in_flight_messages=0) is True
     assert is_quiescent(active_agents=1, in_flight_messages=0) is False
     assert is_quiescent(active_agents=0, in_flight_messages=2) is False
@@ -112,9 +115,6 @@ def _role_map():
 
 
 def test_decision_to_messages_builds_dispatch_and_user_note():
-    from domain.models import MessageKind, MessageRecipientKind, MessageSenderKind
-    from domain.orchestration import decision_to_messages
-
     decision = OrchestrationDecision(
         intent=OrchestrationIntent.CONTINUE,
         dispatches=[Dispatch(target_role=AgentRole.BACKEND, instructions="build it")],
@@ -140,8 +140,6 @@ def test_decision_to_messages_builds_dispatch_and_user_note():
 
 
 def test_decision_to_messages_skips_unknown_role():
-    from domain.orchestration import decision_to_messages
-
     decision = OrchestrationDecision(
         intent=OrchestrationIntent.CONTINUE,
         dispatches=[Dispatch(target_role=AgentRole.DEVOPS, instructions="x")],
@@ -154,10 +152,32 @@ def test_decision_to_messages_skips_unknown_role():
 
 
 def test_resolve_assignee_maps_role_to_agent():
-    from domain.orchestration import resolve_assignee
-
     d = OrchestrationDecision(intent=OrchestrationIntent.VERIFY, assignee_role=AgentRole.BACKEND)
     assert resolve_assignee(d, _role_map()) == "a-eng"
     assert resolve_assignee(
         OrchestrationDecision(intent=OrchestrationIntent.VERIFY), _role_map()
     ) is None
+
+
+def test_resolve_assignee_returns_none_for_absent_role():
+    d = OrchestrationDecision(intent=OrchestrationIntent.VERIFY, assignee_role=AgentRole.DEVOPS)
+    assert resolve_assignee(d, _role_map()) is None  # DEVOPS not on the team
+
+
+def test_record_verdict_is_immutable():
+    s0 = OrchestrationState()
+    s1 = s0.record_verdict(MonitorVerdict(complete=False, unmet=["no tests"]))
+    assert s0.verdicts == []  # original untouched
+    assert len(s1.verdicts) == 1 and s1.verdicts[0].unmet == ["no tests"]
+
+
+def test_needs_human_with_rationale_is_valid():
+    d = OrchestrationDecision(
+        intent=OrchestrationIntent.NEEDS_HUMAN, rationale="approval needed"
+    )
+    assert d.intent == OrchestrationIntent.NEEDS_HUMAN
+
+
+def test_needs_human_requires_rationale_or_user_message():
+    with pytest.raises(ValueError, match="needs_human requires"):
+        OrchestrationDecision(intent=OrchestrationIntent.NEEDS_HUMAN)

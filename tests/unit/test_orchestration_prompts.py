@@ -25,6 +25,18 @@ def test_prompt_mentions_ticket_roles_and_state():
     assert "wave" in prompt.lower()                          # state digest present
 
 
+def test_prompt_lists_every_intent():
+    prompt = build_orchestrator_prompt(
+        task_title="Add login",
+        acceptance_criteria=["users can log in"],
+        body="OAuth",
+        state=OrchestrationState(),
+        available_roles=[AgentRole.BACKEND],
+    )
+    for i in OrchestrationIntent:
+        assert i.value in prompt
+
+
 def test_parse_decision_validates_and_types():
     decision = parse_decision(
         {

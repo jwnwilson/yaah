@@ -65,6 +65,12 @@ class OrchestrationDecision(BaseModel):
             raise ValueError("continue requires at least one dispatch or message")
         if self.intent == OrchestrationIntent.BLOCK and not self.rationale.strip():
             raise ValueError("block requires a rationale")
+        if self.intent == OrchestrationIntent.NEEDS_HUMAN:
+            has_user_message = any(
+                m.recipient_kind == MessageRecipientKind.USER for m in self.messages
+            )
+            if not self.rationale.strip() and not has_user_message:
+                raise ValueError("needs_human requires a rationale or a message to the user")
         return self
 
 
@@ -141,14 +147,17 @@ class OrchestrationState(BaseModel):
 
 
 def guard_exceeded(state: OrchestrationState, limits: OrchestrationLimits) -> str | None:
-    """Return the name of the first exceeded limit, or None. Used to force a BLOCK."""
-    if state.waves > limits.max_waves:
+    """Return the name of the first exceeded limit, or None. Used to force a BLOCK.
+
+    Limits are hard caps: reaching the limit blocks further work (>=).
+    """
+    if state.waves >= limits.max_waves:
         return "max_waves"
-    if state.total_dispatches > limits.max_dispatches:
+    if state.total_dispatches >= limits.max_dispatches:
         return "max_dispatches"
-    if state.messages_sent > limits.max_messages:
+    if state.messages_sent >= limits.max_messages:
         return "max_messages"
-    if state.total_cost_usd > limits.max_cost_usd:
+    if state.total_cost_usd >= limits.max_cost_usd:
         return "max_cost_usd"
     return None
 

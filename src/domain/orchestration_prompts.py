@@ -11,6 +11,7 @@ class OrchestrationContractError(ValueError):
     """The lead's output did not satisfy the decision/verdict schema."""
 
 
+# Keep in sync with OrchestrationIntent.
 _INTENTS = (
     "continue (dispatch agents and keep going), "
     "verify (trigger the completion monitor), "
@@ -20,6 +21,8 @@ _INTENTS = (
 )
 
 
+# Security: task_title/body are user-controlled and interpolated into the lead prompt;
+# callers must trust-scope or sanitise input (hardening tracked for the runtime layer).
 def build_orchestrator_prompt(
     *,
     task_title: str,
