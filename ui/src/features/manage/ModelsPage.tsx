@@ -65,7 +65,7 @@ export function ModelsPage() {
           { header: "Runtime", render: (a) => <span className="text-muted">{a.runtime}</span> },
         ]}
         actions={(a) => (
-          <button onClick={() => openEdit(a)} className="text-accent hover:underline">Edit</button>
+          <button onClick={() => openEdit(a)} className="text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">Edit</button>
         )}
       />
 

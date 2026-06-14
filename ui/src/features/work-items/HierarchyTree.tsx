@@ -37,7 +37,7 @@ export function HierarchyTree({
       <div className="mb-2 flex items-center justify-between">
         <span className="font-semibold text-fg">Hierarchy</span>
       </div>
-      <button className="mb-2 block text-left text-xs text-accent hover:underline" onClick={() => onSelectFeature(undefined)}>
+      <button className="mb-2 block text-left text-xs text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded" onClick={() => onSelectFeature(undefined)}>
         All tasks
       </button>
       <ul className="space-y-1">
@@ -63,8 +63,8 @@ export function HierarchyTree({
       </ul>
 
       <div className="mt-3 space-y-1">
-        <button className="block text-xs text-accent hover:underline" onClick={() => setAdding("epic")}>+ Add epic</button>
-        <button className="block text-xs text-accent hover:underline" onClick={() => setAdding("feature")}>+ Add feature</button>
+        <button className="block text-xs text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded" onClick={() => setAdding("epic")}>+ Add epic</button>
+        <button className="block text-xs text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded" onClick={() => setAdding("feature")}>+ Add feature</button>
       </div>
 
       {adding && (

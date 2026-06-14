@@ -44,8 +44,8 @@ export function SecretsPage() {
         ]}
         actions={(s) => (
           <div className="flex justify-end gap-3 text-sm">
-            <button onClick={() => setValueFor(s)} className="text-accent hover:underline">Set value</button>
-            <button onClick={() => setDeleting(s)} className="text-danger hover:underline">Delete</button>
+            <button onClick={() => setValueFor(s)} className="text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">Set value</button>
+            <button onClick={() => setDeleting(s)} className="text-danger hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">Delete</button>
           </div>
         )}
       />

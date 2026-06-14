@@ -26,7 +26,7 @@ export function AcceptanceCriteria({
           </button>
         </div>
       ))}
-      <button type="button" className="text-sm text-accent hover:underline" onClick={() => onChange([...value, ""])}>
+      <button type="button" className="text-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded" onClick={() => onChange([...value, ""])}>
         Add criterion
       </button>
     </div>

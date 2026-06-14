@@ -52,8 +52,8 @@ export function SkillsPage() {
         ]}
         actions={(s) => (
           <div className="flex justify-end gap-3 text-sm">
-            <button onClick={() => openEdit(s)} className="text-accent hover:underline">Edit</button>
-            <button onClick={() => setDeleting(s)} className="text-danger hover:underline">Delete</button>
+            <button onClick={() => openEdit(s)} className="text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">Edit</button>
+            <button onClick={() => setDeleting(s)} className="text-danger hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">Delete</button>
           </div>
         )}
       />
