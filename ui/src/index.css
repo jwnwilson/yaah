@@ -20,6 +20,7 @@
   --warning: 180 83 9;
   --warning-subtle: 254 243 199;
   --danger: 220 38 38;
+  --danger-fg: 255 255 255;
   --danger-subtle: 254 226 226;
   --info: 37 99 235;
   --info-subtle: 219 234 254;
@@ -43,6 +44,7 @@
   --warning: 250 204 21;
   --warning-subtle: 55 42 10;
   --danger: 248 113 113;
+  --danger-fg: 24 24 27;
   --danger-subtle: 60 24 24;
   --info: 96 165 250;
   --info-subtle: 23 37 64;

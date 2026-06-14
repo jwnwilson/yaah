@@ -15,4 +15,7 @@ test("Escape and overlay click close; inside click does not", async () => {
   await userEvent.keyboard("{Escape}");
   expect(onClose).toHaveBeenCalledTimes(1);
   expect(dialog).toHaveAttribute("aria-modal", "true");
+  const overlay = dialog.parentElement as HTMLElement;
+  await userEvent.click(overlay);
+  expect(onClose).toHaveBeenCalledTimes(2);
 });

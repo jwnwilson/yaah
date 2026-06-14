@@ -7,6 +7,5 @@ test("associates a label with its control", () => {
       <Input value="" onChange={() => {}} />
     </Field>,
   );
-  expect(screen.getByText("Name")).toBeInTheDocument();
-  expect(screen.getByRole("textbox")).toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: "Name" })).toBeInTheDocument();
 });

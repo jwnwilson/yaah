@@ -18,7 +18,7 @@ export default {
         accent: { DEFAULT: token("--accent"), fg: token("--accent-fg"), subtle: token("--accent-subtle") },
         success: { DEFAULT: token("--success"), subtle: token("--success-subtle") },
         warning: { DEFAULT: token("--warning"), subtle: token("--warning-subtle") },
-        danger: { DEFAULT: token("--danger"), subtle: token("--danger-subtle") },
+        danger: { DEFAULT: token("--danger"), subtle: token("--danger-subtle"), fg: token("--danger-fg") },
         info: { DEFAULT: token("--info"), subtle: token("--info-subtle") },
       },
       fontFamily: {
