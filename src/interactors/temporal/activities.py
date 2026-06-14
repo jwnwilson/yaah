@@ -420,6 +420,27 @@ class RunActivities:
         except (ValueError, TypeError):
             return None
 
+    def _persist_lead_messages(self, payload: dict, decision) -> None:
+        """Persist the lead dispatches and notes as Messages so the inbox reflects
+        orchestration. No-op when the lead agent id is unknown."""
+        from domain.models import AgentRole
+        from domain.orchestration import decision_to_messages
+        role_map = payload.get("role_to_agent_id") or {}
+        lead_id = role_map.get(AgentRole.LEAD.value)
+        if not lead_id:
+            return
+        msgs = decision_to_messages(
+            decision, owner_id=payload["owner_id"], lead_agent_id=lead_id,
+            run_id=payload["run_id"], work_item_id=payload.get("work_item_id"),
+            project_id=payload.get("project_id"), role_to_agent_id=role_map,
+        )
+        if not msgs:
+            return
+        uow = self._uow(payload["owner_id"])
+        with uow.transaction():
+            for m in msgs:
+                uow.messages.create(m)
+
     @activity.defn(name="invoke_lead")
     def invoke_lead(self, payload: dict) -> dict:
         from domain.models import AgentRole, RunStage
@@ -455,6 +476,7 @@ class RunActivities:
             if raw is not None:
                 try:
                     decision = parse_decision(raw)
+                    self._persist_lead_messages(payload, decision)
                     for d in decision.dispatches:
                         self.record_event({
                             "run_id": run_id, "owner_id": owner_id, "stage": "plan",
