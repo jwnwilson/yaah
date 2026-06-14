@@ -10,7 +10,8 @@ function proposal(overrides: Partial<MemoryProposal> = {}): MemoryProposal {
   return {
     id: "m1", run_id: "r1", project_id: "p1", branch: "agent/memory-r1",
     diff: "diff --git a/CLAUDE.md b/CLAUDE.md\n+learned", files: ["CLAUDE.md"],
-    status: "proposed", pr_url: null, resolved_at: null, ...overrides,
+    status: "proposed", pr_url: null, resolved_at: null,
+    created_at: "2026-06-14T00:00:00Z", ...overrides,
   };
 }
 
