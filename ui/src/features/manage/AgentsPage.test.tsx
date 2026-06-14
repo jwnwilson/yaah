@@ -4,13 +4,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { server } from "../../test/server";
-import { ModelsPage } from "./ModelsPage";
+import { AgentsPage } from "./AgentsPage";
 
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter><ModelsPage /></MemoryRouter>
+      <MemoryRouter><AgentsPage /></MemoryRouter>
     </QueryClientProvider>,
   );
 }

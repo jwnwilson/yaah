@@ -8,7 +8,7 @@ import { useAgents, useTeams, useUpdateAgent } from "./useAgents";
 
 interface Draft { model_alias: string; allowed_tools: string }
 
-export function ModelsPage() {
+export function AgentsPage() {
   const teams = useTeams();
   const [teamId, setTeamId] = useState<string | undefined>(undefined);
   useEffect(() => {
@@ -41,7 +41,7 @@ export function ModelsPage() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-fg">Models</h1>
+        <h1 className="text-xl font-semibold text-fg">Agents</h1>
         {teams.data && teams.data.length > 0 && (
           <label className="text-sm">
             Team{" "}
