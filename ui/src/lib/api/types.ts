@@ -59,3 +59,33 @@ export interface Run {
   cost_usd: number;
   created_at: string;
 }
+
+export interface Secret {
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string;
+  has_value: boolean;
+  created_at: string;
+}
+
+export interface Skill {
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string;
+  source: string;
+  created_at: string;
+}
+
+export type McpTransport = "stdio" | "http";
+
+export interface McpServer {
+  id: string;
+  owner_id: string;
+  name: string;
+  transport: McpTransport;
+  command_or_url: string;
+  tool_allowlist: string[];
+  created_at: string;
+}

@@ -1,8 +1,30 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate, type RouteObject } from "react-router-dom";
+import { AppLayout } from "./AppLayout";
 import ProjectsPage from "../features/projects/ProjectsPage";
 import BoardPage from "../features/board/BoardPage";
+import { ManageLayout } from "../features/manage/ManageLayout";
+import { SecretsPage } from "../features/manage/SecretsPage";
+import { SkillsPage } from "../features/manage/SkillsPage";
+import { McpServersPage } from "../features/manage/McpServersPage";
 
-export const router = createBrowserRouter([
-  { path: "/", element: <ProjectsPage /> },
-  { path: "/projects/:projectId", element: <BoardPage /> },
-]);
+export const routes: RouteObject[] = [
+  {
+    element: <AppLayout />,
+    children: [
+      { path: "/", element: <ProjectsPage /> },
+      { path: "/projects/:projectId", element: <BoardPage /> },
+      {
+        path: "/manage",
+        element: <ManageLayout />,
+        children: [
+          { index: true, element: <Navigate to="secrets" replace /> },
+          { path: "secrets", element: <SecretsPage /> },
+          { path: "skills", element: <SkillsPage /> },
+          { path: "mcp-servers", element: <McpServersPage /> },
+        ],
+      },
+    ],
+  },
+];
+
+export const router = createBrowserRouter(routes);
