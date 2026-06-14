@@ -167,7 +167,8 @@ class RunWorkflow:
             "capture_memory",
             {"run_id": run_id, "owner_id": owner_id,
              "project_id": inp["project_id"], "base": inp.get("base", "main"),
-             "profile": inp["profile"]},
+             "profile": inp["profile"], "autonomy": inp["autonomy"],
+             "repo_ref": inp["repo_ref"]},
             start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
         await self._persist(run_id, owner_id, status=RunStatus.DONE, stage=RunStage.LEARN)
         await self._cleanup(run_id, owner_id)

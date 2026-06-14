@@ -385,4 +385,24 @@ class RunActivities:
         self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "learn",
                            "type": RunEventType.AGENT_EVENT,
                            "message": f"memory proposal: {len(files)} file(s) on {branch}"})
+        if payload.get("autonomy") == "full_auto":
+            self._auto_apply_memory(payload, proposal)
         return {"outcome": "ok", "proposal_id": proposal.id}
+
+    def _auto_apply_memory(self, payload: dict, proposal) -> None:
+        from interactors.memory_apply import MemoryApplier
+        run_id, owner_id = payload["run_id"], payload["owner_id"]
+        try:
+            applier = MemoryApplier(self._git, self._forge, profile=payload["profile"])
+            applied = applier.apply(proposal, repo_ref=payload["repo_ref"],
+                                    base=payload["base"])
+            with self._uow(owner_id).transaction() as uow:
+                uow.memory_proposals.update(proposal.id, applied)
+            msg = (f"memory PR opened {applied.pr_url}" if applied.pr_url
+                   else f"memory applied to {payload['base']}")
+            self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "learn",
+                               "type": RunEventType.AGENT_EVENT, "message": msg})
+        except Exception as exc:  # noqa: BLE001 - auto-apply is best-effort; stays proposed
+            self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "learn",
+                               "type": RunEventType.AGENT_EVENT,
+                               "message": f"memory auto-apply failed: {exc}"})
