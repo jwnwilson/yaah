@@ -5,6 +5,16 @@ A self-hosted platform for running **virtual dev teams** — role-based AI agent
 - Design spec: [docs/specs/2026-06-12-yaah-design.md](docs/specs/2026-06-12-yaah-design.md)
 - Current plan: [docs/plans/2026-06-12-yaah-a1-control-plane-foundation.md](docs/plans/2026-06-12-yaah-a1-control-plane-foundation.md)
 
+## Workflow (read first)
+
+**All work happens in a git worktree and ships via a reviewed PR. Never commit or push directly to `main`.**
+
+- Start every task in an isolated worktree off the latest `main`:
+  `git worktree add -b <type>/<slug> ../yaah-<slug> origin/main`. Do the work there, not in the primary checkout.
+- `main` only advances by merging a reviewed PR — no direct commits, no bundled auto-commits with junk titles.
+- One PR = one focused change: a clear `<type>: <description>` title, a summary, and a test plan. Keep unrelated edits out.
+- Before opening the PR, get `make coverage` (80% gate) and `make lint` green, then `git push -u origin <branch>` and open the PR with `gh pr create`.
+
 ## Stack
 
 - Python ≥ 3.12, package manager: `uv`
