@@ -1,5 +1,5 @@
-from adapters.model.anthropic import AnthropicProvider
-from adapters.model.fake import FakeModelProvider
+from adapters.agent.model.anthropic import AnthropicProvider
+from adapters.agent.model.fake import FakeModelProvider
 
 
 def test_anthropic_env_and_model():
@@ -20,7 +20,7 @@ def test_fake_provider():
 
 
 def test_litellm_provider_env_and_model():
-    from adapters.model.litellm import LiteLLMProvider
+    from adapters.agent.model.litellm import LiteLLMProvider
     p = LiteLLMProvider("http://litellm:4000", "sk-virt", default_model="sonnet")
     env = p.agent_env()
     assert env["ANTHROPIC_BASE_URL"] == "http://litellm:4000"

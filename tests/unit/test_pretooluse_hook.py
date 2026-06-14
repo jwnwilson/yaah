@@ -2,7 +2,7 @@
 import io
 import json
 
-from adapters.runtime import pretooluse_hook
+from adapters.agent.runtime import pretooluse_hook
 
 
 def _run(monkeypatch, payload, allowed, audit_path):
