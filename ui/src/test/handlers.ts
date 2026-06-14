@@ -24,4 +24,10 @@ export const handlers = [
   http.get("/api/mcp-servers", () =>
     HttpResponse.json({ success: true, data: [], error: null, meta: { total: 0, page_size: 200, page_number: 1 } }),
   ),
+  http.get("/api/teams", () =>
+    HttpResponse.json({ success: true, data: [], error: null, meta: { total: 0, page_size: 100, page_number: 1 } }),
+  ),
+  http.get("/api/teams/:teamId/agents", () =>
+    HttpResponse.json({ success: true, data: [], error: null, meta: { total: 0, page_size: 200, page_number: 1 } }),
+  ),
 ];
