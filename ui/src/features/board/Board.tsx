@@ -23,8 +23,8 @@ export function Board({ projectId, parentId, onOpen }: { projectId: string; pare
     setStatus.mutate({ itemId, status: target });
   }
 
-  if (isLoading) return <p className="p-4 text-sm text-gray-500">Loading board…</p>;
-  if (isError) return <p className="p-4 text-sm text-red-600">{(error as Error).message}</p>;
+  if (isLoading) return <p className="p-4 text-sm text-subtle">Loading board…</p>;
+  if (isError) return <p className="p-4 text-sm text-danger">{(error as Error).message}</p>;
 
   const grouped = groupByColumn(data ?? []);
   return (
@@ -35,7 +35,7 @@ export function Board({ projectId, parentId, onOpen }: { projectId: string; pare
         ))}
       </div>
       {setStatus.isError && (
-        <p className="px-4 text-sm text-red-600">Move rejected: {(setStatus.error as Error).message}</p>
+        <p className="px-4 text-sm text-danger">Move rejected: {(setStatus.error as Error).message}</p>
       )}
     </DndContext>
   );
