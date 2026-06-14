@@ -156,3 +156,64 @@ def guard_exceeded(state: OrchestrationState, limits: OrchestrationLimits) -> st
 def is_quiescent(active_agents: int, in_flight_messages: int) -> bool:
     """The system is quiescent when no agent is working and no message is in flight."""
     return active_agents == 0 and in_flight_messages == 0
+
+
+def decision_to_messages(
+    decision: OrchestrationDecision,
+    *,
+    owner_id: str,
+    lead_agent_id: str,
+    run_id: str,
+    work_item_id: str | None,
+    project_id: str | None,
+    role_to_agent_id: dict[AgentRole, str],
+) -> list[Message]:
+    """Turn a lead decision's dispatches + notes into persistable Message rows.
+    Dispatches/notes addressed to roles not on the team are skipped (nothing to deliver)."""
+    out: list[Message] = []
+    ctx = dict(owner_id=owner_id, run_id=run_id, work_item_id=work_item_id, project_id=project_id)
+    for d in decision.dispatches:
+        agent_id = role_to_agent_id.get(d.target_role)
+        if agent_id is None:
+            continue
+        out.append(
+            Message(
+                sender_kind=MessageSenderKind.AGENT,
+                sender_agent_id=lead_agent_id,
+                recipient_kind=MessageRecipientKind.AGENT,
+                recipient_agent_id=agent_id,
+                kind=MessageKind.DISPATCH,
+                body=d.instructions,
+                **ctx,
+            )
+        )
+    for m in decision.messages:
+        recipient_agent_id = None
+        if m.recipient_kind == MessageRecipientKind.AGENT:
+            recipient_agent_id = (
+                role_to_agent_id.get(m.recipient_role) if m.recipient_role else None
+            )
+            if recipient_agent_id is None:
+                continue
+        out.append(
+            Message(
+                sender_kind=MessageSenderKind.AGENT,
+                sender_agent_id=lead_agent_id,
+                recipient_kind=m.recipient_kind,
+                recipient_agent_id=recipient_agent_id,
+                kind=m.kind,
+                subject=m.subject,
+                body=m.body,
+                **ctx,
+            )
+        )
+    return out
+
+
+def resolve_assignee(
+    decision: OrchestrationDecision, role_to_agent_id: dict[AgentRole, str]
+) -> str | None:
+    """Map the lead's assignee_role to a team agent id, or None."""
+    if decision.assignee_role is None:
+        return None
+    return role_to_agent_id.get(decision.assignee_role)

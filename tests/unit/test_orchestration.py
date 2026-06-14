@@ -103,3 +103,59 @@ def test_is_quiescent_only_when_idle_and_no_inflight():
     assert is_quiescent(active_agents=0, in_flight_messages=0) is True
     assert is_quiescent(active_agents=1, in_flight_messages=0) is False
     assert is_quiescent(active_agents=0, in_flight_messages=2) is False
+
+
+def _role_map():
+    return {AgentRole.LEAD: "a-lead", AgentRole.BACKEND: "a-eng", AgentRole.QA: "a-qa"}
+
+
+def test_decision_to_messages_builds_dispatch_and_user_note():
+    from domain.models import MessageKind, MessageRecipientKind, MessageSenderKind
+    from domain.orchestration import decision_to_messages
+
+    decision = OrchestrationDecision(
+        intent=OrchestrationIntent.CONTINUE,
+        dispatches=[Dispatch(target_role=AgentRole.BACKEND, instructions="build it")],
+        messages=[OutboundMessage(recipient_kind=MessageRecipientKind.USER, body="starting")],
+    )
+    msgs = decision_to_messages(
+        decision,
+        owner_id="dev-user",
+        lead_agent_id="a-lead",
+        run_id="r1",
+        work_item_id="w1",
+        project_id="p1",
+        role_to_agent_id=_role_map(),
+    )
+    assert len(msgs) == 2
+    dispatch = next(m for m in msgs if m.kind == MessageKind.DISPATCH)
+    assert dispatch.sender_kind == MessageSenderKind.AGENT and dispatch.sender_agent_id == "a-lead"
+    assert dispatch.recipient_kind == MessageRecipientKind.AGENT
+    assert dispatch.recipient_agent_id == "a-eng"
+    assert dispatch.body == "build it" and dispatch.run_id == "r1"
+    note = next(m for m in msgs if m.recipient_kind == MessageRecipientKind.USER)
+    assert note.recipient_agent_id is None and note.body == "starting"
+
+
+def test_decision_to_messages_skips_unknown_role():
+    from domain.orchestration import decision_to_messages
+
+    decision = OrchestrationDecision(
+        intent=OrchestrationIntent.CONTINUE,
+        dispatches=[Dispatch(target_role=AgentRole.DEVOPS, instructions="x")],
+    )
+    msgs = decision_to_messages(
+        decision, owner_id="o", lead_agent_id="a-lead", run_id="r1",
+        work_item_id=None, project_id=None, role_to_agent_id=_role_map(),
+    )
+    assert msgs == []  # DEVOPS not on the team -> nothing to deliver
+
+
+def test_resolve_assignee_maps_role_to_agent():
+    from domain.orchestration import resolve_assignee
+
+    d = OrchestrationDecision(intent=OrchestrationIntent.VERIFY, assignee_role=AgentRole.BACKEND)
+    assert resolve_assignee(d, _role_map()) == "a-eng"
+    assert resolve_assignee(
+        OrchestrationDecision(intent=OrchestrationIntent.VERIFY), _role_map()
+    ) is None
