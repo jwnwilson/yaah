@@ -33,3 +33,35 @@ def test_implement_writes_a_file_via_storage():
                      acceptance_criteria=[], workspace_path=storage.local_path("runs/r1"))
     list(rt.run_stage(ctx))
     assert storage.exists("runs/r1/IMPLEMENTED.md")
+
+
+def test_fake_runtime_drives_orchestrator_decision_and_verdict(tmp_path):
+    import json
+
+    from adapters.agent.runtime.fake import FakeAgentRuntime, result_of
+    from adapters.storage.local import LocalStorageAdapter
+    from domain.models import RunStage
+    from domain.runtime import RunContext
+
+    storage = LocalStorageAdapter(base_dir=str(tmp_path))
+    rt = FakeAgentRuntime(storage=storage)
+
+    def _run(instructions, stage=RunStage.PLAN):
+        ctx = RunContext(run_id="r1", stage=stage, task_title="T",
+                         workspace_path=storage.local_path("runs/r1"), instructions=instructions)
+        return result_of(list(rt.run_stage(ctx)))
+
+    # Lead, wave 0 -> a continue decision dispatching the backend.
+    _run("...Progress so far — wave 0... write to .orchestration/decision.json")
+    decision = json.loads(storage.read_text("runs/r1/.orchestration/decision.json"))
+    assert decision["intent"] == "continue"
+    assert decision["dispatches"][0]["target_role"] == "backend"
+
+    # Lead, later wave -> verify.
+    _run("...Progress so far — wave 1... write to .orchestration/decision.json")
+    decision2 = json.loads(storage.read_text("runs/r1/.orchestration/decision.json"))
+    assert decision2["intent"] == "verify"
+
+    # Monitor -> a complete verdict.
+    _run("verify... write to .orchestration/verdict.json", stage=RunStage.VERIFY)
+    assert json.loads(storage.read_text("runs/r1/.orchestration/verdict.json"))["complete"] is True
