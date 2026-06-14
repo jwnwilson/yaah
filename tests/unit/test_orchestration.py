@@ -58,7 +58,9 @@ def test_agent_step_result_defaults():
 def test_agent_report_carries_outcome_and_cost():
     from domain.orchestration import AgentOutcome, AgentReport
 
-    rep = AgentReport(role=AgentRole.QA, outcome=AgentOutcome.FAIL, summary="2 failing", cost_usd=0.5)
+    rep = AgentReport(
+        role=AgentRole.QA, outcome=AgentOutcome.FAIL, summary="2 failing", cost_usd=0.5
+    )
     assert rep.outcome == AgentOutcome.FAIL and rep.cost_usd == 0.5
 
 
