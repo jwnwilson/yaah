@@ -107,3 +107,13 @@ def test_chat_models():
     s = ChatSession(owner_id="u", project_id="p")
     m = ChatMessage(owner_id="u", session_id=s.id, role=ChatRole.USER, content="hi")
     assert s.id and m.role == "user" and m.content == "hi" and s.epic_id is None
+
+
+def test_orchestration_run_event_types_exist():
+    from domain.models import RunEventType
+
+    assert RunEventType.AGENT_DISPATCHED == "agent_dispatched"
+    assert RunEventType.AGENT_REPORTED == "agent_reported"
+    assert RunEventType.MONITOR_STARTED == "monitor_started"
+    assert RunEventType.MONITOR_VERDICT == "monitor_verdict"
+    assert RunEventType.QUIESCENCE_REACHED == "quiescence_reached"

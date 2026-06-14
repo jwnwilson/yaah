@@ -49,6 +49,8 @@ def build_invocation(ctx: RunContext, *, model_id: str) -> AgentInvocation:
     task_prompt, default_tools = prompts.for_stage(
         ctx.stage, ctx.task_title, ctx.acceptance_criteria, body
     )
+    if ctx.instructions:
+        task_prompt = ctx.instructions
     argv = ["claude", "-p", task_prompt, "--output-format", "stream-json", "--verbose"]
     tools = list(default_tools)
     files: dict[str, str] = {}

@@ -114,6 +114,11 @@ class RunEventType(StrEnum):
     GATE_RESOLVED = "gate_resolved"
     BLOCKED = "blocked"
     ERROR = "error"
+    AGENT_DISPATCHED = "agent_dispatched"
+    AGENT_REPORTED = "agent_reported"
+    MONITOR_STARTED = "monitor_started"
+    MONITOR_VERDICT = "monitor_verdict"
+    QUIESCENCE_REACHED = "quiescence_reached"
 
 
 class RunEvent(BaseModel):

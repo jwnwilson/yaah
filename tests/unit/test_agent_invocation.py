@@ -113,3 +113,37 @@ def test_model_id_is_used_verbatim():
     inv = build_invocation(_ctx(agent=man), model_id="engineer-model")
     i = inv.argv.index("--model")
     assert inv.argv[i + 1] == "engineer-model"
+
+
+def test_run_context_accepts_instructions():
+    from domain.models import RunStage
+    from domain.runtime import RunContext
+
+    ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="t",
+                     workspace_path="/tmp/x", instructions="do exactly this")
+    assert ctx.instructions == "do exactly this"
+
+
+def test_build_invocation_uses_instructions_when_present():
+    from domain.agent_invocation import build_invocation
+    from domain.models import RunStage
+    from domain.runtime import RunContext
+
+    ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="t",
+                     acceptance_criteria=["c"], workspace_path="/tmp/x",
+                     instructions="ORCHESTRATED BRIEF: build the widget")
+    inv = build_invocation(ctx, model_id="m")
+    p = inv.argv.index("-p")
+    assert inv.argv[p + 1] == "ORCHESTRATED BRIEF: build the widget"
+
+
+def test_build_invocation_falls_back_to_stage_prompt():
+    from domain.agent_invocation import build_invocation
+    from domain.models import RunStage
+    from domain.runtime import RunContext
+
+    ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="Add login",
+                     acceptance_criteria=["works"], workspace_path="/tmp/x")
+    inv = build_invocation(ctx, model_id="m")
+    p = inv.argv.index("-p")
+    assert "Add login" in inv.argv[p + 1]
