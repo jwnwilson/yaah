@@ -10,7 +10,7 @@ yaah persists state in two independent stores: Postgres (domain rows — project
 
 ## Decision
 
-`make db-reset` resets **both** persistence layers and then re-seeds startup data: it drops/recreates the Postgres schema and re-runs migrations, stops Temporal and removes its `temporaldata` volume (killing orphaned/stuck workflows), brings Temporal back fresh, and runs `make seed`. Startup data is created by a standalone, idempotent script (`src/interactors/seed.py`) that writes through the same owner-scoped UnitOfWork the API uses.
+`make db-reset` resets **both** persistence layers and then re-seeds startup data: it drops/recreates the Postgres schema and re-runs migrations, stops Temporal and removes its `temporaldata` volume (killing orphaned/stuck workflows), brings Temporal back fresh, and runs `make seed`. Startup data is created by a standalone, idempotent script (`src/interactors/cli/seed.py`) that writes through the same owner-scoped UnitOfWork the API uses.
 
 ## Alternatives Considered
 

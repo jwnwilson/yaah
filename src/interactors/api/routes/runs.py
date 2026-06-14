@@ -15,7 +15,7 @@ from domain.transitions import validate_transition
 from interactors.api.deps import get_uow, memory_applier, temporal_client
 from interactors.api.deps import settings as get_settings
 from interactors.api.envelope import ok
-from interactors.memory_apply import MemoryApplier
+from interactors.cli.memory_apply import MemoryApplier
 from interactors.temporal.client import TemporalRunClient
 
 router = APIRouter(tags=["runs"])

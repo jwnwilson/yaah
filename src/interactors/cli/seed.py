@@ -10,7 +10,7 @@ local dev user (`dev-user`):
 
 Run via ``make seed`` (which also provisions the sample git repo), or directly:
 
-    PYTHONPATH=src uv run python -m interactors.seed
+    PYTHONPATH=src uv run python -m interactors.cli.seed
 
 The sample repo path is taken from ``YAAH_SEED_REPO`` (default ``/tmp/yaah-dummy``).
 """
