@@ -23,7 +23,7 @@ export function SetSecretValueDialog({ secretId, secretName, onClose }: { secret
   const is503 = (setVal.error as { status?: number } | null)?.status === 503;
 
   return (
-    <Dialog title={`Set value — ${secretName}`} onClose={onClose}>
+    <Dialog title={`Set secret — ${secretName}`} onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
         <Field label="Value">
           <Input type="password" autoComplete="off" value={value} onChange={(e) => setValue(e.target.value)} />
