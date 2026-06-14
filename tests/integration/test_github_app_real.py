@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from adapters.forge.github_app import GitHubApp
+from adapters.git.github_app import GitHubApp
 
 _have = all(os.environ.get(k) for k in
             ("YAAH_GITHUB_APP_ID", "YAAH_GITHUB_PRIVATE_KEY",

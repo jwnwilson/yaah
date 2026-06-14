@@ -4,7 +4,7 @@ from pathlib import Path
 import httpx
 import jwt
 
-from adapters.forge.ports import ForgeError
+from adapters.git.ports import ForgeError
 
 _API = "https://api.github.com"
 

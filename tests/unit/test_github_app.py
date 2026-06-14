@@ -2,7 +2,7 @@ import httpx
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from adapters.forge.github_app import GitHubApp
+from adapters.git.github_app import GitHubApp
 
 
 def _pem() -> str:
