@@ -309,4 +309,6 @@ class MemoryProposal(BaseModel):
     diff: str = ""
     files: list[str] = Field(default_factory=list)
     status: MemoryProposalStatus = MemoryProposalStatus.PROPOSED
+    pr_url: str | None = None
+    resolved_at: datetime | None = None
     created_at: datetime = Field(default_factory=utc_now)

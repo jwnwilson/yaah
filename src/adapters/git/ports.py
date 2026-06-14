@@ -28,3 +28,7 @@ class GitPort(Protocol):
         self, workspace_path: str, *, branch: str, base: str,
         paths: list[str], message: str,
     ) -> bool: ...
+
+    def merge_into_base(
+        self, repo_ref: str, *, branch: str, base: str, token: str | None = None
+    ) -> bool: ...

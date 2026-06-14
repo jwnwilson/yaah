@@ -97,3 +97,31 @@ def test_commit_to_branch_returns_false_with_no_memory_changes():
         committed = LocalGit().commit_to_branch(str(ws), branch="b", base="main",
                                                 paths=["CLAUDE.md"], message="m")
         assert committed is False
+
+
+def test_merge_into_base_fast_forwards_base_to_branch():
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = Path(tmp)
+        _init_repo(ws)
+        # Create a memory branch off main with an extra commit, then return main to HEAD.
+        (ws / "CLAUDE.md").write_text("# original\n# learned\n")
+        git = LocalGit()
+        git.commit_to_branch(str(ws), branch="agent/memory-r1", base="main",
+                             paths=["CLAUDE.md"], message="memory update")
+        # base (main) does not yet contain the memory commit.
+        before = subprocess.run(["git", "log", "main", "--oneline"],
+                                cwd=ws, capture_output=True, text=True).stdout
+        assert "memory update" not in before
+        # Act
+        assert git.merge_into_base(str(ws), branch="agent/memory-r1", base="main") is True
+        # Assert main now contains the memory commit.
+        after = subprocess.run(["git", "log", "main", "--oneline"],
+                               cwd=ws, capture_output=True, text=True).stdout
+        assert "memory update" in after
+
+
+def test_merge_into_base_noop_when_branch_equals_base():
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = Path(tmp)
+        _init_repo(ws)
+        assert LocalGit().merge_into_base(str(ws), branch="main", base="main") is True
