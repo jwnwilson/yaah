@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Button } from "../../ui/Button";
+import { Card } from "../../ui/Card";
+import { EmptyState } from "../../ui/EmptyState";
 import { useProjects } from "./useProjects";
 import { CreateProjectDialog } from "./CreateProjectDialog";
 
@@ -8,22 +11,29 @@ export default function ProjectsPage() {
   const { data, isLoading, isError, error } = useProjects();
 
   return (
-    <div className="p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Projects</h1>
-        <button onClick={() => setDialogOpen(true)} className="rounded bg-blue-600 px-3 py-1 text-sm text-white">
-          New project
-        </button>
+    <div className="mx-auto max-w-5xl p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-fg">Projects</h1>
+        <Button size="sm" onClick={() => setDialogOpen(true)}>New project</Button>
       </div>
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
-      {isError && <p className="text-sm text-red-600">{(error as Error).message}</p>}
-      <ul className="space-y-2">
+      {isLoading && <p className="text-sm text-subtle">Loading…</p>}
+      {isError && <p className="text-sm text-danger">{(error as Error).message}</p>}
+      {data && data.length === 0 && (
+        <EmptyState
+          title="No projects yet"
+          description="Create your first project to spin up a board."
+          action={<Button size="sm" onClick={() => setDialogOpen(true)}>New project</Button>}
+        />
+      )}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {data?.map((p) => (
-          <li key={p.id} className="rounded border p-3">
-            <Link to={`/projects/${p.id}`} className="font-medium text-blue-700">{p.name}</Link>
-          </li>
+          <Card key={p.id} className="p-4 transition-colors hover:bg-surface-hover">
+            <Link to={`/projects/${p.id}`} className="font-medium text-fg hover:text-accent">
+              {p.name}
+            </Link>
+          </Card>
         ))}
-      </ul>
+      </div>
       {dialogOpen && <CreateProjectDialog onClose={() => setDialogOpen(false)} />}
     </div>
   );

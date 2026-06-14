@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { Button } from "../../ui/Button";
+import { Dialog } from "../../ui/Dialog";
+import { Field, Input } from "../../ui/Field";
 import { useCreateProject } from "./useCreateProject";
 
 export function CreateProjectDialog({ onClose }: { onClose: () => void }) {
@@ -21,28 +24,18 @@ export function CreateProjectDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 grid place-items-center bg-black/30">
-      <form onSubmit={submit} className="w-96 space-y-3 rounded bg-white p-4 shadow">
-        <h2 className="text-lg font-semibold">New project</h2>
-        <label className="block text-sm">
-          Name
-          <input className="mt-1 w-full rounded border p-2" value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="block text-sm">
-          Repo URL
-          <input className="mt-1 w-full rounded border p-2" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} />
-        </label>
-        <label className="block text-sm">
-          Local path
-          <input className="mt-1 w-full rounded border p-2" value={localPath} onChange={(e) => setLocalPath(e.target.value)} />
-        </label>
-        {!canSubmit && <p className="text-xs text-gray-500">Name and a repo URL or local path are required.</p>}
-        {create.isError && <p className="text-xs text-red-600">{(create.error as Error).message}</p>}
+    <Dialog title="New project" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-3">
+        <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+        <Field label="Repo URL"><Input value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} /></Field>
+        <Field label="Local path"><Input value={localPath} onChange={(e) => setLocalPath(e.target.value)} /></Field>
+        {!canSubmit && <p className="text-xs text-subtle">Name and a repo URL or local path are required.</p>}
+        {create.isError && <p className="text-xs text-danger">{(create.error as Error).message}</p>}
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded px-3 py-1 text-sm">Cancel</button>
-          <button type="submit" disabled={!canSubmit || create.isPending} className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50">Create</button>
+          <Button type="button" variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button type="submit" size="sm" disabled={!canSubmit} loading={create.isPending}>Create</Button>
         </div>
       </form>
-    </div>
+    </Dialog>
   );
 }
