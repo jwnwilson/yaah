@@ -74,7 +74,7 @@ def build_activities(database_url: str, profile: str = "local") -> list:
     acts = RunActivities(factory, runtime, storage, git, forge, cipher=cipher, notifier=notifier)
     return [acts.persist_run_state, acts.record_event, acts.record_usage, acts.run_stage,
             acts.cleanup_workspace, acts.provision_workspace, acts.open_pr,
-            acts.record_notification]
+            acts.record_notification, acts.capture_memory]
 
 
 async def run_worker(  # pragma: no cover

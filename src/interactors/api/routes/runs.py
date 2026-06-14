@@ -41,6 +41,7 @@ def start_run(
             "run_id": run.id,
             "owner_id": run.owner_id,
             "task_id": task_id,
+            "project_id": project.id,
             "autonomy": project.autonomy,
             "task_title": task.title,
             "acceptance_criteria": task.acceptance_criteria,
@@ -94,6 +95,16 @@ def list_run_audit(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
         [e.model_dump(mode="json") for e in page.results],
         meta={"total": page.total, "page_size": page.page_size, "page_number": page.page_number},
     )
+
+
+@router.get("/runs/{run_id}/memory")
+def get_run_memory(run_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        uow.runs.get(run_id)  # 404 if unknown / cross-tenant
+        page = uow.memory_proposals.list(
+            filters={"run_id": run_id}, order_by="-created_at", page_size=1)
+    data = page.results[0].model_dump(mode="json") if page.results else None
+    return ok(data)
 
 
 def _signal(
