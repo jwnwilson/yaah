@@ -7,8 +7,9 @@
     <script>
       try {
         var t = localStorage.getItem("yaah-theme");
+        // Any value other than "light" is treated as "dark" (e.g. unset or a future "system").
         if (t !== "light") document.documentElement.classList.add("dark");
-      } catch (e) {}
+      } catch {}
     </script>
   </head>
   <body>

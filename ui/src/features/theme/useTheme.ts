@@ -5,6 +5,8 @@ const STORAGE_KEY = "yaah-theme";
 
 function readStored(): Theme {
   try {
+    // Any stored value other than "light" is treated as "dark" (so a future
+    // "system" option is not silently coerced into a light/dark default here).
     return localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
   } catch {
     return "dark";

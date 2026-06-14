@@ -28,7 +28,7 @@
 .dark {
   --canvas: 9 9 11;
   --panel: 24 24 27;
-  --surface: 24 24 27;
+  --surface: 32 32 35;
   --surface-hover: 39 39 42;
   --fg: 244 244 245;
   --muted: 161 161 170;
