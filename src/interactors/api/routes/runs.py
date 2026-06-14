@@ -38,6 +38,10 @@ def start_run(
         project = uow.projects.get(task.project_id)
         if not project.team_id:
             raise HTTPException(status_code=409, detail="project has no team assigned")
+        team_agents = uow.agents.list(
+            filters={"team_id": project.team_id}, page_size=100
+        ).results
+        available_roles = sorted({a.role.value for a in team_agents})
         run = uow.runs.create(
             Run(owner_id=project.owner_id, task_id=task_id, team_id=project.team_id)
         )
@@ -59,8 +63,10 @@ def start_run(
             "repo_ref": repo_ref,
             "base": settings.github_base_branch,
             "team_id": run.team_id,
+            "available_roles": available_roles,
         }
-    temporal.start_run_workflow(run_input)  # after commit: run row exists for the worker
+    workflow_name = "OrchestratorWorkflow" if settings.orchestrator_enabled else "RunWorkflow"
+    temporal.start_run_workflow(run_input, workflow_name)  # after commit: run row exists
     return ok(run.model_dump(mode="json"))
 
 

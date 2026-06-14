@@ -16,8 +16,8 @@ class _FakeTemporal:
         self.started = []
         self.signals = []
 
-    def start_run_workflow(self, run_input):
-        self.started.append(run_input)
+    def start_run_workflow(self, run_input, workflow_name="RunWorkflow"):
+        self.started.append((workflow_name, run_input))
 
     def signal(self, run_id, name):
         self.signals.append((run_id, name))
@@ -156,7 +156,7 @@ def test_start_run_starts_workflow():
     resp = c.post(f"/work-items/{task_id}/runs")
     assert resp.status_code == 201
     assert len(fake.started) == 1
-    assert fake.started[0]["run_id"] == resp.json()["data"]["id"]
+    assert fake.started[0][1]["run_id"] == resp.json()["data"]["id"]
 
 
 def test_approve_sends_signal_only_when_awaiting():
@@ -217,15 +217,15 @@ def test_start_run_passes_profile_and_repo(monkeypatch):
     c, fake = _client_with_fake_temporal()
     task_id, _t, _pid = _ready_task(c)
     c.post(f"/work-items/{task_id}/runs")
-    assert fake.started[0]["profile"] in ("local", "remote")
-    assert "repo_ref" in fake.started[0]
+    assert fake.started[0][1]["profile"] in ("local", "remote")
+    assert "repo_ref" in fake.started[0][1]
 
 
 def test_start_run_passes_team_id():
     c, fake = _client_with_fake_temporal()
     task_id, _t, _p = _ready_task(c)
     c.post(f"/work-items/{task_id}/runs")
-    assert "team_id" in fake.started[0] and fake.started[0]["team_id"]
+    assert "team_id" in fake.started[0][1] and fake.started[0][1]["team_id"]
 
 
 # --- A5c-3d-1 T4: GET /runs/{id}/audit ---
@@ -249,3 +249,27 @@ def test_list_run_audit():
 def test_audit_unknown_run_404():
     c, _fake = _client_with_fake_temporal()
     assert c.get("/runs/deadbeef/audit").status_code == 404
+
+
+def _client_with_fake_temporal_settings(**over):
+    app = create_app(Settings(_env_file=None, database_url="sqlite:///:memory:", **over))
+    fake = _FakeTemporal()
+    app.dependency_overrides[temporal_client] = lambda: fake
+    return TestClient(app), fake
+
+
+def test_start_run_uses_pipeline_workflow_by_default():
+    c, fake = _client_with_fake_temporal()
+    task_id, _team_id, _pid = _ready_task(c)
+    c.post(f"/work-items/{task_id}/runs")
+    workflow_name, run_input = fake.started[0]
+    assert workflow_name == "RunWorkflow"
+    assert "backend" in run_input["available_roles"]  # default team roles are passed
+
+
+def test_start_run_uses_orchestrator_when_enabled():
+    c, fake = _client_with_fake_temporal_settings(orchestrator_enabled=True)
+    task_id, _team_id, _pid = _ready_task(c)
+    c.post(f"/work-items/{task_id}/runs")
+    workflow_name, _run_input = fake.started[0]
+    assert workflow_name == "OrchestratorWorkflow"
