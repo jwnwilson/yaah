@@ -22,7 +22,7 @@ export function Column({
     >
       <div className="mb-2 flex items-center justify-between px-1">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-subtle">{column.title}</h2>
-        <span className="rounded-full bg-surface-hover px-1.5 text-xs text-muted">{items.length}</span>
+        <span className="rounded-full bg-surface-hover px-1.5 text-xs text-fg">{items.length}</span>
       </div>
       {items.map((item) => (
         <TaskCard key={item.id} item={item} onOpen={onOpen} />
