@@ -9,8 +9,7 @@ from temporalio.worker import Worker
 from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
-from adapters.forge.fake import FakeGitForge
-from adapters.git.fake import FakeGit
+from adapters.git.fake import FakeGit, FakeGitForge
 from adapters.runtime.fake import FakeAgentRuntime
 from adapters.storage.local import LocalStorageAdapter
 from domain.models import (

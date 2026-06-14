@@ -17,9 +17,9 @@ from interactors.temporal.workflows import RunWorkflow
 
 def _build_forge(profile: str):
     if profile != "remote":
-        from adapters.forge.fake import FakeGitForge
+        from adapters.git.fake import FakeGitForge
         return FakeGitForge()
-    from adapters.forge.github_app import GitHubApp
+    from adapters.git.github_app import GitHubApp
     from interactors.api.settings import Settings
     s = Settings()
     return GitHubApp(app_id=s.github_app_id, private_key=s.github_private_key,

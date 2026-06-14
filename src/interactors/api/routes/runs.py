@@ -2,8 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
-from adapters.forge.ports import ForgeError
-from adapters.git.ports import GitError
+from adapters.git.ports import ForgeError, GitError
 from domain.models import (
     MemoryProposalStatus,
     Run,

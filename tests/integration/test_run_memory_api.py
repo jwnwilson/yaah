@@ -63,8 +63,7 @@ def _seed_project(c: TestClient) -> None:
 
 
 def _client_with_fake_applier() -> TestClient:
-    from adapters.forge.fake import FakeGitForge
-    from adapters.git.fake import FakeGit
+    from adapters.git.fake import FakeGit, FakeGitForge
     from interactors.api.deps import memory_applier
     from interactors.memory_apply import MemoryApplier
     app = create_app(Settings(_env_file=None, database_url="sqlite:///:memory:"))

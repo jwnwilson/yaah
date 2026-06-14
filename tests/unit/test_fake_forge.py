@@ -1,4 +1,4 @@
-from adapters.forge.fake import FakeGitForge
+from adapters.git.fake import FakeGitForge
 
 
 def test_fake_forge_token_and_pr():
