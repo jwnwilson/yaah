@@ -1,6 +1,6 @@
 import json
 
-from adapters.runtime.stream_json import parse
+from adapters.agent.runtime.stream_json import parse
 from domain.models import RunStage
 
 

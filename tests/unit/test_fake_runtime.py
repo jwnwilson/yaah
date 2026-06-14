@@ -1,6 +1,6 @@
 import tempfile
 
-from adapters.runtime.fake import FakeAgentRuntime, result_of
+from adapters.agent.runtime.fake import FakeAgentRuntime, result_of
 from adapters.storage.local import LocalStorageAdapter
 from domain.models import RunStage
 from domain.runtime import AgentEvent, RunContext, StageResult

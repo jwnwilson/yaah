@@ -1,7 +1,7 @@
 import httpx
 
-from adapters.model.ports import ModelProvider
-from adapters.refinement.ports import RefinementContext
+from adapters.agent.model.ports import ModelProvider
+from adapters.agent.refinement.ports import RefinementContext
 from domain.refinement import RefinementOutput
 
 _TOOL = {

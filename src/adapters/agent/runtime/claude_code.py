@@ -3,8 +3,8 @@ import signal
 import subprocess
 from typing import Iterator
 
-from adapters.model.ports import ModelProvider
-from adapters.runtime import stream_json
+from adapters.agent.model.ports import ModelProvider
+from adapters.agent.runtime import stream_json
 from adapters.skills.fetcher import SkillFetcher
 from domain.agent_invocation import build_invocation
 from domain.runtime import AgentEvent, RunContext, StageResult

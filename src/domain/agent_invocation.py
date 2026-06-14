@@ -8,14 +8,13 @@ from pydantic import BaseModel
 from domain import prompts
 from domain.runtime import RunContext
 
+_HOOK_COMMAND = "python -m adapters.agent.runtime.pretooluse_hook"
 _SETTINGS = {
     "hooks": {
         "PreToolUse": [
             {
                 "matcher": "*",
-                "hooks": [
-                    {"type": "command", "command": "python -m adapters.runtime.pretooluse_hook"}
-                ],
+                "hooks": [{"type": "command", "command": _HOOK_COMMAND}],
             }
         ]
     }

@@ -1,5 +1,5 @@
 """Claude PreToolUse hook: decide + audit each tool call. Run as
-`python -m adapters.runtime.pretooluse_hook`. Exit 0 = allow, 2 = deny. Fail-open."""
+`python -m adapters.agent.runtime.pretooluse_hook`. Exit 0 = allow, 2 = deny. Fail-open."""
 
 import json
 import os

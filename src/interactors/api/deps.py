@@ -32,7 +32,7 @@ def memory_applier(request: Request):
 
 
 def cipher(request: Request):
-    from adapters.secrets.cipher import FernetCipher
+    from lib.secrets import FernetCipher
 
     key = request.app.state.settings.secret_key
     return FernetCipher(key) if key else None
@@ -41,8 +41,8 @@ def cipher(request: Request):
 def refinement_agent(request: Request):
     settings = request.app.state.settings
     if settings.anthropic_api_key or settings.litellm_base_url:
-        from adapters.model.anthropic import AnthropicProvider
-        from adapters.refinement.anthropic import AnthropicRefinementAgent
+        from adapters.agent.model.anthropic import AnthropicProvider
+        from adapters.agent.refinement.anthropic import AnthropicRefinementAgent
 
         return AnthropicRefinementAgent(
             AnthropicProvider(
@@ -50,6 +50,6 @@ def refinement_agent(request: Request):
                 model=settings.agent_model,
             )
         )
-    from adapters.refinement.fake import FakeRefinementAgent
+    from adapters.agent.refinement.fake import FakeRefinementAgent
 
     return FakeRefinementAgent()
