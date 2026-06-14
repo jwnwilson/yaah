@@ -22,6 +22,8 @@ from domain.notifications import notification_for_event, resolves
 from domain.runtime import AgentRuntime, RunContext
 from domain.usage import TokenUsage
 
+_MAX_LEAD_RETRIES = 2  # bounded re-prompts when the lead emits an invalid decision
+
 
 def _heartbeat(detail: str) -> None:
     try:
@@ -308,6 +310,235 @@ class RunActivities:
             })
         self._ingest_tool_audit(payload["owner_id"], payload["run_id"])
         return result.model_dump()
+
+    @activity.defn(name="persist_messages")
+    def persist_messages(self, payload: dict) -> None:
+        from domain.models import Message
+        owner_id = payload["owner_id"]
+        uow = self._uow(owner_id)
+        with uow.transaction():
+            for raw in payload.get("messages", []):
+                msg = Message(**raw)
+                try:
+                    uow.messages.get(msg.id)
+                    continue  # already persisted
+                except Exception:  # noqa: BLE001 - not found -> create
+                    uow.messages.create(msg)
+
+    def _manifest_for_role(self, owner_id: str, team_id, role):
+        """Assemble the AgentManifest for `role` on `team_id` (skills/mcps/secrets),
+        mirroring run_stage's assembly. Returns (manifest, role) or (None, None)."""
+        if not team_id or role is None:
+            return None, None
+        from domain import capabilities
+        uow = self._uow(owner_id)
+        with uow.transaction():
+            agents = uow.agents.list(filters={"team_id": team_id}, page_size=100).results
+            selected = next((a for a in agents if a.role == role), None)
+            if selected is None:
+                return None, None
+            skills, mcps = [], []
+            for sid in selected.skill_ids:
+                try:
+                    skills.append(uow.skills.get(sid))
+                except Exception:  # noqa: BLE001 - deleted grant: skip, don't fail
+                    pass
+            for mid in selected.mcp_server_ids:
+                try:
+                    mcps.append(uow.mcp_servers.get(mid))
+                except Exception:  # noqa: BLE001
+                    pass
+            manifest = capabilities.assemble(selected, skills, mcps)
+            if self._cipher is not None and selected.secret_ids:
+                secret_env = {}
+                for sec_id in selected.secret_ids:
+                    try:
+                        sec = uow.secrets.get(sec_id)
+                        if sec.encrypted_value:
+                            secret_env[sec.name] = self._cipher.decrypt(sec.encrypted_value)
+                    except Exception:  # noqa: BLE001 - missing/bad secret: skip
+                        pass
+                manifest = manifest.model_copy(update={"secret_env": secret_env})
+        return manifest, selected.role
+
+    def _run_instructed_agent(self, payload, *, role, instructions, stage):
+        """Run one agent with an explicit brief. Mirrors run_stage but selects the
+        agent by `role` and drives it via RunContext.instructions. Returns a StageResult."""
+        run_id = payload["run_id"]
+        owner_id = payload["owner_id"]
+        workspace_path = self._storage.local_path(f"runs/{run_id}")
+        manifest, agent_role = self._manifest_for_role(owner_id, payload.get("team_id"), role)
+        if manifest is not None:
+            self._record_audit(
+                owner_id, run_id, stage.value, agent_role.value if agent_role else "",
+                {
+                    "tools": list(manifest.allowed_tools),
+                    "skills": [s.name for s in manifest.skills],
+                    "mcp_servers": [m.name for m in manifest.mcp_servers],
+                    "model_alias": manifest.model_alias,
+                    "secret_count": len(manifest.secret_env),
+                },
+            )
+        ctx = RunContext(
+            run_id=run_id,
+            stage=stage,
+            task_title=payload["task_title"],
+            acceptance_criteria=payload.get("acceptance_criteria", []),
+            workspace_path=workspace_path,
+            prior_artifacts=payload.get("prior_artifacts", {}),
+            instructions=instructions,
+            agent=manifest,
+        )
+        events = []
+        for event in self._runtime.run_stage(ctx):
+            events.append(event)
+            _heartbeat(event.message)
+            self.record_event({
+                "run_id": run_id, "owner_id": owner_id, "stage": stage.value,
+                "type": RunEventType.AGENT_EVENT, "message": event.message,
+            })
+        result = result_of(events)
+        if result.model_usage:
+            self.record_usage({
+                "run_id": run_id, "owner_id": owner_id, "stage": stage.value,
+                "agent_role": agent_role.value if agent_role else None,
+                "model_usage": {m: u.model_dump() for m, u in result.model_usage.items()},
+            })
+        return result
+
+    def _read_artifact(self, run_id: str, name: str):
+        """Read + json-decode an .orchestration artifact, or None if missing/invalid."""
+        import json
+        key = f"runs/{run_id}/.orchestration/{name}"
+        if not self._storage.exists(key):
+            return None
+        text = self._storage.read_text(key)
+        if not text.strip():
+            return None
+        try:
+            return json.loads(text)
+        except (ValueError, TypeError):
+            return None
+
+    @activity.defn(name="invoke_lead")
+    def invoke_lead(self, payload: dict) -> dict:
+        from domain.models import AgentRole, RunStage
+        from domain.orchestration import OrchestrationState
+        from domain.orchestration_prompts import (
+            OrchestrationContractError,
+            build_orchestrator_prompt,
+            parse_decision,
+        )
+        run_id, owner_id = payload["run_id"], payload["owner_id"]
+        state = OrchestrationState.model_validate(payload.get("state") or {})
+        roles = [AgentRole(r) for r in payload.get("available_roles", [])]
+        base_prompt = build_orchestrator_prompt(
+            task_title=payload["task_title"],
+            acceptance_criteria=payload.get("acceptance_criteria", []),
+            body=payload.get("body", ""),
+            state=state,
+            available_roles=roles,
+        )
+        write_line = (
+            "\n\nWrite your decision JSON (and nothing else) to the file "
+            ".orchestration/decision.json in the workspace."
+        )
+        total_cost = 0.0
+        hint = ""
+        for _ in range(_MAX_LEAD_RETRIES + 1):
+            result = self._run_instructed_agent(
+                payload, role=AgentRole.LEAD,
+                instructions=base_prompt + write_line + hint, stage=RunStage.PLAN,
+            )
+            total_cost += result.cost_usd
+            raw = self._read_artifact(run_id, "decision.json")
+            if raw is not None:
+                try:
+                    decision = parse_decision(raw)
+                    for d in decision.dispatches:
+                        self.record_event({
+                            "run_id": run_id, "owner_id": owner_id, "stage": "plan",
+                            "type": RunEventType.AGENT_DISPATCHED,
+                            "message": f"dispatch {d.target_role.value}",
+                        })
+                    return {"decision": decision.model_dump(mode="json"),
+                            "cost_usd": total_cost}
+                except OrchestrationContractError as exc:
+                    hint = f"\n\nYour previous decision was invalid: {exc}. Try again."
+            else:
+                hint = "\n\nYou did not write a valid decision.json. Try again."
+        return {"decision": {"intent": "block",
+                             "rationale": "lead did not produce a valid decision"},
+                "cost_usd": total_cost}
+
+    @activity.defn(name="agent_step")
+    def agent_step(self, payload: dict) -> dict:
+        from domain.models import AgentRole, RunStage
+        from domain.orchestration import AgentOutcome, AgentStepResult, OutboundMessage
+        run_id, owner_id = payload["run_id"], payload["owner_id"]
+        role = AgentRole(payload["role"]) if payload.get("role") else None
+        instructions = (
+            f"{payload.get('incoming', '')}\n\nIf you need to message a teammate or the "
+            "user, write a JSON list of outbound messages to .orchestration/outbox.json."
+        )
+        result = self._run_instructed_agent(
+            payload, role=role, instructions=instructions, stage=RunStage.IMPLEMENT,
+        )
+        outcome = AgentOutcome(result.outcome)
+        outgoing = []
+        raw = self._read_artifact(run_id, "outbox.json")
+        if isinstance(raw, list):
+            for item in raw:
+                try:
+                    outgoing.append(OutboundMessage.model_validate(item))
+                except Exception:  # noqa: BLE001 - skip malformed outbound entries
+                    pass
+        self.record_event({
+            "run_id": run_id, "owner_id": owner_id, "stage": "implement",
+            "type": RunEventType.AGENT_REPORTED,
+            "message": f"{payload.get('role', 'agent')} -> {outcome.value}",
+        })
+        return AgentStepResult(
+            outcome=outcome,
+            completed_brief=(outcome == AgentOutcome.OK),
+            outgoing=outgoing,
+            artifacts=result.artifacts,
+            cost_usd=result.cost_usd,
+        ).model_dump(mode="json")
+
+    @activity.defn(name="run_monitor")
+    def run_monitor(self, payload: dict) -> dict:
+        from domain.models import AgentRole, RunStage
+        from domain.orchestration import MonitorVerdict
+        from domain.orchestration_prompts import OrchestrationContractError, parse_verdict
+        run_id, owner_id = payload["run_id"], payload["owner_id"]
+        role = AgentRole(payload["role"]) if payload.get("role") else AgentRole.QA
+        ac = "\n".join(f"- {c}" for c in payload.get("acceptance_criteria", []))
+        instructions = (
+            "Verify the task is complete against the acceptance criteria below. Write your "
+            "verdict JSON (fields: complete, unmet[], pending_mailboxes[], notes) to "
+            f".orchestration/verdict.json.\n\nAcceptance criteria:\n{ac}"
+        )
+        self.record_event({
+            "run_id": run_id, "owner_id": owner_id, "stage": "verify",
+            "type": RunEventType.MONITOR_STARTED, "message": "monitor started",
+        })
+        self._run_instructed_agent(
+            payload, role=role, instructions=instructions, stage=RunStage.VERIFY,
+        )
+        raw = self._read_artifact(run_id, "verdict.json")
+        verdict = MonitorVerdict(complete=False, notes="monitor produced no verdict")
+        if raw is not None:
+            try:
+                verdict = parse_verdict(raw)
+            except OrchestrationContractError:
+                pass
+        self.record_event({
+            "run_id": run_id, "owner_id": owner_id, "stage": "verify",
+            "type": RunEventType.MONITOR_VERDICT,
+            "message": f"complete={verdict.complete}",
+        })
+        return verdict.model_dump(mode="json")
 
     @activity.defn(name="cleanup_workspace")
     def cleanup_workspace(self, payload: dict) -> None:
