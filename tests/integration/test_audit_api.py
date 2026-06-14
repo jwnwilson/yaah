@@ -18,7 +18,8 @@ def _seed(client):
     uow = SqlUnitOfWork(app.state.session_factory, required_filters={"owner_id": "dev-user"})
     with uow.transaction():
         uow.audit_events.create(AuditEvent(owner_id="dev-user", run_id="r1", actor="lead",
-                                           action=AuditAction.TOOL_ALLOWED, detail={"tool": "Read"}))
+                                           action=AuditAction.TOOL_ALLOWED,
+                                           detail={"tool": "Read"}))
         uow.audit_events.create(AuditEvent(owner_id="dev-user", run_id="r1", actor="lead",
                                            action=AuditAction.TOOL_DENIED, detail={"tool": "Bash"}))
         uow.audit_events.create(AuditEvent(owner_id="dev-user", run_id="r2", actor="eng",

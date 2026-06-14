@@ -22,7 +22,8 @@ def _seed(client):
             uow.work_items.create(WorkItem(id=f"t-{pid}", owner_id="dev-user", project_id=pid,
                                            kind=WorkItemKind.TASK, parent_id=f"parent-{pid}",
                                            title="T"))
-            uow.runs.create(Run(id=f"r-{pid}", owner_id="dev-user", task_id=f"t-{pid}", team_id="tm"))
+            uow.runs.create(Run(id=f"r-{pid}", owner_id="dev-user",
+                                task_id=f"t-{pid}", team_id="tm"))
         uow.usage.create(UsageRecord(owner_id="dev-user", run_id="r-p1", work_item_id="t-p1",
                                      project_id="p1", stage=RunStage.PLAN, model_id="m1",
                                      input_tokens=10, output_tokens=2, cost_usd=0.1))
@@ -72,3 +73,11 @@ def test_global_usage_empty_is_zero():
     client = _client()
     data = client.get("/usage").json()["data"]
     assert data["totals"]["total_tokens"] == 0
+
+
+def test_global_usage_includes_records_within_time_window():
+    client = _client()
+    _seed(client)
+    data = client.get("/usage", params={"since": "2000-01-01T00:00:00Z",
+                                        "until": "2999-01-01T00:00:00Z"}).json()["data"]
+    assert data["totals"]["input_tokens"] == 100
