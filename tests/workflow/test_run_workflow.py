@@ -6,11 +6,11 @@ import pytest
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
+from adapters.agent.runtime.fake import FakeAgentRuntime
 from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
 from adapters.git.fake import FakeGit, FakeGitForge
-from adapters.runtime.fake import FakeAgentRuntime
 from adapters.storage.local import LocalStorageAdapter
 from domain.models import (
     AutonomyLevel,

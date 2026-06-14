@@ -1,9 +1,8 @@
-import { useState } from "react";
 import { useMemoryProposal } from "./useMemoryProposal";
+import { MemoryDiff } from "./MemoryDiff";
 
 export function MemoryProposalCard({ runId }: { runId: string }) {
   const { query, apply, reject } = useMemoryProposal(runId);
-  const [open, setOpen] = useState(false);
   const proposal = query.data;
 
   if (query.isLoading || !proposal) return null;
@@ -25,14 +24,7 @@ export function MemoryProposalCard({ runId }: { runId: string }) {
           <li key={f}>{f}</li>
         ))}
       </ul>
-      <button className="mt-1 text-blue-700 underline" onClick={() => setOpen((v) => !v)}>
-        {open ? "Hide diff" : "Show diff"}
-      </button>
-      {open && (
-        <pre className="mt-1 max-h-64 overflow-auto rounded bg-white p-2 text-[11px]">
-          {proposal.diff}
-        </pre>
-      )}
+      <MemoryDiff diff={proposal.diff} />
       {isProposed && (
         <div className="mt-2 flex gap-2">
           <button

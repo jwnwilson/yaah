@@ -6,6 +6,10 @@ import { ManageLayout } from "../features/manage/ManageLayout";
 import { SecretsPage } from "../features/manage/SecretsPage";
 import { SkillsPage } from "../features/manage/SkillsPage";
 import { McpServersPage } from "../features/manage/McpServersPage";
+import { BudgetPage } from "../features/manage/BudgetPage";
+import { AuditPage } from "../features/manage/AuditPage";
+import { ModelsPage } from "../features/manage/ModelsPage";
+import { MemoryPage } from "../features/manage/MemoryPage";
 
 export const routes: RouteObject[] = [
   {
@@ -21,6 +25,10 @@ export const routes: RouteObject[] = [
           { path: "secrets", element: <SecretsPage /> },
           { path: "skills", element: <SkillsPage /> },
           { path: "mcp-servers", element: <McpServersPage /> },
+          { path: "usage", element: <BudgetPage /> },
+          { path: "models", element: <ModelsPage /> },
+          { path: "audit", element: <AuditPage /> },
+          { path: "memory", element: <MemoryPage /> },
         ],
       },
     ],

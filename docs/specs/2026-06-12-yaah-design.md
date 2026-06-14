@@ -21,6 +21,7 @@ Agents work autonomously inside **sandboxed Docker containers** with centrally m
 | Agent engine | **Engine-agnostic `AgentRuntime` port**; default = headless coding agent (Claude Code / Agent SDK); OpenHands & CrewAI-Flows as future adapters | Coding-native agents decisively outperform generic framework agents at repo work; port keeps us unlocked |
 | Model access | **LiteLLM gateway**, logical aliases per role, Claude as default models | Model-agnostic per user requirement; budgets/keys/cost tracking built in |
 | Orchestration spine | **Temporal** (one workflow per run) | Durable pause-for-days human gates, crash-resume mid-run, retries; team already operates Temporal in llm_api. CrewAI rejected as spine: hierarchical mode documented-broken, ~3x token overhead, no durability (research: MAST study — role-played orchestration is where multi-agent dev teams fail) |
+> **Amended by [ADR-0002](../adr/0002-lead-driven-orchestration.md) (2026-06-14):** agent-as-orchestrator is no longer rejected. The lead is now an orchestrator agent that *decides* the dispatch DAG within bounded rails, while **Temporal remains the durable executor** (orchestrator-worker pattern; agents are child-workflow actors with signal mailboxes). This keeps the durability above and avoids the MAST failure mode via schema-bounded lead authority + guards.
 | Repo | **New standalone repo** | Harness manages many projects; must stand apart from any one of them |
 | Conventions | **llm_api conventions are the default**: hexagonal `domain/ports/adapters/interactors`, FastAPI + Temporal + React/Vite/Tailwind + Postgres, `uv`, pytest, 80% coverage | Proven, operator already knows them |
 | Users/auth | **Single-user now, multi-user-shaped** (Auth0, user/org columns from day one; local dev-user bypass) | Future-proof without real extra cost |
@@ -99,7 +100,7 @@ Devops role in v1 is thin: deterministic CI does the work; the agent only triage
 
 No agent polls another agent; supervision is structural:
 
-- The **workflow is the supervisor** — the lead is invoked per-stage and exits; persistent state lives in Temporal, which survives any process crash.
+- The **workflow is the supervisor** — the lead is invoked per-stage and exits; persistent state lives in Temporal, which survives any process crash. _(**Superseded by [ADR-0002](../adr/0002-lead-driven-orchestration.md):** the lead now orchestrates — it dispatches agents (child-workflow actors) and triggers a completion monitor — but Temporal is still the durable executor that runs every lead/worker step as an activity, so the crash-resume guarantee holds.)_
 - **Worker liveness = activity heartbeats** (runtime adapter emits on every agent event). Heartbeat timeout → Temporal kills/retries the activity, resuming from `progress.md` + git state. Hard per-stage timeouts cap wall-clock.
 - **Semantic stalling** is caught by the no-progress detector (mechanical signals, not LLM self-reports).
 - **Harness liveness**: Docker `restart: always` + healthchecks (API, Temporal worker, proxy). Worker death mid-run → restarted worker resumes the workflow. A periodic **janitor workflow** reaps orphaned sandboxes/tokens.

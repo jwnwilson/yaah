@@ -6,9 +6,9 @@ from concurrent.futures import ThreadPoolExecutor
 from temporalio.client import Client
 from temporalio.worker import Worker
 
+from adapters.agent.runtime.fake import FakeAgentRuntime
 from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
-from adapters.runtime.fake import FakeAgentRuntime
 from adapters.storage.local import LocalStorageAdapter
 from interactors.temporal.activities import RunActivities
 from interactors.temporal.config import TemporalConfig
@@ -31,10 +31,10 @@ def _build_model_provider(settings):
     gw = settings.model_gateway
     use_litellm = gw == "litellm" or (gw == "auto" and bool(settings.litellm_base_url))
     if use_litellm:
-        from adapters.model.litellm import LiteLLMProvider
+        from adapters.agent.model.litellm import LiteLLMProvider
         return LiteLLMProvider(settings.litellm_base_url or "", settings.litellm_api_key or "",
                                default_model=settings.agent_model)
-    from adapters.model.anthropic import AnthropicProvider
+    from adapters.agent.model.anthropic import AnthropicProvider
     return AnthropicProvider(api_key=settings.anthropic_api_key, model=settings.agent_model)
 
 
@@ -45,7 +45,7 @@ def _build_runtime(settings, storage):
         choice == "claude_code" or (choice == "auto" and has_key and shutil.which("claude"))
     )
     if use_claude:
-        from adapters.runtime.claude_code import ClaudeCodeRuntime
+        from adapters.agent.runtime.claude_code import ClaudeCodeRuntime
         from adapters.skills.fetcher import SkillFetcher
         return ClaudeCodeRuntime(_build_model_provider(settings), skills=SkillFetcher())
     return FakeAgentRuntime(storage=storage)
@@ -66,10 +66,10 @@ def build_activities(database_url: str, profile: str = "local") -> list:
     runtime = _build_runtime(settings, storage)
     cipher = None
     if settings.secret_key:
-        from adapters.secrets.cipher import FernetCipher
+        from lib.secrets import FernetCipher
         cipher = FernetCipher(settings.secret_key)
-    from adapters.notify.inapp import InAppChannel
-    from adapters.notify.ports import NotificationDispatcher
+    from adapters.agent.notify.inapp import InAppChannel
+    from adapters.agent.notify.ports import NotificationDispatcher
     notifier = NotificationDispatcher([InAppChannel()])
     acts = RunActivities(factory, runtime, storage, git, forge, cipher=cipher, notifier=notifier)
     return [acts.persist_run_state, acts.record_event, acts.record_usage, acts.run_stage,

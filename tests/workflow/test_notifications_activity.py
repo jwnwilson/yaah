@@ -2,10 +2,10 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from adapters.agent.notify.inapp import FakeChannel
+from adapters.agent.notify.ports import NotificationDispatcher
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
-from adapters.notify.inapp import FakeChannel
-from adapters.notify.ports import NotificationDispatcher
 from domain.models import (
     NotificationCategory,
     Project,

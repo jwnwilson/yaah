@@ -1,4 +1,4 @@
-from adapters.refinement.ports import RefinementContext
+from adapters.agent.refinement.ports import RefinementContext
 from domain.models import WorkItemKind
 from domain.refinement import RefinementOutput, WorkItemProposal
 

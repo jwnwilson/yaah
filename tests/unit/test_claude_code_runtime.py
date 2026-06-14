@@ -2,8 +2,8 @@ import json
 import os
 import tempfile
 
-from adapters.model.fake import FakeModelProvider
-from adapters.runtime.claude_code import ClaudeCodeRuntime
+from adapters.agent.model.fake import FakeModelProvider
+from adapters.agent.runtime.claude_code import ClaudeCodeRuntime
 from domain.models import RunStage
 from domain.runtime import RunContext
 
@@ -47,7 +47,7 @@ def test_run_stage_streams_events_and_result():
     assert "claude" in captured["argv"][0]
     assert "--output-format" in captured["argv"] and "stream-json" in captured["argv"]
     assert events[-1].type == "result"
-    from adapters.runtime.fake import result_of
+    from adapters.agent.runtime.fake import result_of
     assert result_of(events).cost_usd == 0.5
 
 
@@ -57,7 +57,7 @@ def test_run_stage_fail_when_no_result_event():
 
     rt = ClaudeCodeRuntime(FakeModelProvider(), spawn=spawn)
     events = list(rt.run_stage(_ctx()))
-    from adapters.runtime.fake import result_of
+    from adapters.agent.runtime.fake import result_of
     assert result_of(events).outcome == "fail"
 
 
@@ -170,7 +170,7 @@ def test_no_mcp_config_when_no_mcp_servers():
 
 
 def test_skill_fetch_failure_is_skipped_not_fatal():
-    from adapters.runtime.fake import result_of
+    from adapters.agent.runtime.fake import result_of
     from adapters.skills.fake import FakeSkillFetcher
     from domain.capabilities import AgentManifest, SkillRef
 
