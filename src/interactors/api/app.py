@@ -62,8 +62,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     from interactors.api.routes import (
         agents,
+        audit,
         capabilities,
         chat,
+        memory,
         notifications,
         projects,
         runs,
@@ -82,6 +84,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(agents.router)
     app.include_router(notifications.router)
     app.include_router(usage.router)
+    app.include_router(audit.router)
+    app.include_router(memory.router)
     app.include_router(chat.router)
 
     ui_dist = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ui", "dist")
