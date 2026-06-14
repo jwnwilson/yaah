@@ -11,6 +11,7 @@ from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
 from adapters.storage.local import LocalStorageAdapter
+from domain.agent import AgentEvent, StageResult
 from domain.models import (
     Project,
     Run,
@@ -18,7 +19,6 @@ from domain.models import (
     WorkItemKind,
     WorkItemStatus,
 )
-from domain.runtime import AgentEvent, StageResult
 from interactors.temporal.activities import RunActivities
 from interactors.temporal.workflows import AgentWorkflow
 

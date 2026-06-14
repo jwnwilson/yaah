@@ -1,5 +1,5 @@
+from domain.agent import AgentEvent, RunContext, StageResult
 from domain.models import RunStage
-from domain.runtime import AgentEvent, RunContext, StageResult
 from domain.usage import TokenUsage
 
 
@@ -14,9 +14,8 @@ def test_runtime_dtos_construct():
 
 
 def test_run_context_carries_optional_agent_manifest():
-    from domain.capabilities import AgentManifest
+    from domain.agent import AgentManifest, RunContext
     from domain.models import RunStage
-    from domain.runtime import RunContext
 
     ctx = RunContext(run_id="r", stage=RunStage.IMPLEMENT, task_title="t",
                      workspace_path="/ws",

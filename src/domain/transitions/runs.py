@@ -1,5 +1,5 @@
 from domain.models import RunStatus as R
-from domain.transitions import InvalidTransition
+from domain.transitions.work_items import InvalidTransition
 
 _ALLOWED: dict[R, set[R]] = {
     R.PENDING: {R.RUNNING, R.CANCELLED},

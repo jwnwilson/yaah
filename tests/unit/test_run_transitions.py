@@ -1,8 +1,7 @@
 import pytest
 
 from domain.models import RunStatus as R
-from domain.run_transitions import validate_run_transition
-from domain.transitions import InvalidTransition
+from domain.transitions import InvalidTransition, validate_run_transition
 
 
 def test_pending_can_be_cancelled():

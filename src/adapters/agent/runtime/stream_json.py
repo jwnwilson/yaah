@@ -3,8 +3,8 @@
 import json
 from typing import Iterable
 
+from domain.agent import AgentEvent, StageResult
 from domain.models import RunStage
-from domain.runtime import AgentEvent, StageResult
 from domain.usage import TokenUsage
 
 

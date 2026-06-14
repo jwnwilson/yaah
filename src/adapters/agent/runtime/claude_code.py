@@ -6,8 +6,7 @@ from typing import Iterator
 from adapters.agent.model.ports import ModelProvider
 from adapters.agent.runtime import stream_json
 from adapters.skills.fetcher import SkillFetcher
-from domain.agent_invocation import build_invocation
-from domain.runtime import AgentEvent, RunContext, StageResult
+from domain.agent import AgentEvent, RunContext, StageResult, build_invocation
 
 
 class ClaudeCodeRuntime:
@@ -15,7 +14,7 @@ class ClaudeCodeRuntime:
     `spawn` is injectable so tests never launch real claude.
 
     All pure invocation policy (argv, tools, env, config files, skills to fetch)
-    lives in `domain.agent_invocation.build_invocation`; this adapter only does I/O:
+    lives in `domain.agent.build_invocation`; this adapter only does I/O:
     fetch skills, write the config files, merge env, spawn, and parse the stream."""
 
     def __init__(self, model: ModelProvider, *, spawn=subprocess.Popen, skills=None):

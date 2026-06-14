@@ -5,7 +5,7 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
-    from domain import pipeline, scm
+    from domain import scm
     from domain.models import (
         AgentRole,
         AutonomyLevel,
@@ -21,6 +21,7 @@ with workflow.unsafe.imports_passed_through():
         OrchestrationState,
         guard_exceeded,
     )
+    from domain.transitions import pipeline
 
 _STAGE_TIMEOUT = timedelta(hours=24)
 _RETRY = RetryPolicy(maximum_attempts=3)

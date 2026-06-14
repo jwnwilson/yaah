@@ -1,6 +1,6 @@
-from domain import prompts
+from domain.agent import prompts
+from domain.agent.prompts import for_stage
 from domain.models import RunStage
-from domain.prompts import for_stage
 
 
 def test_implement_prompt_has_edit_tools_and_criteria():

@@ -1,9 +1,14 @@
 import json
 
-from domain.agent_invocation import AgentInvocation, build_invocation
-from domain.capabilities import AgentManifest, McpRef, SkillRef
+from domain.agent import (
+    AgentInvocation,
+    AgentManifest,
+    McpRef,
+    RunContext,
+    SkillRef,
+    build_invocation,
+)
 from domain.models import RunStage
-from domain.runtime import RunContext
 
 
 def _ctx(stage=RunStage.IMPLEMENT, **kw):
@@ -45,7 +50,7 @@ def test_agent_tools_override_stage_defaults():
 
 
 def test_agent_empty_tools_fall_back_to_stage_defaults():
-    from domain import prompts
+    from domain.agent import prompts
     man = AgentManifest(allowed_tools=[])
     inv = build_invocation(_ctx(agent=man), model_id="sonnet")
 
@@ -116,8 +121,8 @@ def test_model_id_is_used_verbatim():
 
 
 def test_run_context_accepts_instructions():
+    from domain.agent import RunContext
     from domain.models import RunStage
-    from domain.runtime import RunContext
 
     ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="t",
                      workspace_path="/tmp/x", instructions="do exactly this")
@@ -125,9 +130,8 @@ def test_run_context_accepts_instructions():
 
 
 def test_build_invocation_uses_instructions_when_present():
-    from domain.agent_invocation import build_invocation
+    from domain.agent import RunContext, build_invocation
     from domain.models import RunStage
-    from domain.runtime import RunContext
 
     ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="t",
                      acceptance_criteria=["c"], workspace_path="/tmp/x",
@@ -138,9 +142,8 @@ def test_build_invocation_uses_instructions_when_present():
 
 
 def test_build_invocation_falls_back_to_stage_prompt():
-    from domain.agent_invocation import build_invocation
+    from domain.agent import RunContext, build_invocation
     from domain.models import RunStage
-    from domain.runtime import RunContext
 
     ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="Add login",
                      acceptance_criteria=["works"], workspace_path="/tmp/x")

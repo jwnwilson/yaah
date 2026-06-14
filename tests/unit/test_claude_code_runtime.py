@@ -4,8 +4,8 @@ import tempfile
 
 from adapters.agent.model.fake import FakeModelProvider
 from adapters.agent.runtime.claude_code import ClaudeCodeRuntime
+from domain.agent import RunContext
 from domain.models import RunStage
-from domain.runtime import RunContext
 
 
 class _FakeProc:
@@ -65,7 +65,7 @@ def test_run_stage_fail_when_no_result_event():
 
 def test_composes_system_prompt_tools_skills_and_mcp():
     from adapters.skills.fake import FakeSkillFetcher
-    from domain.capabilities import AgentManifest, McpRef, SkillRef
+    from domain.agent import AgentManifest, McpRef, SkillRef
 
     ws = tempfile.mkdtemp()
     man = AgentManifest(
@@ -98,7 +98,7 @@ def test_composes_system_prompt_tools_skills_and_mcp():
 
 def test_agent_tools_override_stage_defaults():
     from adapters.skills.fake import FakeSkillFetcher
-    from domain.capabilities import AgentManifest
+    from domain.agent import AgentManifest
 
     ws = tempfile.mkdtemp()
     man = AgentManifest(allowed_tools=["MyTool"])
@@ -126,8 +126,7 @@ def test_agent_tools_override_stage_defaults():
 
 def test_agent_empty_tools_fallback_to_stage_defaults():
     from adapters.skills.fake import FakeSkillFetcher
-    from domain import prompts
-    from domain.capabilities import AgentManifest
+    from domain.agent import AgentManifest, prompts
 
     ws = tempfile.mkdtemp()
     man = AgentManifest(allowed_tools=[])  # empty -> fallback
@@ -150,7 +149,7 @@ def test_agent_empty_tools_fallback_to_stage_defaults():
 
 def test_no_mcp_config_when_no_mcp_servers():
     from adapters.skills.fake import FakeSkillFetcher
-    from domain.capabilities import AgentManifest
+    from domain.agent import AgentManifest
 
     ws = tempfile.mkdtemp()
     man = AgentManifest(system_prompt="sp")  # no mcp_servers
@@ -172,7 +171,7 @@ def test_no_mcp_config_when_no_mcp_servers():
 def test_skill_fetch_failure_is_skipped_not_fatal():
     from adapters.agent.runtime.fake import result_of
     from adapters.skills.fake import FakeSkillFetcher
-    from domain.capabilities import AgentManifest, SkillRef
+    from domain.agent import AgentManifest, SkillRef
 
     ws = tempfile.mkdtemp()
     man = AgentManifest(skills=[SkillRef(name="bad", source="git@x/bad.git")])
@@ -197,7 +196,7 @@ def test_secret_env_injected_into_subprocess_and_mcp():
     import tempfile
 
     from adapters.skills.fake import FakeSkillFetcher
-    from domain.capabilities import AgentManifest, McpRef
+    from domain.agent import AgentManifest, McpRef
 
     ws = tempfile.mkdtemp()
     man = AgentManifest(
@@ -235,8 +234,7 @@ def test_model_alias_overrides_model_flag():
     import tempfile
 
     from adapters.skills.fake import FakeSkillFetcher
-    from domain.capabilities import AgentManifest
-    from domain.runtime import RunContext
+    from domain.agent import AgentManifest, RunContext
 
     man = AgentManifest(allowed_tools=["Read"], model_alias="engineer-model")
     ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="T",
@@ -286,7 +284,7 @@ def test_no_agent_path_unchanged():
 
 def test_runtime_writes_pretooluse_hook_and_env():
     from adapters.skills.fake import FakeSkillFetcher
-    from domain.capabilities import AgentManifest
+    from domain.agent import AgentManifest
 
     ws = tempfile.mkdtemp()
     man = AgentManifest(allowed_tools=["Read", "Edit"])
