@@ -43,6 +43,7 @@ export interface WorkItem {
   body: string;
   acceptance_criteria: string[];
   status: WorkItemStatus;
+  assignee_agent_id: string | null;
   created_at: string;
   updated_at: string;
 }

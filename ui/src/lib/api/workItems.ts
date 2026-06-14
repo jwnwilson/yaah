@@ -37,6 +37,7 @@ export interface UpdateWorkItemInput {
   title?: string;
   body?: string;
   acceptance_criteria?: string[];
+  assignee_agent_id?: string | null;
 }
 
 export async function updateWorkItem(itemId: string, input: UpdateWorkItemInput): Promise<WorkItem> {
