@@ -8,7 +8,7 @@ import { SkillsPage } from "../features/manage/SkillsPage";
 import { McpServersPage } from "../features/manage/McpServersPage";
 import { BudgetPage } from "../features/manage/BudgetPage";
 import { AuditPage } from "../features/manage/AuditPage";
-import { ModelsPage } from "../features/manage/ModelsPage";
+import { AgentsPage } from "../features/manage/AgentsPage";
 import { MemoryPage } from "../features/manage/MemoryPage";
 
 export const routes: RouteObject[] = [
@@ -26,7 +26,7 @@ export const routes: RouteObject[] = [
           { path: "skills", element: <SkillsPage /> },
           { path: "mcp-servers", element: <McpServersPage /> },
           { path: "usage", element: <BudgetPage /> },
-          { path: "models", element: <ModelsPage /> },
+          { path: "agents", element: <AgentsPage /> },
           { path: "audit", element: <AuditPage /> },
           { path: "memory", element: <MemoryPage /> },
         ],
