@@ -441,6 +441,21 @@ class RunActivities:
             for m in msgs:
                 uow.messages.create(m)
 
+    def _apply_lead_assignee(self, payload: dict, decision) -> None:
+        """Persist the lead's assignee_role onto the work item (resolved via role map)."""
+        from domain.orchestration import resolve_assignee
+        role_map = payload.get("role_to_agent_id") or {}
+        work_item_id = payload.get("work_item_id")
+        agent_id = resolve_assignee(decision, role_map)
+        if not work_item_id or not agent_id:
+            return
+        uow = self._uow(payload["owner_id"])
+        with uow.transaction():
+            item = uow.work_items.get(work_item_id)
+            if item.assignee_agent_id != agent_id:
+                uow.work_items.update(
+                    work_item_id, item.model_copy(update={"assignee_agent_id": agent_id}))
+
     @activity.defn(name="invoke_lead")
     def invoke_lead(self, payload: dict) -> dict:
         from domain.models import AgentRole, RunStage
@@ -477,6 +492,7 @@ class RunActivities:
                 try:
                     decision = parse_decision(raw)
                     self._persist_lead_messages(payload, decision)
+                    self._apply_lead_assignee(payload, decision)
                     for d in decision.dispatches:
                         self.record_event({
                             "run_id": run_id, "owner_id": owner_id, "stage": "plan",
