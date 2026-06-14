@@ -3,6 +3,7 @@ import { useStartRun } from "./useStartRun";
 import { RunStatusBadge } from "./RunStatusBadge";
 import { RunActions } from "./RunActions";
 import { MemoryProposalCard } from "./MemoryProposalCard";
+import { Button } from "../../ui/Button";
 import type { WorkItemStatus } from "../../lib/api/types";
 
 export function RunSection({
@@ -20,24 +21,24 @@ export function RunSection({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase text-gray-500">Runs</h3>
-        <button
-          className="rounded bg-emerald-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-subtle">Runs</h3>
+        <Button
+          size="sm"
           disabled={taskStatus !== "ready" || start.isPending}
           title={taskStatus !== "ready" ? "Task must be Ready to run" : undefined}
           onClick={() => start.mutate()}
         >
           Run
-        </button>
+        </Button>
       </div>
-      {start.isError && <p className="text-sm text-red-600">{(start.error as Error).message}</p>}
-      {isLoading && <p className="text-sm text-gray-500">Loading runs…</p>}
+      {start.isError && <p className="text-sm text-danger">{(start.error as Error).message}</p>}
+      {isLoading && <p className="text-sm text-subtle">Loading runs…</p>}
       <ul className="space-y-2">
         {data?.map((run) => (
-          <li key={run.id} className="rounded border p-2 text-sm">
+          <li key={run.id} className="rounded-md border border-line bg-surface p-2 text-sm">
             <div className="flex items-center justify-between">
               <RunStatusBadge status={run.status} />
-              <span className="text-xs text-gray-500">{run.stage ?? "—"}</span>
+              <span className="text-xs text-subtle">{run.stage ?? "—"}</span>
             </div>
             <RunActions taskId={taskId} run={run} />
             <MemoryProposalCard runId={run.id} />

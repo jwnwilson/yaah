@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Field";
 import type { Run } from "../../lib/api/types";
 import { useRunActions } from "./useRunActions";
 
@@ -18,29 +20,29 @@ export function RunActions({ taskId, run }: { taskId: string; run: Run }) {
       <div className="flex flex-wrap gap-2">
         {isGate && (
           <>
-            <button className="rounded bg-green-600 px-2 py-0.5 text-xs text-white" onClick={() => approve.mutate()}>Approve</button>
-            <button className="rounded bg-red-600 px-2 py-0.5 text-xs text-white" onClick={() => reject.mutate()}>Reject</button>
+            <Button size="sm" onClick={() => approve.mutate()}>Approve</Button>
+            <Button size="sm" variant="danger" onClick={() => reject.mutate()}>Reject</Button>
           </>
         )}
         {!isTerminal && (
-          <button className="rounded border px-2 py-0.5 text-xs" onClick={() => cancel.mutate()}>Cancel</button>
+          <Button size="sm" variant="secondary" onClick={() => cancel.mutate()}>Cancel</Button>
         )}
-        <button className="rounded border px-2 py-0.5 text-xs" onClick={() => setEditing((v) => !v)}>Edit</button>
+        <Button size="sm" variant="secondary" onClick={() => setEditing((v) => !v)}>Edit</Button>
       </div>
       {editing && (
         <div className="space-y-1">
-          <input className="w-full rounded border p-1 text-xs" placeholder="branch" value={branch} onChange={(e) => setBranch(e.target.value)} />
-          <input className="w-full rounded border p-1 text-xs" placeholder="stage" value={stage} onChange={(e) => setStage(e.target.value)} />
-          <button
-            className="rounded bg-blue-600 px-2 py-0.5 text-xs text-white"
+          <Input className="text-xs" placeholder="branch" value={branch} onChange={(e) => setBranch(e.target.value)} />
+          <Input className="text-xs" placeholder="stage" value={stage} onChange={(e) => setStage(e.target.value)} />
+          <Button
+            size="sm"
             onClick={() => { edit.mutate({ branch: branch || undefined, stage: stage || undefined }); setEditing(false); }}
           >
             Save fields
-          </button>
+          </Button>
         </div>
       )}
       {(cancel.isError || approve.isError || reject.isError || edit.isError) && (
-        <p className="text-xs text-red-600">Action failed.</p>
+        <p className="text-xs text-danger">Action failed.</p>
       )}
     </div>
   );
