@@ -66,3 +66,37 @@ class OrchestrationDecision(BaseModel):
         if self.intent == OrchestrationIntent.BLOCK and not self.rationale.strip():
             raise ValueError("block requires a rationale")
         return self
+
+
+class AgentOutcome(StrEnum):
+    OK = "ok"
+    FAIL = "fail"
+    BLOCKED = "blocked"
+
+
+class AgentStepResult(BaseModel):
+    """One worker turn's result (returned by the agent_step activity in Plan 3)."""
+
+    outcome: AgentOutcome = AgentOutcome.OK
+    completed_brief: bool = False
+    outgoing: list[OutboundMessage] = Field(default_factory=list)
+    artifacts: dict[str, str] = Field(default_factory=dict)
+    cost_usd: float = 0.0
+
+
+class AgentReport(BaseModel):
+    """A worker's report back to the lead, summarized into orchestration state."""
+
+    role: AgentRole
+    outcome: AgentOutcome
+    summary: str = ""
+    cost_usd: float = 0.0
+
+
+class MonitorVerdict(BaseModel):
+    """The process monitor's completion check."""
+
+    complete: bool
+    unmet: list[str] = Field(default_factory=list)
+    pending_mailboxes: list[str] = Field(default_factory=list)
+    notes: str = ""

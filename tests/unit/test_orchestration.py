@@ -44,3 +44,28 @@ def test_outbound_agent_message_requires_recipient_role():
 def test_outbound_user_message_is_valid():
     m = OutboundMessage(recipient_kind=MessageRecipientKind.USER, body="status update")
     assert m.kind == MessageKind.CHAT
+
+
+def test_agent_step_result_defaults():
+    from domain.orchestration import AgentOutcome, AgentStepResult
+
+    r = AgentStepResult()
+    assert r.outcome == AgentOutcome.OK
+    assert r.completed_brief is False
+    assert r.outgoing == [] and r.artifacts == {} and r.cost_usd == 0.0
+
+
+def test_agent_report_carries_outcome_and_cost():
+    from domain.orchestration import AgentOutcome, AgentReport
+
+    rep = AgentReport(role=AgentRole.QA, outcome=AgentOutcome.FAIL, summary="2 failing", cost_usd=0.5)
+    assert rep.outcome == AgentOutcome.FAIL and rep.cost_usd == 0.5
+
+
+def test_monitor_verdict_complete_and_incomplete():
+    from domain.orchestration import MonitorVerdict
+
+    ok = MonitorVerdict(complete=True)
+    assert ok.unmet == [] and ok.pending_mailboxes == []
+    bad = MonitorVerdict(complete=False, unmet=["no tests"], pending_mailboxes=["qa"])
+    assert bad.unmet == ["no tests"]
