@@ -2,7 +2,6 @@ import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Board } from "./Board";
 import { TicketPanel } from "../work-items/TicketPanel";
 import { HierarchyTree } from "../work-items/HierarchyTree";
-import { NotificationBell } from "../notifications/NotificationBell";
 
 export default function BoardPage() {
   const { projectId } = useParams();
@@ -21,13 +20,10 @@ export default function BoardPage() {
   };
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-full flex-col">
       <header className="flex items-center gap-3 border-b p-3">
         <Link to="/" className="text-sm text-blue-700">← Projects</Link>
         <h1 className="font-semibold">Board</h1>
-        <div className="ml-auto">
-          <NotificationBell />
-        </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
         <HierarchyTree projectId={projectId} selectedFeature={selectedFeature} onSelectFeature={selectFeature} />
