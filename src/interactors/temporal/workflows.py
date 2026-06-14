@@ -173,3 +173,98 @@ class RunWorkflow:
         await self._persist(run_id, owner_id, status=RunStatus.DONE, stage=RunStage.LEARN)
         await self._cleanup(run_id, owner_id)
         return RunStatus.DONE
+
+
+_HISTORY_LIMIT = 4000
+
+
+@workflow.defn(name="AgentWorkflow")
+class AgentWorkflow:
+    """Durable child-actor: a signal-fed mailbox that drains until empty, calling the
+    agent_step activity, routing outgoing messages to peer actors, and reporting brief
+    completion to the parent. continue-as-new bounds history."""
+
+    def __init__(self) -> None:
+        self._inbox: list[dict] = []
+        self._idle = False
+        self._stop = False
+
+    @workflow.signal
+    def deliver(self, msg: dict) -> None:
+        self._inbox.append(msg)
+        self._idle = False
+
+    @workflow.signal
+    def stop_now(self) -> None:
+        self._stop = True
+
+    @workflow.query
+    def queue_depth(self) -> int:
+        return len(self._inbox)
+
+    @workflow.query
+    def is_idle(self) -> bool:
+        return self._idle
+
+    @workflow.run
+    async def run(self, inp: dict) -> dict:
+        run_id, owner_id, role = inp["run_id"], inp["owner_id"], inp["role"]
+        processed = 0
+        while True:
+            await workflow.wait_condition(lambda: bool(self._inbox) or self._stop)
+            while self._inbox:  # drain everything currently queued before honoring stop
+                msg = self._inbox.pop(0)
+                self._idle = False
+                result = await workflow.execute_activity(
+                    "agent_step",
+                    {"run_id": run_id, "owner_id": owner_id, "role": role,
+                     "incoming": msg.get("body", ""), "task_title": inp["task_title"],
+                     "acceptance_criteria": inp.get("acceptance_criteria", []),
+                     "team_id": inp.get("team_id")},
+                    start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+                processed += 1
+                await self._route_outgoing(inp, result.get("outgoing", []))
+                if result.get("completed_brief"):
+                    await self._signal_safe(
+                        inp["parent_workflow_id"], "agent_report",
+                        {"role": role, "outcome": result.get("outcome", "ok")})
+            self._idle = True
+            if self._stop:
+                break
+            if (workflow.info().get_current_history_length() > _HISTORY_LIMIT
+                    and not self._inbox):
+                workflow.continue_as_new(inp)
+        return {"role": role, "processed": processed}
+
+    async def _route_outgoing(self, inp: dict, outgoing: list[dict]) -> None:
+        if not outgoing:
+            return
+        messages: list[dict] = []
+        for out in outgoing:
+            is_agent = out.get("recipient_kind") == "agent"
+            recipient_role = out.get("recipient_role")
+            recipient_agent_id = inp["role_to_agent_id"].get(recipient_role) if is_agent else None
+            if is_agent and recipient_agent_id is None:
+                continue  # unknown role: nothing to deliver or persist
+            messages.append({
+                "owner_id": inp["owner_id"], "sender_kind": "agent",
+                "sender_agent_id": inp["agent_id"], "recipient_kind": out["recipient_kind"],
+                "recipient_agent_id": recipient_agent_id, "kind": out.get("kind", "chat"),
+                "subject": out.get("subject", ""), "body": out["body"],
+                "run_id": inp["run_id"], "work_item_id": inp.get("work_item_id"),
+                "project_id": inp.get("project_id"),
+            })
+            if is_agent:
+                peer_id = f"agent-{inp['run_id']}-{recipient_role}"
+                if peer_id != workflow.info().workflow_id:
+                    await self._signal_safe(peer_id, "deliver", {"body": out["body"]})
+        if messages:
+            await workflow.execute_activity(
+                "persist_messages", {"owner_id": inp["owner_id"], "messages": messages},
+                start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+
+    async def _signal_safe(self, workflow_id: str, signal_name: str, arg: dict) -> None:
+        try:
+            await workflow.get_external_workflow_handle(workflow_id).signal(signal_name, arg)
+        except Exception:  # noqa: BLE001 - target may not be running; don't crash the actor
+            pass
