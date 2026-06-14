@@ -53,3 +53,52 @@ def test_get_run_memory_404_for_unknown_run():
     resp = c.get("/runs/doesnotexist/memory")
     assert resp.status_code == 404
     assert resp.json()["success"] is False
+
+
+def _seed_project(c: TestClient) -> None:
+    from domain.models import Project
+    uow = SqlUnitOfWork(c.app.state.session_factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        uow.projects.create(Project(id="p1", owner_id="dev-user", name="P", local_path="/x"))
+
+
+def _client_with_fake_applier() -> TestClient:
+    from adapters.forge.fake import FakeGitForge
+    from adapters.git.fake import FakeGit
+    from interactors.api.deps import memory_applier
+    from interactors.memory_apply import MemoryApplier
+    app = create_app(Settings(_env_file=None, database_url="sqlite:///:memory:"))
+    app.dependency_overrides[memory_applier] = lambda: MemoryApplier(
+        FakeGit(), FakeGitForge(), profile="local")
+    return TestClient(app)
+
+
+def test_apply_run_memory_marks_applied():
+    c = _client_with_fake_applier()
+    _seed_project(c)
+    run_id = _seed_run(c)
+    _seed_proposal(c, run_id)
+    resp = c.post(f"/runs/{run_id}/memory/apply")
+    assert resp.status_code == 202
+    body = resp.json()
+    assert body["success"] is True
+    assert body["data"]["status"] == "applied"
+    # second apply -> 409 (no longer proposed)
+    assert c.post(f"/runs/{run_id}/memory/apply").status_code == 409
+
+
+def test_reject_run_memory_marks_rejected():
+    c = make_client()
+    run_id = _seed_run(c)
+    _seed_proposal(c, run_id)
+    resp = c.post(f"/runs/{run_id}/memory/reject")
+    assert resp.status_code == 202
+    body = resp.json()
+    assert body["data"]["status"] == "rejected"
+    assert body["data"]["resolved_at"] is not None
+
+
+def test_apply_run_memory_404_when_absent():
+    c = _client_with_fake_applier()
+    run_id = _seed_run(c)
+    assert c.post(f"/runs/{run_id}/memory/apply").status_code == 404

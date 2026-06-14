@@ -22,6 +22,15 @@ def settings(request: Request):
     return request.app.state.settings
 
 
+def memory_applier(request: Request):
+    s = request.app.state.settings
+    from adapters.git.local_git import LocalGit
+    from interactors.memory_apply import MemoryApplier
+    from interactors.temporal.worker import _build_forge
+
+    return MemoryApplier(LocalGit(), _build_forge(s.profile), profile=s.profile)
+
+
 def cipher(request: Request):
     from adapters.secrets.cipher import FernetCipher
 
