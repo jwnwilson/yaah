@@ -1,5 +1,6 @@
 import base64
 import subprocess
+from pathlib import Path
 from typing import Literal
 
 from adapters.git.ports import GitError
@@ -52,3 +53,23 @@ class LocalGit:
 
     def current_branch(self, workspace_path: str) -> str:
         return self._run(["rev-parse", "--abbrev-ref", "HEAD"], cwd=workspace_path).strip()
+
+    def diff(self, workspace_path: str, *, paths: list[str]) -> str:
+        return self._run(["diff", "--", *paths], cwd=workspace_path)
+
+    def commit_to_branch(
+        self, workspace_path: str, *, branch: str, base: str,
+        paths: list[str], message: str,
+    ) -> bool:
+        # Create the memory branch off base, carrying the working-tree memory edits.
+        self._run([*_AUTHOR, "checkout", "-b", branch, base], cwd=workspace_path)
+        # Only stage paths that exist; memory paths like AGENTS.md may be absent.
+        ws = Path(workspace_path)
+        existing = [p for p in paths if (ws / p).exists()]
+        if existing:
+            self._run(["add", "--", *existing], cwd=workspace_path)
+        status = self._run(["status", "--porcelain", "--", *paths], cwd=workspace_path)
+        if not status.strip():
+            return False
+        self._run([*_AUTHOR, "commit", "-m", message], cwd=workspace_path)
+        return True

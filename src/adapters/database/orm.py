@@ -201,3 +201,17 @@ class UsageRecordRow(Base):
     cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     dedupe_key: Mapped[str] = mapped_column(String(200), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class MemoryProposalRow(Base):
+    __tablename__ = "memory_proposals"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    run_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    branch: Mapped[str] = mapped_column(String(200), nullable=False)
+    diff: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    files: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="proposed")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

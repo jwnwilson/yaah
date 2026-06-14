@@ -9,6 +9,7 @@ from adapters.database.repositories import (
     ChatMessageRepository,
     ChatSessionRepository,
     McpServerRepository,
+    MemoryProposalRepository,
     NotificationRepository,
     ProjectRepository,
     RunEventRepository,
@@ -111,3 +112,7 @@ class SqlUnitOfWork:
     @property
     def chat_messages(self) -> ChatMessageRepository:
         return ChatMessageRepository(self.session, self._required_filters)
+
+    @property
+    def memory_proposals(self) -> MemoryProposalRepository:
+        return MemoryProposalRepository(self.session, self._required_filters)

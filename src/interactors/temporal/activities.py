@@ -353,3 +353,36 @@ class RunActivities:
                            "type": "stage_completed",
                            "message": f"branch {payload['branch']} ready"})
         return {"outcome": "ok", "pr_url": None}
+
+    @activity.defn(name="capture_memory")
+    def capture_memory(self, payload: dict) -> dict:
+        from domain.memory import MEMORY_PATHS, changed_files
+        from domain.models import MemoryProposal
+        run_id, owner_id = payload["run_id"], payload["owner_id"]
+        workspace = self._storage.local_path(f"runs/{run_id}")
+        diff = self._git.diff(workspace, paths=MEMORY_PATHS)
+        if not diff.strip():
+            self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "learn",
+                               "type": RunEventType.AGENT_EVENT,
+                               "message": "no memory changes"})
+            return {"outcome": "ok", "proposal_id": None}
+        branch = f"agent/memory-{run_id}"
+        committed = self._git.commit_to_branch(
+            workspace, branch=branch, base=payload["base"], paths=MEMORY_PATHS,
+            message=f"chore: memory update for run {run_id}")
+        if committed and payload["profile"] == "remote":
+            try:
+                token = self._forge.installation_token()
+                self._git.push(workspace, branch, token=token)
+            except Exception:  # noqa: BLE001 - push is best-effort; the proposal still persists
+                pass
+        files = changed_files(diff)
+        uow = self._uow(owner_id)
+        with uow.transaction():
+            proposal = uow.memory_proposals.create(MemoryProposal(
+                owner_id=owner_id, run_id=run_id, project_id=payload["project_id"],
+                branch=branch, diff=diff, files=files))
+        self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "learn",
+                           "type": RunEventType.AGENT_EVENT,
+                           "message": f"memory proposal: {len(files)} file(s) on {branch}"})
+        return {"outcome": "ok", "proposal_id": proposal.id}
