@@ -3,6 +3,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 export function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
+  // Keep the ref current so listeners always call the latest onClose without re-registering.
   useEffect(() => {
     onCloseRef.current = onClose;
   });
@@ -40,7 +41,7 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => onCloseRef.current()}>
       <div
         ref={panelRef}
         tabIndex={-1}
