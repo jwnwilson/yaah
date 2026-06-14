@@ -1,0 +1,158 @@
+name: Deploy Backend
+
+on:
+  workflow_run:
+    workflows: [Test]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_API_REPOSITORY: yaah-api
+  ECR_WORKER_REPOSITORY: yaah-worker
+
+jobs:
+  build:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    outputs:
+      api_image: ${{ steps.api-image.outputs.image }}
+      worker_image: ${{ steps.worker-image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up QEMU (arm64 cross-build)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API image (arm64)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/api/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:latest
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:buildcache
+          cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:buildcache,mode=min
+
+      - name: Export API image ref
+        id: api-image
+        run: echo "image=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push worker image (arm64)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/worker/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WORKER_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WORKER_REPOSITORY }}:latest
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WORKER_REPOSITORY }}:buildcache
+          cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WORKER_REPOSITORY }}:buildcache,mode=min
+
+      - name: Export worker image ref
+        id: worker-image
+        run: echo "image=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WORKER_REPOSITORY }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: yaah-deploy
+      cancel-in-progress: false
+    env:
+      API_IMAGE: ${{ needs.build.outputs.api_image }}
+      WORKER_IMAGE: ${{ needs.build.outputs.worker_image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Verify cluster connectivity
+        run: kubectl get nodes -o name
+
+      - name: Sync yaah-db-secret
+        run: |
+          DB_PW='${{ secrets.YAAH_DB_PASSWORD }}'
+          kubectl create secret generic yaah-db-secret \
+            --from-literal=postgres-password="${DB_PW}" \
+            --from-literal=database-url="postgresql+psycopg://yaah:${DB_PW}@yaah-db:5432/yaah" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Sync yaah-secrets
+        run: |
+          kubectl create secret generic yaah-secrets \
+            --from-literal=secret-key='${{ secrets.YAAH_SECRET_KEY }}' \
+            --from-literal=anthropic-api-key='${{ secrets.ANTHROPIC_API_KEY }}' \
+            --from-literal=litellm-master-key='${{ secrets.LITELLM_MASTER_KEY }}' \
+            --from-literal=github-app-id='${{ secrets.YAAH_GITHUB_APP_ID }}' \
+            --from-literal=github-private-key='${{ secrets.YAAH_GITHUB_PRIVATE_KEY }}' \
+            --from-literal=github-installation-id='${{ secrets.YAAH_GITHUB_INSTALLATION_ID }}' \
+            --from-literal=github-repo='${{ secrets.YAAH_GITHUB_REPO }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Sync LiteLLM config ConfigMap
+        run: |
+          kubectl create configmap yaah-litellm-config \
+            --from-file=config.yaml=infra/litellm/config.yaml \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply databases first and wait
+        run: |
+          kubectl apply -f infra/k8s/yaah/postgres.yaml
+          kubectl apply -f infra/k8s/yaah/temporal.yaml
+          kubectl rollout status statefulset/yaah-db --timeout=180s
+          kubectl rollout status statefulset/yaah-temporal-db --timeout=180s
+          kubectl rollout status deployment/yaah-temporal --timeout=300s
+
+      - name: Stamp images and apply the rest
+        run: |
+          sed -i "s|<ECR_API_IMAGE>|$API_IMAGE|g" infra/k8s/yaah/api/deployment.yaml
+          sed -i "s|<ECR_WORKER_IMAGE>|$WORKER_IMAGE|g" infra/k8s/yaah/worker.yaml
+          kubectl apply -f infra/k8s/yaah/litellm.yaml
+          kubectl apply -f infra/k8s/yaah/api/
+          kubectl apply -f infra/k8s/yaah/worker.yaml
+
+      - name: Wait for rollouts
+        run: |
+          kubectl rollout status deployment/yaah-api --timeout=300s
+          kubectl rollout status deployment/yaah-temporal-worker --timeout=300s
+          kubectl rollout status deployment/yaah-litellm --timeout=180s
+
+      - name: Smoke test the API
+        run: |
+          for i in $(seq 1 10); do
+            if curl -fsS https://api.yaah.jwnwilson.co.uk/health; then
+              echo "health ok"; exit 0
+            fi
+            echo "attempt $i failed, retrying in 10s"; sleep 10
+          done
+          echo "API health check never succeeded"; exit 1

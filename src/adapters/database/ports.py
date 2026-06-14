@@ -6,7 +6,10 @@ from pydantic import BaseModel
 from domain.models import (
     AgentDefinition,
     AuditEvent,
+    ChatMessage,
+    ChatSession,
     McpServer,
+    MemoryProposal,
     Notification,
     Project,
     Run,
@@ -70,3 +73,9 @@ class UnitOfWork(Protocol):
     def notifications(self) -> Repository[Notification]: ...
     @property
     def usage(self) -> Repository[UsageRecord]: ...
+    @property
+    def chat_sessions(self) -> Repository[ChatSession]: ...
+    @property
+    def chat_messages(self) -> Repository[ChatMessage]: ...
+    @property
+    def memory_proposals(self) -> Repository[MemoryProposal]: ...

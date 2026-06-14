@@ -27,3 +27,20 @@ def cipher(request: Request):
 
     key = request.app.state.settings.secret_key
     return FernetCipher(key) if key else None
+
+
+def refinement_agent(request: Request):
+    settings = request.app.state.settings
+    if settings.anthropic_api_key or settings.litellm_base_url:
+        from adapters.model.anthropic import AnthropicProvider
+        from adapters.refinement.anthropic import AnthropicRefinementAgent
+
+        return AnthropicRefinementAgent(
+            AnthropicProvider(
+                api_key=settings.anthropic_api_key,
+                model=settings.agent_model,
+            )
+        )
+    from adapters.refinement.fake import FakeRefinementAgent
+
+    return FakeRefinementAgent()

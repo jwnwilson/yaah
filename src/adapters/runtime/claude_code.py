@@ -1,4 +1,3 @@
-import json
 import os
 import signal
 import subprocess
@@ -7,54 +6,17 @@ from typing import Iterator
 from adapters.model.ports import ModelProvider
 from adapters.runtime import stream_json
 from adapters.skills.fetcher import SkillFetcher
-from domain import prompts
-from domain.capabilities import McpRef
+from domain.agent_invocation import build_invocation
 from domain.runtime import AgentEvent, RunContext, StageResult
-
-
-def _write_agent_settings(workspace_path: str) -> None:
-    """Write .claude/settings.json with a PreToolUse hook for the audit interceptor."""
-    settings_dir = os.path.join(workspace_path, ".claude")
-    os.makedirs(settings_dir, exist_ok=True)
-    settings = {
-        "hooks": {
-            "PreToolUse": [
-                {
-                    "matcher": "*",
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": "python -m adapters.runtime.pretooluse_hook",
-                        }
-                    ],
-                }
-            ]
-        }
-    }
-    with open(os.path.join(settings_dir, "settings.json"), "w") as f:
-        json.dump(settings, f)
-
-
-def _write_mcp_config(workspace_path: str, servers: list[McpRef],
-                      secret_env: dict | None = None) -> None:
-    env = secret_env or {}
-    mcp = {}
-    for s in servers:
-        entry = (
-            {"command": s.command_or_url}
-            if s.transport == "stdio"
-            else {"url": s.command_or_url}
-        )
-        if env:
-            entry["env"] = dict(env)
-        mcp[s.name] = entry
-    with open(os.path.join(workspace_path, ".mcp.json"), "w") as f:
-        json.dump({"mcpServers": mcp}, f)
 
 
 class ClaudeCodeRuntime:
     """AgentRuntime backed by the Claude Code CLI as a subprocess in the workspace.
-    `spawn` is injectable so tests never launch real claude."""
+    `spawn` is injectable so tests never launch real claude.
+
+    All pure invocation policy (argv, tools, env, config files, skills to fetch)
+    lives in `domain.agent_invocation.build_invocation`; this adapter only does I/O:
+    fetch skills, write the config files, merge env, spawn, and parse the stream."""
 
     def __init__(self, model: ModelProvider, *, spawn=subprocess.Popen, skills=None):
         self._model = model
@@ -63,60 +25,31 @@ class ClaudeCodeRuntime:
         self._procs: dict[str, object] = {}
 
     def run_stage(self, ctx: RunContext) -> Iterator[AgentEvent]:
-        body = ctx.prior_artifacts.get("body", "") if ctx.prior_artifacts else ""
-        task_prompt, default_tools = prompts.for_stage(
-            ctx.stage, ctx.task_title, ctx.acceptance_criteria, body
-        )
-
-        events_pre: list[AgentEvent] = []
-        argv = ["claude", "-p", task_prompt, "--output-format", "stream-json", "--verbose"]
-        tools = list(default_tools)
-
-        if ctx.agent is not None:
-            if ctx.agent.system_prompt:
-                argv += ["--append-system-prompt", ctx.agent.system_prompt]
-            tools = (
-                list(ctx.agent.allowed_tools) if ctx.agent.allowed_tools else list(default_tools)
-            )
-            for mcp in ctx.agent.mcp_servers:
-                tools += mcp.tool_allowlist
-            for skill in ctx.agent.skills:
-                dest = os.path.join(ctx.workspace_path, ".claude", "skills", skill.name)
-                try:
-                    self._skills.fetch(skill.source, dest)
-                except Exception as exc:  # noqa: BLE001 - skip a bad skill, don't fail the stage
-                    events_pre.append(AgentEvent(
-                        type="progress",
-                        stage=ctx.stage,
-                        message=f"skill '{skill.name}' skipped: {exc}",
-                    ))
-            if ctx.agent.mcp_servers:
-                _write_mcp_config(ctx.workspace_path, ctx.agent.mcp_servers, ctx.agent.secret_env)
-                argv += ["--mcp-config", os.path.join(ctx.workspace_path, ".mcp.json")]
-
         model_id = self._model.model_id()
         if ctx.agent is not None and ctx.agent.model_alias:
             model_id = ctx.agent.model_alias
-        argv += [
-            "--allowedTools", *tools,
-            "--max-turns", str(prompts.max_turns(ctx.stage)),
-            "--model", model_id,
-        ]
+        inv = build_invocation(ctx, model_id=model_id)
 
-        env = {**os.environ, **self._model.agent_env()}
-        if ctx.agent is not None and ctx.agent.secret_env:
-            env = {**env, **ctx.agent.secret_env}
-        if ctx.agent is not None:
-            _write_agent_settings(ctx.workspace_path)
-            env = {
-                **env,
-                "YAAH_ALLOWED_TOOLS": json.dumps(tools),
-                "YAAH_AUDIT_PATH": os.path.join(ctx.workspace_path, "audit.jsonl"),
-                "YAAH_RUN_ID": ctx.run_id,
-                "YAAH_STAGE": str(ctx.stage.value),
-            }
+        events_pre: list[AgentEvent] = []
+        for name, source, dest in inv.skills:
+            try:
+                self._skills.fetch(source, dest)
+            except Exception as exc:  # noqa: BLE001 - skip a bad skill, don't fail the stage
+                events_pre.append(AgentEvent(
+                    type="progress",
+                    stage=ctx.stage,
+                    message=f"skill '{name}' skipped: {exc}",
+                ))
+
+        for relpath, content in inv.files.items():
+            path = os.path.join(ctx.workspace_path, relpath)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w") as f:
+                f.write(content)
+
+        env = {**os.environ, **self._model.agent_env(), **inv.env_extra}
         proc = self._spawn(
-            argv, cwd=ctx.workspace_path, env=env,
+            inv.argv, cwd=ctx.workspace_path, env=env,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,
         )
         self._procs[ctx.run_id] = proc

@@ -56,6 +56,7 @@ def _input(run_id, autonomy):
         "run_id": run_id,
         "owner_id": "u1",
         "task_id": "t1",
+        "project_id": "p1",
         "autonomy": autonomy,
         "task_title": "T",
         "acceptance_criteria": [],
@@ -65,10 +66,10 @@ def _input(run_id, autonomy):
     }
 
 
-async def _worker(env, factory, runtime=None):
+async def _worker(env, factory, runtime=None, git=None):
     storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
     rt = runtime or FakeAgentRuntime(storage=storage)
-    acts = RunActivities(factory, rt, storage, FakeGit(), FakeGitForge())
+    acts = RunActivities(factory, rt, storage, git or FakeGit(), FakeGitForge())
     return Worker(
         env.client,
         task_queue="test-q",
@@ -80,6 +81,7 @@ async def _worker(env, factory, runtime=None):
             acts.cleanup_workspace,
             acts.provision_workspace,
             acts.open_pr,
+            acts.capture_memory,
         ],
         activity_executor=ThreadPoolExecutor(max_workers=4),
     )
@@ -185,6 +187,7 @@ async def test_remote_run_opens_pr(tmp_path):
             await env.client.execute_workflow(
                 RunWorkflow.run,
                 {"run_id": run_id, "owner_id": "u1", "task_id": "t1",
+                 "project_id": "p1",
                  "autonomy": AutonomyLevel.FULL_AUTO, "task_title": "T",
                  "acceptance_criteria": [], "profile": "remote",
                  "repo_ref": "https://example/r.git", "base": "main"},
@@ -195,3 +198,24 @@ async def test_remote_run_opens_pr(tmp_path):
         run = uow.runs.get(run_id)
     assert run.status == RunStatus.DONE
     assert run.pr_url == "https://github.com/fake/fake/pull/1"
+
+
+@pytest.mark.asyncio
+async def test_full_auto_captures_memory_proposal():
+    factory = _factory()
+    run_id = _seed(factory)
+    git = FakeGit(memory_diff="diff --git a/CLAUDE.md b/CLAUDE.md\n+++ b/CLAUDE.md\n+x\n")
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with await _worker(env, factory, git=git):
+            await env.client.execute_workflow(
+                RunWorkflow.run,
+                _input(run_id, AutonomyLevel.FULL_AUTO),
+                id=run_id,
+                task_queue="test-q",
+            )
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        proposals = uow.memory_proposals.list(filters={"run_id": run_id}).results
+    assert len(proposals) == 1
+    assert proposals[0].branch == f"agent/memory-{run_id}"
+    assert proposals[0].files == ["CLAUDE.md"]

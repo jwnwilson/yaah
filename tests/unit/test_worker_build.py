@@ -6,9 +6,9 @@ from interactors.api.settings import Settings
 from interactors.temporal.worker import _build_runtime, build_activities
 
 
-def test_build_activities_returns_eight():
+def test_build_activities_returns_nine():
     acts = build_activities("sqlite:///:memory:", profile="local")
-    assert len(acts) == 8
+    assert len(acts) == 9
     assert all(callable(a) for a in acts)
 
 
