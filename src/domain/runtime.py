@@ -29,6 +29,7 @@ class RunContext(BaseModel):
     acceptance_criteria: list[str] = []
     workspace_path: str
     prior_artifacts: dict = {}
+    instructions: str | None = None
     agent: AgentManifest | None = None
 
 
