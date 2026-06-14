@@ -22,6 +22,7 @@ class UpdateWorkItem(BaseModel):
     title: str | None = None
     body: str | None = None
     acceptance_criteria: list[str] | None = None
+    assignee_agent_id: str | None = None
 
 
 class SetStatus(BaseModel):
