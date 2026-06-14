@@ -66,6 +66,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         capabilities,
         chat,
         memory,
+        messages,
         notifications,
         projects,
         runs,
@@ -82,6 +83,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(capabilities.mcp_router)
     app.include_router(capabilities.secrets_router)
     app.include_router(agents.router)
+    app.include_router(messages.router)
     app.include_router(notifications.router)
     app.include_router(usage.router)
     app.include_router(audit.router)
