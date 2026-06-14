@@ -10,6 +10,7 @@ import { BudgetPage } from "../features/manage/BudgetPage";
 import { AuditPage } from "../features/manage/AuditPage";
 import { AgentsPage } from "../features/manage/AgentsPage";
 import { MemoryPage } from "../features/manage/MemoryPage";
+import { TeamPage } from "../features/team/TeamPage";
 
 export const routes: RouteObject[] = [
   {
@@ -17,6 +18,7 @@ export const routes: RouteObject[] = [
     children: [
       { path: "/", element: <ProjectsPage /> },
       { path: "/projects/:projectId", element: <BoardPage /> },
+      { path: "/team", element: <TeamPage /> },
       {
         path: "/manage",
         element: <ManageLayout />,

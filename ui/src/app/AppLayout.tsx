@@ -12,6 +12,7 @@ export function AppLayout() {
         <NavLink to="/" className="rounded-sm text-sm font-bold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">yaah</NavLink>
         <nav className="flex gap-4">
           <NavLink to="/" end className={linkClass}>Projects</NavLink>
+          <NavLink to="/team" className={linkClass}>Team</NavLink>
           <NavLink to="/manage" className={linkClass}>Manage</NavLink>
         </nav>
         <div className="ml-auto flex items-center gap-1">
