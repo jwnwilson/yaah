@@ -355,6 +355,7 @@ class OrchestratorWorkflow:
             start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
 
         wave = 0
+        verify_rounds = 0
         while True:
             if self._cancelled:
                 await self._persist(run_id, owner_id, status=RunStatus.CANCELLED)
@@ -406,9 +407,18 @@ class OrchestratorWorkflow:
                      "acceptance_criteria": inp.get("acceptance_criteria", []),
                      "team_id": inp.get("team_id")},
                     start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
-                state = state.record_verdict(MonitorVerdict.model_validate(verdict))
-                if verdict.get("complete"):
+                mv = MonitorVerdict.model_validate(verdict)
+                state = state.record_verdict(mv)
+                if mv.complete:
                     break
+                verify_rounds += 1
+                if verify_rounds >= limits.max_verify_rounds:
+                    reason = ", ".join(mv.unmet) or mv.notes or "acceptance not met"
+                    await self._persist(run_id, owner_id, status=RunStatus.BLOCKED)
+                    await self._event(run_id, owner_id, "verify", RunEventType.BLOCKED,
+                                      f"acceptance not met after {verify_rounds} checks: {reason}")
+                    await self._cleanup(run_id, owner_id)
+                    return RunStatus.BLOCKED
                 continue
 
             # intent == continue: dispatch a wave of actors

@@ -39,9 +39,10 @@ def _block_lead(instr):
 class _ScriptRuntime:
     """Lead decision via `lead` callable; monitor writes a complete verdict; workers ok."""
 
-    def __init__(self, storage=None, lead=_default_lead):
+    def __init__(self, storage=None, lead=_default_lead, monitor=None):
         self._storage = storage
         self._lead = lead
+        self._monitor = monitor or (lambda instr: {"complete": True})
 
     def run_stage(self, ctx):
         instr = ctx.instructions or ""
@@ -52,7 +53,7 @@ class _ScriptRuntime:
         elif "verdict.json" in instr:
             self._storage.write_bytes(
                 f"runs/{ctx.run_id}/.orchestration/verdict.json",
-                json.dumps({"complete": True}).encode())
+                json.dumps(self._monitor(instr)).encode())
         yield AgentEvent(type="result", stage=ctx.stage,
                          data=StageResult(outcome="ok").model_dump())
 
@@ -82,9 +83,9 @@ def _status(factory, owner="u1"):
         return uow.runs.get("r1").status
 
 
-def _worker(env, factory, lead=_default_lead):
+def _worker(env, factory, lead=_default_lead, monitor=None):
     storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
-    acts = RunActivities(factory, _ScriptRuntime(storage, lead), storage,
+    acts = RunActivities(factory, _ScriptRuntime(storage, lead, monitor), storage,
                          FakeGit(), FakeGitForge())
     return Worker(
         env.client, task_queue="t",
@@ -167,3 +168,64 @@ async def test_orchestrator_persists_lead_dispatch_message():
         m.sender_agent_id == "a-lead" and m.recipient_agent_id == "a-eng"
         for m in dispatched
     ), "lead's dispatch should be persisted as a Message for the inbox"
+
+
+def _redispatch_lead():
+    fixed = {"done": False}
+
+    def lead(instr):
+        if "wave 0" in instr:
+            return {"intent": "continue",
+                    "dispatches": [{"target_role": "backend", "instructions": "build"}]}
+        if "NOT yet met" in instr and not fixed["done"]:
+            fixed["done"] = True
+            return {"intent": "continue",
+                    "dispatches": [{"target_role": "backend", "instructions": "add tests"}]}
+        return {"intent": "verify"}
+
+    return lead
+
+
+def _flaky_monitor():
+    calls = {"n": 0}
+
+    def m(instr):
+        calls["n"] += 1
+        return {"complete": calls["n"] >= 2, "unmet": ["tests missing"]}
+
+    return m
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_redispatches_on_incomplete_then_completes():
+    factory = _factory()
+    _seed(factory)
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory, lead=_redispatch_lead(), monitor=_flaky_monitor()):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    assert _status(factory) == RunStatus.DONE
+
+
+def _always_verify_lead(instr):
+    if "wave 0" in instr:
+        return {"intent": "continue",
+                "dispatches": [{"target_role": "backend", "instructions": "build"}]}
+    return {"intent": "verify"}
+
+
+def _always_incomplete(instr):
+    return {"complete": False, "unmet": ["never satisfied"]}
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_blocks_after_max_verify_rounds():
+    factory = _factory()
+    _seed(factory)
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory, lead=_always_verify_lead, monitor=_always_incomplete):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    assert _status(factory) == RunStatus.BLOCKED

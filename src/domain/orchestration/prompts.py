@@ -36,6 +36,14 @@ def build_orchestrator_prompt(
     reports = "\n".join(
         f"- {r.role.value}: {r.outcome.value} — {r.summary}" for r in state.reports
     ) or "- (no reports yet)"
+    last = state.verdicts[-1] if state.verdicts else None
+    feedback = ""
+    if last is not None and not last.complete:
+        items = "\n".join(f"- {u}" for u in last.unmet) or f"- {last.notes}"
+        feedback = (
+            "\n\nVerification feedback — these acceptance criteria are NOT yet met; "
+            f"dispatch work to fix them, then verify again:\n{items}"
+        )
     return (
         "You are the team lead orchestrating a software task. Decide the next step; you do "
         "NOT do the work yourself. Respond ONLY with a JSON object matching the decision "
@@ -43,7 +51,7 @@ def build_orchestrator_prompt(
         f"Ticket: {task_title}\n{body}\n\nAcceptance criteria:\n{ac}\n\n"
         f"Available agent roles you may dispatch: {roles}\n\n"
         f"Progress so far — wave {state.waves}, dispatches {state.total_dispatches}, "
-        f"cost ${state.total_cost_usd:.2f}.\nReports:\n{reports}\n\n"
+        f"cost ${state.total_cost_usd:.2f}.\nReports:\n{reports}{feedback}\n\n"
         f"Choose one intent: {_INTENTS}.\n"
         "Decision JSON fields: intent (required); dispatches (list of "
         "{target_role, instructions, acceptance[]}); messages (list of "

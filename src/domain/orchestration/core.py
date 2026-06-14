@@ -115,6 +115,7 @@ class OrchestrationLimits(BaseModel):
     max_dispatches: int = 20
     max_messages: int = 200
     max_cost_usd: float = 25.0
+    max_verify_rounds: int = 3
 
 
 class OrchestrationState(BaseModel):

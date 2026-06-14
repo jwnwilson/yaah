@@ -62,3 +62,15 @@ def test_parse_verdict_roundtrips():
     assert v.complete is False and v.unmet == ["tests fail"]
     with pytest.raises(OrchestrationContractError):
         parse_verdict({"unmet": []})  # missing required 'complete'
+
+
+def test_prompt_surfaces_unmet_acceptance_feedback():
+    from domain.orchestration import MonitorVerdict
+
+    state = OrchestrationState().record_verdict(
+        MonitorVerdict(complete=False, unmet=["tests are missing"]))
+    prompt = build_orchestrator_prompt(
+        task_title="T", acceptance_criteria=["x"], body="", state=state,
+        available_roles=[AgentRole.BACKEND])
+    assert "NOT yet met" in prompt
+    assert "tests are missing" in prompt
