@@ -1,5 +1,6 @@
 .PHONY: install dev test coverage lint up down infra migrate migration ui ui-build ui-test ui-lint \
-	temporal worker worker-local litellm start test-all lint-all e2e e2e-fake e2e-real e2e-run
+	temporal worker worker-local litellm start start-all test-all lint-all e2e e2e-fake e2e-real e2e-run \
+	db-reset seed
 
 install:
 	uv sync
@@ -23,6 +24,45 @@ migrate:
 migration:
 	uv run alembic revision --autogenerate -m "$(m)"
 
+# Reset ALL local dev state to a clean, usable baseline:
+#   1. drops the public schema in the local Postgres DB and re-applies migrations
+#   2. clears Temporal's persisted workflow state (kills orphaned/stuck runs)
+#   3. re-seeds the startup data (default team + sample project + ready task)
+# Skip the confirmation prompt with:  make db-reset FORCE=1
+db-reset:
+	@if [ "$(FORCE)" != "1" ]; then \
+		printf "This DELETES ALL local data (Postgres + Temporal workflows). Continue? [y/N] "; \
+		read ans; case "$$ans" in y|Y|yes|YES) ;; *) echo "aborted"; exit 1;; esac; \
+	fi
+	@echo ">> resetting Postgres schema…"
+	docker compose up -d --wait postgres
+	docker compose exec -T postgres psql -U yaah -d yaah -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+	uv run alembic upgrade head
+	@echo ">> clearing Temporal persisted workflow state…"
+	@docker compose rm -sf temporal >/dev/null 2>&1 || true
+	@VOL=$$(docker volume ls -q --filter label=com.docker.compose.volume=temporaldata); \
+		[ -n "$$VOL" ] && docker volume rm $$VOL >/dev/null 2>&1 || true
+	docker compose up -d --wait temporal
+	@$(MAKE) --no-print-directory seed
+	@echo ">> local state reset: clean DB, fresh Temporal, startup data seeded."
+
+# Create the startup data needed to use the board (idempotent): default team, a sample
+# project wired to it, and an epic->feature->task with the task left in `ready` state.
+# Also provisions the sample git repo the project points at (YAAH_SEED_REPO, default /tmp/yaah-dummy).
+seed:
+	docker compose up -d --wait postgres
+	@REPO="$${YAAH_SEED_REPO:-/tmp/yaah-dummy}"; \
+	if [ ! -d "$$REPO/.git" ]; then \
+		echo ">> creating sample git repo: $$REPO"; \
+		rm -rf "$$REPO"; mkdir -p "$$REPO"; \
+		git -C "$$REPO" init -q; \
+		git -C "$$REPO" symbolic-ref HEAD refs/heads/main; \
+		printf '# Sample Project\n\nLocal yaah sample repo.\n' > "$$REPO/README.md"; \
+		git -C "$$REPO" add -A; \
+		git -C "$$REPO" -c user.email=seed@yaah.local -c user.name=seed commit -qm init; \
+	fi; \
+	YAAH_SEED_REPO="$$REPO" PYTHONPATH=src uv run python -m interactors.seed
+
 dev:
 	uv run uvicorn --app-dir src interactors.api.app:create_app --factory --reload
 
@@ -34,6 +74,20 @@ start: migrate
 	@trap 'kill 0' EXIT INT TERM; \
 		uv run uvicorn --app-dir src interactors.api.app:create_app --factory --reload & \
 		( cd ui && npm run dev ) & \
+		wait
+
+# Start API (:8000), UI (:5173), and the Temporal worker together; Ctrl-C stops all three.
+# Brings up Postgres + Temporal and applies migrations first, then runs all as host processes.
+# Pin the agent runtime with YAAH_AGENT_RUNTIME=fake|claude_code (export ANTHROPIC_API_KEY for real agents).
+start-all: infra migrate
+	@echo "API      -> http://localhost:8000"
+	@echo "UI       -> http://localhost:5173"
+	@echo "Temporal -> http://localhost:8233 (worker attached to task queue)"
+	@echo "(Ctrl-C stops API, UI, and worker)"
+	@trap 'kill 0' EXIT INT TERM; \
+		uv run uvicorn --app-dir src interactors.api.app:create_app --factory --reload & \
+		( cd ui && npm run dev ) & \
+		PYTHONPATH=src uv run python -m interactors.temporal.worker & \
 		wait
 
 test:
