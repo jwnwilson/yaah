@@ -1,3 +1,4 @@
+import asyncio
 from datetime import timedelta
 
 from temporalio import workflow
@@ -5,7 +6,21 @@ from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
     from domain import pipeline, scm
-    from domain.models import AutonomyLevel, RunEventType, RunStage, RunStatus
+    from domain.models import (
+        AgentRole,
+        AutonomyLevel,
+        RunEventType,
+        RunStage,
+        RunStatus,
+    )
+    from domain.orchestration import (
+        AgentOutcome,
+        AgentReport,
+        MonitorVerdict,
+        OrchestrationLimits,
+        OrchestrationState,
+        guard_exceeded,
+    )
 
 _STAGE_TIMEOUT = timedelta(hours=24)
 _RETRY = RetryPolicy(maximum_attempts=3)
@@ -268,3 +283,199 @@ class AgentWorkflow:
             await workflow.get_external_workflow_handle(workflow_id).signal(signal_name, arg)
         except Exception:  # noqa: BLE001 - target may not be running; don't crash the actor
             pass
+
+
+@workflow.defn(name="OrchestratorWorkflow")
+class OrchestratorWorkflow:
+    """Lead-driven parent orchestrator: provision -> loop(invoke_lead -> dispatch actors
+    / verify / block / gate) -> PR -> LEARN -> DONE. Additive: RunWorkflow is unchanged."""
+
+    def __init__(self) -> None:
+        self._approved = False
+        self._rejected = False
+        self._cancelled = False
+
+    @workflow.signal
+    def approve(self) -> None:
+        self._approved = True
+
+    @workflow.signal
+    def reject(self) -> None:
+        self._rejected = True
+
+    @workflow.signal
+    def cancel(self) -> None:
+        self._cancelled = True
+
+    async def _persist(self, run_id, owner_id, **fields) -> None:
+        await workflow.execute_activity(
+            "persist_run_state", {"run_id": run_id, "owner_id": owner_id, **fields},
+            start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+
+    async def _event(self, run_id, owner_id, stage, type_, message="") -> None:
+        await workflow.execute_activity(
+            "record_event",
+            {"run_id": run_id, "owner_id": owner_id, "stage": stage,
+             "type": type_, "message": message},
+            start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+
+    async def _cleanup(self, run_id, owner_id) -> None:
+        await workflow.execute_activity(
+            "cleanup_workspace", {"run_id": run_id, "owner_id": owner_id},
+            start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+
+    async def _await_gate(self) -> str:
+        await workflow.wait_condition(
+            lambda: self._approved or self._rejected or self._cancelled)
+        if self._cancelled:
+            return "cancelled"
+        if self._rejected:
+            return "rejected"
+        self._approved = False
+        return "approved"
+
+    @workflow.run
+    async def run(self, inp: dict) -> str:
+        run_id, owner_id = inp["run_id"], inp["owner_id"]
+        autonomy = AutonomyLevel(inp["autonomy"])
+        gates = pipeline.gates_for(autonomy)
+        roles = inp.get("available_roles", [])
+        limits = OrchestrationLimits()
+        state = OrchestrationState()
+        cost = 0.0
+        branch = scm.branch_name(inp["task_id"])
+
+        await self._persist(run_id, owner_id, status=RunStatus.RUNNING, stage=RunStage.PROVISION)
+        await workflow.execute_activity(
+            "provision_workspace",
+            {"run_id": run_id, "owner_id": owner_id, "profile": inp["profile"],
+             "repo_ref": inp["repo_ref"], "branch": branch},
+            start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+
+        wave = 0
+        while True:
+            if self._cancelled:
+                await self._persist(run_id, owner_id, status=RunStatus.CANCELLED)
+                await self._cleanup(run_id, owner_id)
+                return RunStatus.CANCELLED
+
+            res = await workflow.execute_activity(
+                "invoke_lead",
+                {"run_id": run_id, "owner_id": owner_id, "task_title": inp["task_title"],
+                 "acceptance_criteria": inp.get("acceptance_criteria", []),
+                 "body": inp.get("body", ""), "team_id": inp.get("team_id"),
+                 "available_roles": roles, "state": state.model_dump(mode="json")},
+                start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+            cost += res.get("cost_usd", 0.0)
+            await self._persist(run_id, owner_id, cost_usd=cost)
+            decision = res["decision"]
+            intent = decision["intent"]
+
+            if intent == "block":
+                await self._persist(run_id, owner_id, status=RunStatus.BLOCKED)
+                await self._event(run_id, owner_id, "plan", RunEventType.BLOCKED,
+                                  decision.get("rationale", ""))
+                await self._cleanup(run_id, owner_id)
+                return RunStatus.BLOCKED
+
+            if intent == "needs_human":
+                await self._persist(run_id, owner_id, status=RunStatus.AWAITING_APPROVAL)
+                await self._event(run_id, owner_id, "plan", RunEventType.GATE_OPENED)
+                outcome = await self._await_gate()
+                if outcome == "cancelled":
+                    await self._persist(run_id, owner_id, status=RunStatus.CANCELLED)
+                    await self._cleanup(run_id, owner_id)
+                    return RunStatus.CANCELLED
+                if outcome == "rejected":
+                    await self._persist(run_id, owner_id, status=RunStatus.FAILED)
+                    await self._event(run_id, owner_id, "plan", RunEventType.GATE_RESOLVED,
+                                      "rejected")
+                    await self._cleanup(run_id, owner_id)
+                    return RunStatus.FAILED
+                await self._event(run_id, owner_id, "plan", RunEventType.GATE_RESOLVED, "approved")
+                continue
+
+            if intent == "verify":
+                verdict = await workflow.execute_activity(
+                    "run_monitor",
+                    {"run_id": run_id, "owner_id": owner_id, "task_title": inp["task_title"],
+                     "acceptance_criteria": inp.get("acceptance_criteria", []),
+                     "team_id": inp.get("team_id")},
+                    start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+                state = state.record_verdict(MonitorVerdict.model_validate(verdict))
+                if verdict.get("complete"):
+                    break
+                continue
+
+            # intent == continue: dispatch a wave of actors
+            dispatches = decision.get("dispatches", [])
+            guard = guard_exceeded(state, limits)
+            if guard or not dispatches:
+                await self._persist(run_id, owner_id, status=RunStatus.BLOCKED)
+                await self._event(run_id, owner_id, "plan", RunEventType.BLOCKED,
+                                  f"guard:{guard}" if guard else "no dispatches")
+                await self._cleanup(run_id, owner_id)
+                return RunStatus.BLOCKED
+
+            wave += 1
+            await self._persist(run_id, owner_id, status=RunStatus.RUNNING,
+                                stage=RunStage.IMPLEMENT)
+            handles = []
+            for d in dispatches:
+                role = d["target_role"]
+                await self._event(run_id, owner_id, "implement", RunEventType.AGENT_DISPATCHED,
+                                  f"dispatch {role}")
+                child = await workflow.start_child_workflow(
+                    AgentWorkflow.run,
+                    {"run_id": run_id, "owner_id": owner_id, "role": role, "agent_id": role,
+                     "parent_workflow_id": workflow.info().workflow_id,
+                     "task_title": inp["task_title"],
+                     "acceptance_criteria": inp.get("acceptance_criteria", []),
+                     "team_id": inp.get("team_id"), "role_to_agent_id": {},
+                     "project_id": inp.get("project_id"), "work_item_id": inp.get("task_id")},
+                    id=f"agent-{run_id}-{role}-{wave}")
+                await child.signal("deliver", {"body": d["instructions"]})
+                await child.signal("stop_now")
+                handles.append((role, child))
+            await asyncio.gather(*[h for _, h in handles])
+            state = state.record_wave(dispatch_count=len(dispatches),
+                                      messages=len(dispatches), cost=0.0)
+            for role, _ in handles:
+                state = state.record_report(
+                    AgentReport(role=AgentRole(role), outcome=AgentOutcome.OK))
+            await self._event(run_id, owner_id, "implement", RunEventType.QUIESCENCE_REACHED,
+                              f"wave {wave} complete")
+
+        # verified complete -> optional PR gate, then PR + LEARN
+        if RunStage.PR in gates:
+            await self._persist(run_id, owner_id, status=RunStatus.AWAITING_APPROVAL,
+                                stage=RunStage.PR)
+            await self._event(run_id, owner_id, "pr", RunEventType.GATE_OPENED)
+            outcome = await self._await_gate()
+            if outcome == "cancelled":
+                await self._persist(run_id, owner_id, status=RunStatus.CANCELLED)
+                await self._cleanup(run_id, owner_id)
+                return RunStatus.CANCELLED
+            if outcome == "rejected":
+                await self._persist(run_id, owner_id, status=RunStatus.FAILED)
+                await self._event(run_id, owner_id, "pr", RunEventType.GATE_RESOLVED, "rejected")
+                await self._cleanup(run_id, owner_id)
+                return RunStatus.FAILED
+            await self._event(run_id, owner_id, "pr", RunEventType.GATE_RESOLVED, "approved")
+
+        await workflow.execute_activity(
+            "open_pr",
+            {"run_id": run_id, "owner_id": owner_id, "profile": inp["profile"], "branch": branch,
+             "base": inp.get("base", "main"), "title": scm.pr_title(inp["task_title"]),
+             "body": scm.pr_body(inp["task_title"], inp.get("body", ""),
+                                 inp.get("acceptance_criteria", []))},
+            start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+        await workflow.execute_activity(
+            "capture_memory",
+            {"run_id": run_id, "owner_id": owner_id, "project_id": inp["project_id"],
+             "base": inp.get("base", "main"), "profile": inp["profile"],
+             "autonomy": inp["autonomy"], "repo_ref": inp["repo_ref"]},
+            start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+        await self._persist(run_id, owner_id, status=RunStatus.DONE, stage=RunStage.LEARN)
+        await self._cleanup(run_id, owner_id)
+        return RunStatus.DONE
