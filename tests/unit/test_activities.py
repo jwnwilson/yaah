@@ -128,3 +128,18 @@ def test_open_pr_local_records_branch_only():
     assert run.branch == "agent/t1"
 
 
+
+
+def test_provision_engineer_workspace_branches_off_task():
+    factory = _factory()
+    run_id = _seed_run(factory)
+    git = FakeGit()
+    acts = _acts(factory, git=git)
+    acts.provision_engineer_workspace({
+        "run_id": run_id, "owner_id": "u1", "profile": "local",
+        "repo_ref": "/repo", "base": "agent/task1",
+        "branch": "agent/task1__backend-1-0", "workspace_key": f"runs/{run_id}/w/backend-1-0",
+    })
+    repo_ref, ws, branch, mode, base = git.prepared[0]
+    assert branch == "agent/task1__backend-1-0" and base == "agent/task1" and mode == "worktree"
+    assert ws.endswith(f"runs/{run_id}/w/backend-1-0")

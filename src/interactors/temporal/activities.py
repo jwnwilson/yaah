@@ -507,6 +507,16 @@ class RunActivities:
                            "message": f"workspace ready on {payload['branch']}"})
         return {"outcome": "ok"}
 
+    @activity.defn(name="provision_engineer_workspace")
+    def provision_engineer_workspace(self, payload: dict) -> dict:
+        workspace = self._storage.local_path(payload["workspace_key"])
+        self._git.prepare(repo_ref=payload["repo_ref"], workspace_path=workspace,
+                          branch=payload["branch"], mode="worktree", base=payload["base"])
+        self.record_event({"run_id": payload["run_id"], "owner_id": payload["owner_id"],
+                           "stage": "implement", "type": "stage_started",
+                           "message": f"engineer workspace {payload['branch']}"})
+        return {"outcome": "ok"}
+
     @activity.defn(name="open_pr")
     def open_pr(self, payload: dict) -> dict:
         run_id, owner_id = payload["run_id"], payload["owner_id"]
