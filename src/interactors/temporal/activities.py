@@ -269,7 +269,8 @@ class RunActivities:
         agent by `role` and drives it via RunContext.instructions. Returns a StageResult."""
         run_id = payload["run_id"]
         owner_id = payload["owner_id"]
-        workspace_path = self._storage.local_path(f"runs/{run_id}")
+        workspace_key = payload.get("workspace_key") or f"runs/{run_id}"
+        workspace_path = self._storage.local_path(workspace_key)
         manifest, agent_role = self._manifest_for_role(owner_id, payload.get("team_id"), role)
         if manifest is not None:
             self._record_audit(
