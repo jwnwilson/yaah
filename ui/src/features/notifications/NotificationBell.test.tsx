@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
-import { server } from "../../test/server";
+import { server } from "@/test/server";
 import { NotificationBell } from "./NotificationBell";
 
 const NOTIFICATION = {

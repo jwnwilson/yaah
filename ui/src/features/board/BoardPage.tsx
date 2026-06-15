@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Board } from "./Board";
-import { TicketPanel } from "../work-items/TicketPanel";
-import { HierarchyTree } from "../work-items/HierarchyTree";
-import { ChatRail } from "../chat/ChatRail";
-import { Button } from "../../ui/Button";
+import { TicketPanel } from "@/features/work-items/TicketPanel";
+import { HierarchyTree } from "@/features/work-items/HierarchyTree";
+import { ChatRail } from "@/features/chat/ChatRail";
+import { Button } from "@/ui/Button";
 
 export default function BoardPage() {
   const { projectId } = useParams();

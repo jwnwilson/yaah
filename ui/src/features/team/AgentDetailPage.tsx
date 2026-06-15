@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import type { Message } from "../../lib/api/messages";
-import { useMessages } from "../inbox/useInbox";
+import type { Message } from "@/lib/api/messages";
+import { useMessages } from "@/features/inbox/useInbox";
 import { initials, roleVisual } from "./roleVisual";
 import { useAgent, useSentMessages } from "./useAgentDetail";
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { TokenUsage, UsageGroupBy } from "../../lib/api/usage";
-import { Button } from "../../ui/Button";
+import type { TokenUsage, UsageGroupBy } from "@/lib/api/usage";
+import { Button } from "@/ui/Button";
 import { useUsage } from "./useUsage";
 
 const GROUPS: { value: UsageGroupBy; label: string }[] = [

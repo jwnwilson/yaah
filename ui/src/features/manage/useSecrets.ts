@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createSecret, deleteSecret, listSecrets, secretKeys, setSecretValue, updateSecret,
   type CreateSecretInput, type UpdateSecretInput,
-} from "../../lib/api/capabilities";
+} from "@/lib/api/capabilities";
 
 export function useSecrets() {
   return useQuery({ queryKey: secretKeys.all, queryFn: listSecrets });

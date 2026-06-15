@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { Notification } from "../../lib/api/notifications";
-import { IconButton } from "../../ui/IconButton";
+import type { Notification } from "@/lib/api/notifications";
+import { IconButton } from "@/ui/IconButton";
 import { useNotifications, useUnreadCount } from "./useNotifications";
 
 function NotificationItem({ notification }: { notification: Notification }) {

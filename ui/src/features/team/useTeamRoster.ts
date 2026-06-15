@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { teamKeys, listTeams } from "../../lib/api/teams";
-import { agentKeys, listAgents } from "../../lib/api/agents";
+import { teamKeys, listTeams } from "@/lib/api/teams";
+import { agentKeys, listAgents } from "@/lib/api/agents";
 
 /** First team's roster (single-team for now; multi-team selection is future work). */
 export function useTeamRoster() {

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Button } from "../../ui/Button";
-import { Dialog } from "../../ui/Dialog";
-import { Field, Input } from "../../ui/Field";
+import { Button } from "@/ui/Button";
+import { Dialog } from "@/ui/Dialog";
+import { Field, Input } from "@/ui/Field";
 import { useSetSecretValue } from "./useSecrets";
 
 export function SetSecretValueDialog({ secretId, secretName, onClose }: { secretId: string; secretName: string; onClose: () => void }) {

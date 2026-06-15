@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { runKeys, startRun } from "../../lib/api/runs";
+import { runKeys, startRun } from "@/lib/api/runs";
 
 export function useStartRun(projectId: string, taskId: string) {
   const qc = useQueryClient();

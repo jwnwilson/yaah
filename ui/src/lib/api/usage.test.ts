@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { server } from "../../test/server";
+import { server } from "@/test/server";
 import { getUsage } from "./usage";
 
 test("getUsage passes group_by and project_id as query params and unwraps totals", async () => {

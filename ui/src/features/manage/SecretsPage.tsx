@@ -1,10 +1,10 @@
 import { useState } from "react";
-import type { Secret } from "../../lib/api/types";
-import { ResourceTable } from "../components/ResourceTable";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import { Button } from "../../ui/Button";
-import { Dialog } from "../../ui/Dialog";
-import { Field, Input } from "../../ui/Field";
+import type { Secret } from "@/lib/api/types";
+import { ResourceTable } from "@/features/components/ResourceTable";
+import { ConfirmDialog } from "@/features/components/ConfirmDialog";
+import { Button } from "@/ui/Button";
+import { Dialog } from "@/ui/Dialog";
+import { Field, Input } from "@/ui/Field";
 import { useCreateSecret, useDeleteSecret, useSecrets } from "./useSecrets";
 import { SetSecretValueDialog } from "./SetSecretValueDialog";
 

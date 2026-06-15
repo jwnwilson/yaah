@@ -4,7 +4,7 @@ import {
   getRunMemory,
   memoryKeys,
   rejectRunMemory,
-} from "../../lib/api/memory";
+} from "@/lib/api/memory";
 
 export function useMemoryProposal(runId: string) {
   const qc = useQueryClient();

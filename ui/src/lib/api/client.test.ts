@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, test, vi } from "vitest";
 import { http, HttpResponse } from "msw";
-import { server } from "../../test/server";
+import { server } from "@/test/server";
 import { apiGet, apiPost, ApiError } from "./client";
 
 afterEach(() => server.resetHandlers());

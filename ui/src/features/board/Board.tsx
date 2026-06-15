@@ -3,7 +3,7 @@ import { BOARD_COLUMNS, columnForStatus, groupByColumn } from "./columns";
 import { useBoardItems } from "./useBoardItems";
 import { useSetStatus } from "./useSetStatus";
 import { Column } from "./Column";
-import type { WorkItemStatus } from "../../lib/api/types";
+import type { WorkItemStatus } from "@/lib/api/types";
 
 export function Board({ projectId, parentId, onOpen }: { projectId: string; parentId?: string; onOpen?: (id: string) => void }) {
   const { data, isLoading, isError, error } = useBoardItems(projectId, parentId);
