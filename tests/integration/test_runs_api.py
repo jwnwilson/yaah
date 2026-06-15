@@ -16,7 +16,7 @@ class _FakeTemporal:
         self.started = []
         self.signals = []
 
-    def start_run_workflow(self, run_input, workflow_name="RunWorkflow"):
+    def start_run_workflow(self, run_input, workflow_name="OrchestratorWorkflow"):
         self.started.append((workflow_name, run_input))
 
     def signal(self, run_id, name):

@@ -1,7 +1,7 @@
 # ADR-0002: Lead-driven orchestration with durable actor mailboxes
 
 **Date**: 2026-06-14
-**Status**: accepted
+**Status**: accepted — implemented 2026-06-15 (OrchestratorWorkflow is the sole run path; RunWorkflow removed)
 **Deciders**: noel
 
 ## Context

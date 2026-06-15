@@ -1,29 +1,42 @@
 # yaah Architecture
 
 > **Read this before designing any task that touches persistence or the API layer.**
-> It defines the target patterns (adapted from `hexrepo` `libs/db` + `libs/api`) that all
-> new code must follow. The refactor plan that introduces them:
+> It defines the patterns (adapted from `hexrepo` `libs/db` + `libs/api`) that all new code
+> must follow. The refactor that introduced them:
 > `docs/plans/2026-06-12-yaah-a15-hexrepo-refactor.md`.
+>
+> For *where the project is* (what's shipped, what's dormant, what's missing), read
+> [project-history.md](project-history.md) first. This file is patterns; that file is status.
 
 ## Layering (hexagonal — unchanged)
 
 ```
-ui/              # UI folder for frontend development
+ui/              # React/Vite/Tailwind SPA (features/ + ui/ primitives + lib/api)
 src/
   domain/        # pure business logic, no I/O
-    models.py    # Pydantic DTOs: Project, WorkItem, Team, AgentDefinition, Run
-    transitions.py  # work-item status state machine
-    teams.py     # default team factory
-    errors.py    # persistence-agnostic errors: RecordNotFound, IntegrityConflict
+    models.py        # Pydantic DTOs (Project, WorkItem, Team, AgentDefinition, Run, ...)
+    transitions/     # work-item + run state machines, run-stage pipeline
+    orchestration/   # lead-driven orchestration DTOs/guards + orchestrator prompt contract
+    agent/           # agent-execution policy: capabilities, invocation, prompts, runtime
+    errors.py · memory.py · notifications.py · permissions.py · refinement.py · scm.py
+    usage.py · teams.py
   adapters/
-    database/    # ports.py (Repository/UnitOfWork protocols), ORM models, SqlRepository, SqlUnitOfWork
+    database/    # ports.py (Repository/UnitOfWork protocols), orm, repository, uow, engine
+    storage/     # StoragePort + LocalStorageAdapter (run workspaces / blobs)
+    git/         # GitPort + GitForgePort: local_git, github_app, fake
+    skills/      # SkillFetcher (clone/copy granted skills)
+    agent/       # runtime/ (claude_code, fake, pretooluse_hook, stream_json),
+                 #   model/ (anthropic, litellm, fake), refinement/, notify/
   interactors/
-    api/         # FastAPI wiring: app factory, routes, deps, auth, envelope
-  lib/           # reusable, app-agnostic modular code (e.g. CrudRouter)
+    api/         # FastAPI wiring: app factory, routes, deps, auth, envelope, settings
+    temporal/    # workflows, activities, worker, client, config
+    cli/         # seed, memory_apply (run through the same owner-scoped UoW)
+  lib/           # reusable, app-agnostic modules (crud_router, secrets cipher)
 ```
 
 Placement rules: domain never imports adapters or FastAPI; routes contain wiring only;
-all business rules (validation, transitions) stay in domain.
+all business rules (validation, transitions, orchestration policy, capability/invocation
+composition) stay in domain. Ports live beside the adapter that implements them.
 
 **Persistence ports live with the adapter that implements them** (`adapters/database/ports.py`),
 not in `domain/`. The `Repository`/`UnitOfWork` protocols are generic persistence contracts
@@ -88,8 +101,10 @@ with uow.transaction():
   `SqlUnitOfWork(session_factory, required_filters=...)`. No module-level engine map
   (hexrepo needs one for Lambda reuse; a long-lived FastAPI process does not). SQLite
   in-memory keeps `StaticPool` + `check_same_thread=False` for tests.
-- `Base.metadata.create_all(engine)` runs in the app factory for dev/tests; alembic
-  replaces it in A6.
+- **Alembic owns the schema** (`migrations/versions/`). `Base.metadata.create_all(engine)`
+  remains for SQLite in-memory tests and ephemeral dev; Postgres is migrated. `make db-reset`
+  clears both Postgres *and* the Temporal `temporaldata` volume, then re-seeds via
+  `cli/seed.py` (see ADR-0001).
 
 ### Owner scoping via required filters
 
@@ -170,6 +185,60 @@ Every response stays `{success, data, error}`. List endpoints put
 "page_number": ..}` — uniform across all list endpoints (closes the A1
 meta-inconsistency deferral).
 
+## Agent execution & orchestration
+
+Run execution is a **Temporal orchestrator-worker** system. Domain stays pure: the
+non-deterministic decisions live in `domain/`, and Temporal workflows/activities are the
+durable executor that carries them out.
+
+### Ports & adapters (deny-by-default execution)
+
+- **`AgentRuntime`** (`domain/agent/runtime.py`) — event-streaming port: a stage/step runs a
+  real agent and yields `AgentEvent`s + a `StageResult` (with token `usage`). Impls:
+  `ClaudeCodeRuntime` (spawns `claude -p --output-format stream-json`) and `FakeAgentRuntime`
+  (scripted events, no LLM). Auto-selected by key/binary availability.
+- **`ModelProvider`** (`adapters/agent/model/`) — `anthropic` (direct) or `litellm` (gateway
+  with per-agent `model_alias`); chosen by `model_gateway` setting.
+- **Capability composition is pure.** `domain/agent/capabilities.py` selects the agent for a
+  stage (role↔stage) and assembles an `AgentManifest` from its grants; `domain/agent/
+  invocation.py::build_invocation()` turns the manifest + resolved registry rows into the exact
+  `claude` invocation (argv, `--append-system-prompt`, allowed tools, `settings.json` hook,
+  `.mcp.json`, `YAAH_*` env, skills as (name, source, dest)). The adapter only does I/O: fetch
+  skills, write files, spawn, parse. **Deny-by-default** is enforced twice — static
+  `--allowedTools` and an active **PreToolUse hook** (`domain/permissions.py` decides;
+  `adapters/agent/runtime/pretooluse_hook.py` enforces and logs to `audit.jsonl`).
+- **Secrets** are Fernet-encrypted, write-only, and decrypted *inside the activity* into
+  `manifest.secret_env` — injected into the subprocess + per-MCP `env`, never serialized into
+  Temporal inputs/history, run events, or logs.
+
+### The run path: lead-driven orchestration (ADR-0002)
+
+`OrchestratorWorkflow` + `AgentWorkflow` are **the sole run path** (the legacy fixed-stage
+`RunWorkflow` was removed in the cutover). The parent loops `invoke_lead(state)` → persist
+decision/events/assignee/messages → dispatch to durable `AgentWorkflow` child actors (signal-fed
+mailboxes that drain to idle) → `run_monitor(state)`, until the monitor confirms acceptance, then
+opens the PR and captures memory. Human gates are Temporal signals (`approve`/`reject`/`cancel`);
+the workflow is the sole writer of `run.status`. Bounded by pure `domain/orchestration` **guards**
+(max waves/dispatches/messages/cost, verify rounds). The `messages` table is both the durable
+mailbox and the UI inbox row. `gates_for(autonomy)` from `domain/transitions/pipeline.py` still
+supplies the gate set.
+
+Each `AgentWorkflow` returns its worst outcome + total cost; the parent records that as a truthful
+per-actor report into orchestration state (fed back to the lead) and rolls it into the run cost +
+cost guard.
+
+> **Current shape:** one actor per role per wave, gathered to completion before the next wave —
+> validated to the old pipeline's fidelity. True concurrent waves, quiescence/settle-window
+> detection, and live agent-to-agent messaging are the **parallel-engineers** spec (the
+> peer-routing id is already correct for when they land).
+
+### Activities are the only writers
+
+Workflows are deterministic and never touch I/O directly. All persistence (status, run_events,
+usage_records, messages, audit_events, memory_proposals) flows through activities that build a
+per-call owner-scoped `SqlUnitOfWork`. Usage and audit ingestion are **idempotent** (keyed by
+run/stage/attempt/model and by source file) so Temporal replay/resume never double-counts.
+
 ## Deliberate deviations from hexrepo
 
 | hexrepo | yaah | why |
@@ -178,7 +247,7 @@ meta-inconsistency deferral).
 | `UUID` ids | **32-char uuid-hex strings** | yaah spec'd convention; no migration value |
 | bare DTO / `PaginatedData` responses | **`{success, data, error}` envelope** | yaah API convention, already shipped |
 | ABC base classes | **`typing.Protocol` ports** in `adapters/database/ports.py` | structural typing; deps annotate Protocol types so ports stay load-bearing. Co-located with their impl since the domain never references them |
-| alembic from day one | **`create_all` until A6** | schema still fluid pre-A2 |
+| alembic from day one | **`create_all` early, alembic now** | schema was fluid pre-A2; migrations landed with A6 |
 | read-only engine pool, query counting, relationship auto-sync (`update_relationships`), Mongo/Dynamo backends, Lambda wrapper | **omitted** | no current consumer; add when a phase needs them |
 | `server_default=func.now()` timestamps | **domain-generated `utc_now()`** | timestamps are domain facts; keeps tests deterministic |
 
