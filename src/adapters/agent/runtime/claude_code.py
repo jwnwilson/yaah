@@ -24,9 +24,8 @@ class ClaudeCodeRuntime:
         self._procs: dict[str, object] = {}
 
     def run_stage(self, ctx: RunContext) -> Iterator[AgentEvent]:
-        model_id = self._model.model_id()
-        if ctx.agent is not None and ctx.agent.model_alias:
-            model_id = ctx.agent.model_alias
+        alias = ctx.agent.model_alias if ctx.agent is not None else None
+        model_id = self._model.model_id(alias)  # provider resolves logical aliases
         inv = build_invocation(ctx, model_id=model_id)
 
         events_pre: list[AgentEvent] = []

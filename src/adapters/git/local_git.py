@@ -40,9 +40,14 @@ class LocalGit:
             self._run([*self._auth_args(token), "clone", repo_ref, workspace_path])
             self._run([*_AUTHOR, "checkout", "-b", branch], cwd=workspace_path)
 
-    def commit_all(self, workspace_path: str, message: str) -> bool:
-        self._run(["add", "-A"], cwd=workspace_path)
-        status = self._run(["status", "--porcelain"], cwd=workspace_path)
+    def commit_all(
+        self, workspace_path: str, message: str, *, exclude: tuple[str, ...] = ()
+    ) -> bool:
+        # `:!<path>` pathspec magic excludes the scratch dirs from staging + status, so
+        # they are neither committed nor counted as changes.
+        pathspec = [".", *[f":!{e}" for e in exclude]]
+        self._run(["add", "-A", "--", *pathspec], cwd=workspace_path)
+        status = self._run(["status", "--porcelain", "--", *pathspec], cwd=workspace_path)
         if not status.strip():
             return False
         self._run([*_AUTHOR, "commit", "-m", message], cwd=workspace_path)

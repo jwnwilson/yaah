@@ -19,6 +19,7 @@ from domain.models import (
     utc_now,
 )
 from domain.notifications import notification_for_event, resolves
+from domain.scm import WORKSPACE_SCRATCH
 from domain.usage import TokenUsage
 
 _MAX_LEAD_RETRIES = 2  # bounded re-prompts when the lead emits an invalid decision
@@ -510,7 +511,7 @@ class RunActivities:
     def open_pr(self, payload: dict) -> dict:
         run_id, owner_id = payload["run_id"], payload["owner_id"]
         workspace = self._storage.local_path(f"runs/{run_id}")
-        committed = self._git.commit_all(workspace, payload["title"])
+        committed = self._git.commit_all(workspace, payload["title"], exclude=WORKSPACE_SCRATCH)
         if not committed:
             self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "pr",
                                "type": "stage_completed", "message": "no changes to PR"})
