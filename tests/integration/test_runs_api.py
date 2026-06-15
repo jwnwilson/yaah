@@ -251,27 +251,12 @@ def test_audit_unknown_run_404():
     assert c.get("/runs/deadbeef/audit").status_code == 404
 
 
-def _client_with_fake_temporal_settings(**over):
-    app = create_app(Settings(_env_file=None, database_url="sqlite:///:memory:", **over))
-    fake = _FakeTemporal()
-    app.dependency_overrides[temporal_client] = lambda: fake
-    return TestClient(app), fake
-
-
-def test_start_run_uses_pipeline_workflow_by_default():
+def test_start_run_uses_orchestrator_workflow():
     c, fake = _client_with_fake_temporal()
     task_id, _team_id, _pid = _ready_task(c)
     c.post(f"/work-items/{task_id}/runs")
     workflow_name, run_input = fake.started[0]
-    assert workflow_name == "RunWorkflow"
+    assert workflow_name == "OrchestratorWorkflow"  # the sole run path post-cutover
     assert "backend" in run_input["available_roles"]  # default team roles are passed
     role_map = run_input["role_to_agent_id"]
     assert set(role_map) >= {"lead", "backend", "qa"} and all(role_map.values())
-
-
-def test_start_run_uses_orchestrator_when_enabled():
-    c, fake = _client_with_fake_temporal_settings(orchestrator_enabled=True)
-    task_id, _team_id, _pid = _ready_task(c)
-    c.post(f"/work-items/{task_id}/runs")
-    workflow_name, _run_input = fake.started[0]
-    assert workflow_name == "OrchestratorWorkflow"

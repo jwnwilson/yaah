@@ -15,7 +15,6 @@ from interactors.temporal.config import TemporalConfig
 from interactors.temporal.workflows import (
     AgentWorkflow,
     OrchestratorWorkflow,
-    RunWorkflow,
 )
 
 
@@ -89,7 +88,7 @@ async def run_worker(  # pragma: no cover
     worker = Worker(
         client,
         task_queue=config.task_queue,
-        workflows=[RunWorkflow, AgentWorkflow, OrchestratorWorkflow],
+        workflows=[AgentWorkflow, OrchestratorWorkflow],
         activities=build_activities(database_url, profile=profile),
         activity_executor=ThreadPoolExecutor(max_workers=8),
     )

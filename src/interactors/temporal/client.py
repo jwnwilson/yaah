@@ -18,7 +18,7 @@ class TemporalRunClient:
         return await Client.connect(self._config.address, namespace=self._config.namespace)
 
     def start_run_workflow(  # pragma: no cover
-        self, run_input: dict, workflow_name: str = "RunWorkflow"
+        self, run_input: dict, workflow_name: str = "OrchestratorWorkflow"
     ) -> None:
         async def _go():
             client = await self._client()

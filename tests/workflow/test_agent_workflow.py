@@ -3,7 +3,6 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from temporalio import workflow
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
@@ -24,12 +23,13 @@ from interactors.temporal.workflows import AgentWorkflow
 
 
 class _StubRuntime:
-    """Scripted agent_step: optionally writes an outbox.json, returns a fixed outcome."""
+    """Scripted agent_step: optionally writes an outbox.json, returns a fixed outcome+cost."""
 
-    def __init__(self, outcome="ok", outbox=None, storage=None):
+    def __init__(self, outcome="ok", outbox=None, storage=None, cost=0.0):
         self._outcome = outcome
         self._outbox = outbox
         self._storage = storage
+        self._cost = cost
 
     def run_stage(self, ctx):
         if self._outbox is not None and self._storage is not None:
@@ -38,25 +38,11 @@ class _StubRuntime:
                 json.dumps(self._outbox).encode(),
             )
         yield AgentEvent(type="result", stage=ctx.stage,
-                         data=StageResult(outcome=self._outcome).model_dump())
+                         data=StageResult(outcome=self._outcome,
+                                          cost_usd=self._cost).model_dump())
 
     def cancel(self, run_id):
         return None
-
-
-@workflow.defn(name="StubParent")
-class StubParent:
-    def __init__(self):
-        self._reports = []
-
-    @workflow.signal
-    def agent_report(self, report: dict) -> None:
-        self._reports.append(report)
-
-    @workflow.run
-    async def run(self) -> list:
-        await workflow.wait_condition(lambda: len(self._reports) >= 1)
-        return list(self._reports)
 
 
 def _factory():
@@ -133,19 +119,19 @@ async def test_actor_routes_outgoing_message_to_peer_and_persists():
 
 
 @pytest.mark.asyncio
-async def test_actor_reports_completion_to_parent():
+async def test_actor_returns_aggregate_outcome_and_cost():
+    """The actor's return value carries the worst outcome + total cost it processed,
+    so the parent can record a truthful report (not a hardcoded OK) into state."""
     factory = _factory()
     _seed(factory)
-    acts = _acts(factory, _StubRuntime(outcome="ok"))
+    acts = _acts(factory, _StubRuntime(outcome="fail", cost=2.5))
     async with await WorkflowEnvironment.start_time_skipping() as env:
-        async with _worker(env, acts, [AgentWorkflow, StubParent]):
-            parent = await env.client.start_workflow(StubParent.run, id="parent-r1",
-                                                     task_queue="t")
+        async with _worker(env, acts, [AgentWorkflow]):
             h = await env.client.start_workflow(
-                AgentWorkflow.run, _input(parent_workflow_id="parent-r1"),
-                id="agent-r1-backend", task_queue="t")
+                AgentWorkflow.run, _input(), id="agent-r1-backend", task_queue="t")
             await h.signal("deliver", {"body": "do it"})
             await h.signal("stop_now")
-            await h.result()
-            reports = await parent.result()
-    assert len(reports) == 1 and reports[0]["role"] == "backend"
+            result = await h.result()
+    assert result["outcome"] == "fail"
+    assert result["cost_usd"] == 2.5
+    assert result["processed"] == 1

@@ -27,178 +27,18 @@ _STAGE_TIMEOUT = timedelta(hours=24)
 _RETRY = RetryPolicy(maximum_attempts=3)
 
 
-@workflow.defn(name="RunWorkflow")
-class RunWorkflow:
-    def __init__(self) -> None:
-        self._approved = False
-        self._rejected = False
-        self._cancelled = False
-
-    @workflow.signal
-    def approve(self) -> None:
-        self._approved = True
-
-    @workflow.signal
-    def reject(self) -> None:
-        self._rejected = True
-
-    @workflow.signal
-    def cancel(self) -> None:
-        self._cancelled = True
-
-    async def _persist(self, run_id: str, owner_id: str, **fields) -> None:
-        await workflow.execute_activity(
-            "persist_run_state",
-            {"run_id": run_id, "owner_id": owner_id, **fields},
-            start_to_close_timeout=_STAGE_TIMEOUT,
-            retry_policy=_RETRY,
-        )
-
-    async def _event(
-        self, run_id: str, owner_id: str, stage: str, type_: str, message: str = ""
-    ) -> None:
-        await workflow.execute_activity(
-            "record_event",
-            {
-                "run_id": run_id,
-                "owner_id": owner_id,
-                "stage": stage,
-                "type": type_,
-                "message": message,
-            },
-            start_to_close_timeout=_STAGE_TIMEOUT,
-            retry_policy=_RETRY,
-        )
-
-    async def _cleanup(self, run_id: str, owner_id: str) -> None:
-        await workflow.execute_activity(
-            "cleanup_workspace",
-            {"run_id": run_id, "owner_id": owner_id},
-            start_to_close_timeout=_STAGE_TIMEOUT,
-            retry_policy=_RETRY,
-        )
-
-    @workflow.run
-    async def run(self, inp: dict) -> str:
-        run_id = inp["run_id"]
-        owner_id = inp["owner_id"]
-        autonomy = AutonomyLevel(inp["autonomy"])
-        gates = pipeline.gates_for(autonomy)
-        cost = 0.0
-        verify_loops = 0
-
-        _branch = scm.branch_name(inp["task_id"])
-        _pr_title = scm.pr_title(inp["task_title"])
-        _pr_body = scm.pr_body(inp["task_title"], inp.get("body", ""),
-                               inp.get("acceptance_criteria", []))
-
-        i = 0
-        while i < len(pipeline.STAGES):
-            if self._cancelled:
-                await self._persist(run_id, owner_id, status=RunStatus.CANCELLED)
-                await self._cleanup(run_id, owner_id)
-                return RunStatus.CANCELLED
-
-            stage = pipeline.STAGES[i]
-            await self._persist(run_id, owner_id, status=RunStatus.RUNNING, stage=stage)
-            await self._event(run_id, owner_id, stage, RunEventType.STAGE_STARTED)
-
-            if stage == RunStage.PROVISION:
-                await workflow.execute_activity(
-                    "provision_workspace",
-                    {"run_id": run_id, "owner_id": owner_id, "profile": inp["profile"],
-                     "repo_ref": inp["repo_ref"], "branch": _branch},
-                    start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
-                result = {"outcome": "ok"}
-            elif stage == RunStage.PR:
-                result = await workflow.execute_activity(
-                    "open_pr",
-                    {"run_id": run_id, "owner_id": owner_id, "profile": inp["profile"],
-                     "branch": _branch, "base": inp.get("base", "main"),
-                     "title": _pr_title, "body": _pr_body},
-                    start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
-            else:
-                result = await workflow.execute_activity(
-                    "run_stage",
-                    {
-                        "run_id": run_id,
-                        "owner_id": owner_id,
-                        "stage": stage,
-                        "task_title": inp["task_title"],
-                        "acceptance_criteria": inp.get("acceptance_criteria", []),
-                        "team_id": inp.get("team_id"),
-                    },
-                    start_to_close_timeout=_STAGE_TIMEOUT,
-                    retry_policy=_RETRY,
-                )
-
-            cost += float(result.get("cost_usd", 0.0))
-            await self._persist(run_id, owner_id, cost_usd=cost)
-            await self._event(run_id, owner_id, stage, RunEventType.STAGE_COMPLETED)
-
-            if result["outcome"] == "blocked":
-                await self._persist(run_id, owner_id, status=RunStatus.BLOCKED)
-                await self._event(run_id, owner_id, stage, RunEventType.BLOCKED)
-                await self._cleanup(run_id, owner_id)
-                return RunStatus.BLOCKED
-
-            if stage == RunStage.VERIFY and result["outcome"] == "fail":
-                verify_loops += 1
-                if pipeline.should_retry_verify(verify_loops):
-                    i = pipeline.STAGES.index(RunStage.IMPLEMENT)
-                    continue
-                await self._persist(run_id, owner_id, status=RunStatus.BLOCKED)
-                await self._event(
-                    run_id, owner_id, stage, RunEventType.BLOCKED, "verify exhausted"
-                )
-                await self._cleanup(run_id, owner_id)
-                return RunStatus.BLOCKED
-
-            if stage in gates:
-                await self._persist(run_id, owner_id, status=RunStatus.AWAITING_APPROVAL)
-                await self._event(run_id, owner_id, stage, RunEventType.GATE_OPENED)
-                await workflow.wait_condition(
-                    lambda: self._approved or self._rejected or self._cancelled
-                )
-                if self._cancelled:
-                    await self._persist(run_id, owner_id, status=RunStatus.CANCELLED)
-                    await self._cleanup(run_id, owner_id)
-                    return RunStatus.CANCELLED
-                if self._rejected:
-                    await self._persist(run_id, owner_id, status=RunStatus.FAILED)
-                    await self._event(
-                        run_id, owner_id, stage, RunEventType.GATE_RESOLVED, "rejected"
-                    )
-                    await self._cleanup(run_id, owner_id)
-                    return RunStatus.FAILED
-                self._approved = False  # reset for the next gate
-                await self._event(
-                    run_id, owner_id, stage, RunEventType.GATE_RESOLVED, "approved"
-                )
-
-            i += 1
-
-        # Curator memory edits were made during LEARN; capture them before teardown.
-        await workflow.execute_activity(
-            "capture_memory",
-            {"run_id": run_id, "owner_id": owner_id,
-             "project_id": inp["project_id"], "base": inp.get("base", "main"),
-             "profile": inp["profile"], "autonomy": inp["autonomy"],
-             "repo_ref": inp["repo_ref"]},
-            start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
-        await self._persist(run_id, owner_id, status=RunStatus.DONE, stage=RunStage.LEARN)
-        await self._cleanup(run_id, owner_id)
-        return RunStatus.DONE
-
-
 _HISTORY_LIMIT = 4000
+
+# Worst-outcome ordering: a single failed/blocked step dominates the actor's report.
+_OUTCOME_SEVERITY = {"ok": 0, "fail": 1, "blocked": 2}
 
 
 @workflow.defn(name="AgentWorkflow")
 class AgentWorkflow:
     """Durable child-actor: a signal-fed mailbox that drains until empty, calling the
-    agent_step activity, routing outgoing messages to peer actors, and reporting brief
-    completion to the parent. continue-as-new bounds history."""
+    agent_step activity and routing outgoing messages to peer actors. The actor's return
+    value carries the worst outcome + total cost it processed so the parent records a
+    truthful report. continue-as-new bounds history."""
 
     def __init__(self) -> None:
         self._inbox: list[dict] = []
@@ -226,6 +66,8 @@ class AgentWorkflow:
     async def run(self, inp: dict) -> dict:
         run_id, owner_id, role = inp["run_id"], inp["owner_id"], inp["role"]
         processed = 0
+        worst = "ok"
+        total_cost = 0.0
         while True:
             await workflow.wait_condition(lambda: bool(self._inbox) or self._stop)
             while self._inbox:  # drain everything currently queued before honoring stop
@@ -239,18 +81,19 @@ class AgentWorkflow:
                      "team_id": inp.get("team_id")},
                     start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
                 processed += 1
+                total_cost += float(result.get("cost_usd", 0.0))
+                outcome = result.get("outcome", "ok")
+                if _OUTCOME_SEVERITY.get(outcome, 0) > _OUTCOME_SEVERITY.get(worst, 0):
+                    worst = outcome
                 await self._route_outgoing(inp, result.get("outgoing", []))
-                if result.get("completed_brief"):
-                    await self._signal_safe(
-                        inp["parent_workflow_id"], "agent_report",
-                        {"role": role, "outcome": result.get("outcome", "ok")})
             self._idle = True
             if self._stop:
                 break
             if (workflow.info().get_current_history_length() > _HISTORY_LIMIT
                     and not self._inbox):
                 workflow.continue_as_new(inp)
-        return {"role": role, "processed": processed}
+        return {"role": role, "processed": processed,
+                "outcome": worst, "cost_usd": total_cost}
 
     async def _route_outgoing(self, inp: dict, outgoing: list[dict]) -> None:
         if not outgoing:
@@ -288,8 +131,8 @@ class AgentWorkflow:
 
 @workflow.defn(name="OrchestratorWorkflow")
 class OrchestratorWorkflow:
-    """Lead-driven parent orchestrator: provision -> loop(invoke_lead -> dispatch actors
-    / verify / block / gate) -> PR -> LEARN -> DONE. Additive: RunWorkflow is unchanged."""
+    """Lead-driven parent orchestrator (the sole run path): provision -> loop(invoke_lead ->
+    dispatch actors / verify / block / gate) -> PR -> LEARN -> DONE."""
 
     def __init__(self) -> None:
         self._approved = False
@@ -439,6 +282,9 @@ class OrchestratorWorkflow:
                 role = d["target_role"]
                 await self._event(run_id, owner_id, "implement", RunEventType.AGENT_DISPATCHED,
                                   f"dispatch {role}")
+                # Child id has no wave suffix so peer routing (agent-{run}-{role}) resolves;
+                # each wave's actor is gathered to completion before the next, so the id is
+                # free to reuse. One actor per role per wave (concurrency: parallel-engineers).
                 child = await workflow.start_child_workflow(
                     AgentWorkflow.run,
                     {"run_id": run_id, "owner_id": owner_id, "role": role,
@@ -448,16 +294,21 @@ class OrchestratorWorkflow:
                      "acceptance_criteria": inp.get("acceptance_criteria", []),
                      "team_id": inp.get("team_id"), "role_to_agent_id": role_to_agent_id,
                      "project_id": inp.get("project_id"), "work_item_id": inp.get("task_id")},
-                    id=f"agent-{run_id}-{role}-{wave}")
+                    id=f"agent-{run_id}-{role}")
                 await child.signal("deliver", {"body": d["instructions"]})
                 await child.signal("stop_now")
                 handles.append((role, child))
-            await asyncio.gather(*[h for _, h in handles])
+            results = await asyncio.gather(*[h for _, h in handles])
+            wave_cost = sum(float(r.get("cost_usd", 0.0)) for r in results)
+            cost += wave_cost
+            await self._persist(run_id, owner_id, cost_usd=cost)
             state = state.record_wave(dispatch_count=len(dispatches),
-                                      messages=len(dispatches), cost=0.0)
-            for role, _ in handles:
+                                      messages=len(dispatches), cost=wave_cost)
+            for (role, _), r in zip(handles, results):
                 state = state.record_report(
-                    AgentReport(role=AgentRole(role), outcome=AgentOutcome.OK))
+                    AgentReport(role=AgentRole(role),
+                                outcome=AgentOutcome(r.get("outcome", "ok")),
+                                cost_usd=float(r.get("cost_usd", 0.0))))
             await self._event(run_id, owner_id, "implement", RunEventType.QUIESCENCE_REACHED,
                               f"wave {wave} complete")
 
