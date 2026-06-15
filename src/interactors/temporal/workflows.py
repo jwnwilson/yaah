@@ -287,7 +287,10 @@ class OrchestratorWorkflow:
             for i, d in enumerate(dispatches):
                 role = d["target_role"]
                 inst_branch = f"{branch}__{role}-{wave}-{i}"
-                ws_key = f"runs/{run_id}/w/{role}-{wave}-{i}"
+                # Engineer worktrees nest under the run workspace so cleanup reclaims them,
+                # but in a dotted dir that WORKSPACE_SCRATCH excludes — otherwise open_pr's
+                # commit_all would record the nested worktrees as gitlinks on the task branch.
+                ws_key = f"runs/{run_id}/.yaah-eng/{role}-{wave}-{i}"
                 await workflow.execute_activity(
                     "provision_engineer_workspace",
                     {"run_id": run_id, "owner_id": owner_id, "profile": inp["profile"],

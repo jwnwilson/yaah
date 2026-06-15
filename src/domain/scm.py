@@ -1,9 +1,10 @@
 """Pure source-control naming/body policy. No I/O."""
 
-# Workspace dirs yaah injects into every run worktree (Claude hook/settings + skills, and
-# the orchestration decision/verdict/outbox scratch). They must NOT land in the agent's
-# commit/PR, so commit_all excludes them.
-WORKSPACE_SCRATCH: tuple[str, ...] = (".claude", ".orchestration")
+# Workspace dirs yaah injects into every run worktree (Claude hook/settings + skills, the
+# orchestration decision/verdict/outbox scratch, and `.yaah-eng/` — the nested per-engineer
+# worktrees of a parallel wave). They must NOT land in the agent's commit/PR, so commit_all
+# excludes them.
+WORKSPACE_SCRATCH: tuple[str, ...] = (".claude", ".orchestration", ".yaah-eng")
 
 
 def branch_name(task_id: str) -> str:
