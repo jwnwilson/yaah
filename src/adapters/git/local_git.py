@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 from adapters.git.ports import GitError
+from domain.orchestration import MergeResult
 
 _AUTHOR = ["-c", "user.email=agent@yaah.local", "-c", "user.name=yaah-agent"]
 
@@ -32,10 +33,14 @@ class LocalGit:
         workspace_path: str,
         branch: str,
         mode: Literal["worktree", "clone"],
+        base: str | None = None,
         token: str | None = None,
     ) -> None:
         if mode == "worktree":
-            self._run(["worktree", "add", "-b", branch, workspace_path], cwd=repo_ref)
+            args = ["worktree", "add", "-b", branch, workspace_path]
+            if base is not None:
+                args.append(base)
+            self._run(args, cwd=repo_ref)
         else:  # clone
             self._run([*self._auth_args(token), "clone", repo_ref, workspace_path])
             self._run([*_AUTHOR, "checkout", "-b", branch], cwd=workspace_path)
@@ -93,3 +98,31 @@ class LocalGit:
         # ff: point the base ref at the branch tip (compare-and-swap on the old sha).
         self._run(["update-ref", f"refs/heads/{base}", branch_sha, base_sha], cwd=repo_ref)
         return True
+
+    def merge_branch(self, workspace_path: str, *, branch: str) -> MergeResult:
+        # Use subprocess directly (not _run): _run raises on non-zero, but here a
+        # non-zero exit is the signal we need to distinguish a content conflict from
+        # a precondition failure.
+        proc = subprocess.run(
+            ["git", *_AUTHOR, "merge", "--no-ff", "-m", f"merge {branch}", branch],
+            cwd=workspace_path, capture_output=True, text=True,
+        )
+        if proc.returncode == 0:
+            return MergeResult(ok=True, branch=branch)
+        merging = subprocess.run(
+            ["git", "-C", workspace_path, "rev-parse", "-q", "--verify", "MERGE_HEAD"],
+            capture_output=True,
+        ).returncode == 0
+        if not merging:
+            # The merge never started (nonexistent branch, dirty tree, in-progress
+            # merge) — a precondition error, not a content conflict. Surface the real
+            # cause instead of masking it with a `merge --abort` that itself fails.
+            raise GitError(proc.stderr.strip() or f"git merge {branch} failed")
+        files = self._run(["diff", "--name-only", "--diff-filter=U"], cwd=workspace_path)
+        self._run(["merge", "--abort"], cwd=workspace_path)
+        return MergeResult(ok=False, branch=branch,
+                           conflict_files=[f for f in files.splitlines() if f.strip()])
+
+    def has_commits_ahead(self, workspace_path: str, base: str) -> bool:
+        out = self._run(["rev-list", "--count", f"{base}..HEAD"], cwd=workspace_path)
+        return int(out.strip() or "0") > 0

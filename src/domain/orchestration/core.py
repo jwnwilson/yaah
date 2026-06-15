@@ -90,6 +90,14 @@ class AgentStepResult(BaseModel):
     cost_usd: float = 0.0
 
 
+class MergeResult(BaseModel):
+    """Outcome of merging one branch into the current worktree branch."""
+
+    ok: bool
+    branch: str = ""
+    conflict_files: list[str] = Field(default_factory=list)
+
+
 class AgentReport(BaseModel):
     """A worker's report back to the lead, summarized into orchestration state."""
 

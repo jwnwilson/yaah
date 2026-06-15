@@ -2,7 +2,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from adapters.git.local_git import LocalGit
+import pytest
+
+from adapters.git.local_git import GitError, LocalGit
 
 
 def _bare_repo_with_commit() -> str:
@@ -153,3 +155,72 @@ def test_merge_into_base_noop_when_branch_equals_base():
         ws = Path(tmp)
         _init_repo(ws)
         assert LocalGit().merge_into_base(str(ws), branch="main", base="main") is True
+
+
+def test_prepare_worktree_branches_off_base():
+    bare = _bare_repo_with_commit()
+    g = LocalGit()
+    base_ws = tempfile.mkdtemp()
+    g.prepare(repo_ref=bare, workspace_path=base_ws, branch="agent/t1", mode="clone")
+    (Path(base_ws) / "base.txt").write_text("on task branch")
+    assert g.commit_all(base_ws, "task work") is True
+    g.push(base_ws, "agent/t1")
+    eng_ws = tempfile.mkdtemp()
+    g.prepare(repo_ref=base_ws, workspace_path=eng_ws,
+              branch="agent/t1__backend-1-0", mode="worktree", base="agent/t1")
+    assert (Path(eng_ws) / "base.txt").exists()
+    assert g.current_branch(eng_ws) == "agent/t1__backend-1-0"
+
+
+def _commit_file(g, ws, name, content, msg):
+    (Path(ws) / name).write_text(content)
+    assert g.commit_all(ws, msg) is True
+
+
+def test_merge_branch_fast_forward_and_ahead():
+    bare = _bare_repo_with_commit()
+    g = LocalGit()
+    main_ws = tempfile.mkdtemp()
+    g.prepare(repo_ref=bare, workspace_path=main_ws, branch="agent/t1", mode="clone")
+    assert g.has_commits_ahead(main_ws, "main") is False
+    eng_ws = tempfile.mkdtemp()
+    g.prepare(repo_ref=main_ws, workspace_path=eng_ws,
+              branch="agent/t1__e0", mode="worktree", base="agent/t1")
+    _commit_file(g, eng_ws, "a.txt", "A", "eng work")
+    res = g.merge_branch(main_ws, branch="agent/t1__e0")
+    assert res.ok is True and res.conflict_files == []
+    assert (Path(main_ws) / "a.txt").exists()
+    assert g.has_commits_ahead(main_ws, "main") is True
+
+
+def test_merge_branch_conflict_aborts_clean():
+    bare = _bare_repo_with_commit()
+    g = LocalGit()
+    main_ws = tempfile.mkdtemp()
+    g.prepare(repo_ref=bare, workspace_path=main_ws, branch="agent/t1", mode="clone")
+    eng_ws = tempfile.mkdtemp()
+    g.prepare(repo_ref=main_ws, workspace_path=eng_ws,
+              branch="agent/t1__e0", mode="worktree", base="agent/t1")
+    # Diverge: eng and main each touch c.txt independently off the same base.
+    _commit_file(g, eng_ws, "c.txt", "from-eng", "eng change")
+    _commit_file(g, main_ws, "c.txt", "from-main", "main change")
+    res = g.merge_branch(main_ws, branch="agent/t1__e0")
+    assert res.ok is False and "c.txt" in res.conflict_files
+    import subprocess
+    st = subprocess.run(["git", "-C", main_ws, "status", "--porcelain"],
+                        capture_output=True, text=True).stdout
+    assert "UU" not in st
+
+
+def test_merge_branch_nonexistent_branch_raises():
+    bare = _bare_repo_with_commit()
+    g = LocalGit()
+    main_ws = tempfile.mkdtemp()
+    g.prepare(repo_ref=bare, workspace_path=main_ws, branch="agent/t1", mode="clone")
+    # No merge ever starts (branch does not exist), so the real cause must surface
+    # as a GitError rather than a masked `merge --abort` failure.
+    with pytest.raises(GitError) as exc:
+        g.merge_branch(main_ws, branch="agent/does-not-exist")
+    # The real cause must surface, not a masked "no merge to abort" artifact from an
+    # unconditional `merge --abort` on a merge that never started.
+    assert "MERGE_HEAD missing" not in str(exc.value)

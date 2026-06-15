@@ -1,5 +1,7 @@
 from typing import Literal, Protocol
 
+from domain.orchestration import MergeResult
+
 
 class GitError(Exception):
     """Raised when a git operation fails."""
@@ -13,6 +15,7 @@ class GitPort(Protocol):
         workspace_path: str,
         branch: str,
         mode: Literal["worktree", "clone"],
+        base: str | None = None,
         token: str | None = None,
     ) -> None: ...
 
@@ -34,6 +37,10 @@ class GitPort(Protocol):
     def merge_into_base(
         self, repo_ref: str, *, branch: str, base: str, token: str | None = None
     ) -> bool: ...
+
+    def merge_branch(self, workspace_path: str, *, branch: str) -> "MergeResult": ...
+
+    def has_commits_ahead(self, workspace_path: str, base: str) -> bool: ...
 
 
 class ForgeError(Exception):

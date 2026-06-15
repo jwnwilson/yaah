@@ -450,3 +450,16 @@ def test_agent_step_records_agent_raised_notification(tmp_path):
     assert notifs[0].title == "Need a decision"
     assert notifs[0].category == "decision"
     assert notifs[0].source == "agent"
+
+
+def test_agent_step_uses_custom_workspace_key(tmp_path):
+    factory = _factory()
+    _seed_run(factory)
+    spy = _ResultSpy()
+    from adapters.storage.local import LocalStorageAdapter
+    storage = LocalStorageAdapter(base_dir=str(tmp_path))
+    acts = _acts(factory, runtime=spy, storage=storage)
+    acts.agent_step({"run_id": "r1", "owner_id": "dev-user", "role": "backend",
+                     "incoming": "do it", "task_title": "T", "acceptance_criteria": [],
+                     "team_id": None, "workspace_key": "runs/r1/w/backend-1-0"})
+    assert spy.ctx.workspace_path.endswith("runs/r1/w/backend-1-0")

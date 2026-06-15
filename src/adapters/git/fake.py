@@ -1,18 +1,30 @@
 from typing import Literal
 
+from domain.orchestration import MergeResult
+
 
 class FakeGit:
     """Records git calls; deterministic. No filesystem/network."""
 
-    def __init__(self, has_changes: bool = True, memory_diff: str = "", merge_ok: bool = True):
+    def __init__(
+        self,
+        has_changes: bool = True,
+        memory_diff: str = "",
+        merge_ok: bool = True,
+        merge_conflict_on: tuple[str, ...] = (),
+        ahead: bool = False,
+    ):
         self._has_changes = has_changes
         self._memory_diff = memory_diff
         self._merge_ok = merge_ok
+        self._merge_conflict_on = merge_conflict_on
+        self._ahead = ahead
         self.prepared: list[tuple] = []
         self.committed: list[tuple] = []
         self.pushed: list[tuple] = []
         self.committed_to_branch: list[tuple] = []
         self.merged_into_base: list[tuple] = []
+        self.merged_branches: list[tuple] = []
         self._branch = ""
 
     def prepare(
@@ -22,9 +34,10 @@ class FakeGit:
         workspace_path: str,
         branch: str,
         mode: Literal["worktree", "clone"],
+        base: str | None = None,
         token: str | None = None,
     ) -> None:
-        self.prepared.append((repo_ref, workspace_path, branch, mode))
+        self.prepared.append((repo_ref, workspace_path, branch, mode, base))
         self._branch = branch
 
     def commit_all(
@@ -58,6 +71,15 @@ class FakeGit:
     ) -> bool:
         self.merged_into_base.append((repo_ref, branch, base))
         return self._merge_ok
+
+    def merge_branch(self, workspace_path: str, *, branch: str) -> MergeResult:
+        if branch in self._merge_conflict_on:
+            return MergeResult(ok=False, branch=branch, conflict_files=["conflict.txt"])
+        self.merged_branches.append((workspace_path, branch))
+        return MergeResult(ok=True, branch=branch)
+
+    def has_commits_ahead(self, workspace_path: str, base: str) -> bool:
+        return self._ahead or bool(self.merged_branches)
 
 
 class FakeGitForge:
