@@ -5,8 +5,8 @@ from pydantic import BaseModel
 
 from adapters.agent.refinement.ports import RefinementAgent
 from adapters.database.ports import UnitOfWork
-from domain.models import ChatMessage, ChatRole, ChatSession, WorkItem, WorkItemStatus
-from domain.refinement import RefinementContext, system_prompt, validate_proposal
+from domain.models import ChatMessage, ChatRole, ChatSession, WorkItem, WorkItemKind, WorkItemStatus
+from domain.refinement import RefinementContext, epic_focus_prompt, system_prompt, validate_proposal
 from interactors.api.deps import get_uow, refinement_agent
 from interactors.api.envelope import ok
 
@@ -55,16 +55,36 @@ def post_message(
             page_size=100,
         ).results
 
-        hierarchy = uow.work_items.list(
-            filters={"project_id": project_id},
-            page_size=200,
-        ).results
+        epic_scope = session.epic_id
+        if epic_scope:
+            epic = uow.work_items.get(epic_scope)
+            features = uow.work_items.list(
+                filters={"project_id": project_id, "parent_id": epic.id, "kind": WorkItemKind.FEATURE},
+                page_size=200,
+            ).results
+            parent_ids = [epic.id, *(f.id for f in features)]
+            tasks = [
+                t
+                for parent_id in parent_ids
+                for t in uow.work_items.list(
+                    filters={"project_id": project_id, "parent_id": parent_id, "kind": WorkItemKind.TASK},
+                    page_size=200,
+                ).results
+            ]
+            hierarchy = [epic, *features, *tasks]
+            prompt = system_prompt(project.name) + "\n\n" + epic_focus_prompt(epic)
+        else:
+            hierarchy = uow.work_items.list(
+                filters={"project_id": project_id}, page_size=200
+            ).results
+            prompt = system_prompt(project.name)
 
         ctx = RefinementContext(
             project_name=project.name,
             history=history,
             hierarchy=hierarchy,
-            system_prompt=system_prompt(project.name),
+            system_prompt=prompt,
+            epic_id=epic_scope,
         )
         out = agent.respond(ctx)
 
@@ -106,6 +126,12 @@ def post_message(
             )
             created.append(item)
 
+        proposed_epic_update = (
+            out.epic_update.model_dump(mode="json")
+            if epic_scope and out.epic_update
+            else None
+        )
+
         reply = out.reply + (("\n\nSkipped: " + "; ".join(notes)) if notes else "")
 
     return ok(
@@ -113,6 +139,7 @@ def post_message(
             "session_id": session.id,
             "reply": reply,
             "created_items": [c.model_dump(mode="json") for c in created],
+            "proposed_epic_update": proposed_epic_update,
         }
     )
 

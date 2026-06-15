@@ -73,3 +73,30 @@ def test_items_always_created_as_draft():
     r = c.post(f"/projects/{pid}/chat", json={"message": "anything"})
     for item in r.json()["data"]["created_items"]:
         assert item["status"] == "draft"
+
+
+def _make_epic(c, pid) -> str:
+    return c.post(
+        f"/projects/{pid}/work-items", json={"kind": "epic", "title": "Checkout"}
+    ).json()["data"]["id"]
+
+
+def test_epic_scoped_chat_drafts_child_feature_and_returns_proposed_update():
+    c = _client()
+    pid = _project(c)
+    epic_id = _make_epic(c, pid)
+    r = c.post(f"/projects/{pid}/chat", json={"message": "cart flow", "epic_id": epic_id})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert data["proposed_epic_update"] is not None
+    assert data["proposed_epic_update"]["body"]
+    # the child feature was drafted under the epic
+    assert data["created_items"][0]["kind"] == "feature"
+    assert data["created_items"][0]["parent_id"] == epic_id
+
+
+def test_unscoped_chat_has_no_proposed_epic_update():
+    c = _client()
+    pid = _project(c)
+    data = c.post(f"/projects/{pid}/chat", json={"message": "build login"}).json()["data"]
+    assert data["proposed_epic_update"] is None
