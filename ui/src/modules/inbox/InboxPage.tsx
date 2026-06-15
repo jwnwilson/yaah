@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { initials, roleVisual } from "@/features/team/roleVisual";
-import { useTeamRoster } from "@/features/team/useTeamRoster";
+import { initials, roleVisual } from "@/modules/team/roleVisual";
+import { useTeamRoster } from "@/modules/team/useTeamRoster";
 import { useMarkRead, useMessages, useSendMessage } from "./useInbox";
 
 function Avatar({ color, text }: { color: string; text: string }) {

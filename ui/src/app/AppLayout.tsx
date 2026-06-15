@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { NotificationBell } from "@/features/notifications/NotificationBell";
-import { ThemeToggle } from "@/features/theme/ThemeToggle";
+import { NotificationBell } from "@/modules/notifications/NotificationBell";
+import { ThemeToggle } from "@/modules/theme/ThemeToggle";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `text-sm transition-colors ${isActive ? "font-semibold text-accent" : "text-muted hover:text-fg"}`;

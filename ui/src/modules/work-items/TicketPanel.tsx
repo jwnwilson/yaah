@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Field";
-import { RunSection } from "@/features/runs/RunSection";
+import { RunSection } from "@/modules/runs/RunSection";
 import { AcceptanceCriteria } from "./AcceptanceCriteria";
 import { useUpdateWorkItem } from "./useUpdateWorkItem";
 import { useWorkItem } from "./useWorkItem";
