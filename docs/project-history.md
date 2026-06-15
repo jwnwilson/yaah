@@ -108,9 +108,9 @@ pipeline's fidelity — actors now return their real worst outcome + cost (the p
 truthful report and threads cost into the run + cost guard, replacing the hardcoded `OK`/`0.0`),
 and the peer-routing id is fixed. Current shape is **one actor per role per wave** (gathered to
 completion before the next); true concurrency/quiescence/live-messaging is the parallel-engineers
-spec. One follow-up left from the cutover: remove the now-orphaned `run_stage` activity +
-`pipeline.STAGES`/`should_retry_verify` once their secret-injection/audit tests are migrated onto
-`agent_step`.
+spec. The legacy `run_stage` activity + `pipeline.STAGES`/`should_retry_verify` have been removed
+(their secret-injection/capability-audit/tool-audit + agent-raised-notification behavior now rides
+the shared `_run_instructed_agent` path that every orchestrator agent turn goes through).
 
 ## Architecture snapshot (current)
 
@@ -128,20 +128,18 @@ spec. One follow-up left from the cutover: remove the now-orphaned `run_stage` a
 - **Interactors:** `api/` (app, auth, deps, envelope, settings, routes), `temporal/`
   (workflows, activities, worker, client, config), `cli/` (seed, memory_apply).
 - **Workflows:** `OrchestratorWorkflow` (parent) + `AgentWorkflow` (child actor) — the sole
-  run path. (`run_stage` activity + `pipeline.STAGES`/`should_retry_verify` linger as orphaned
-  dead code pending a test-migration follow-up.)
+  run path. Agent turns run through the shared `_run_instructed_agent` activity helper
+  (manifest composition, secret injection, capability + tool audit, agent-raised notifications).
 - **lib/:** `crud_router`, `secrets` (Fernet cipher).
 
 ## Gaps & open threads
 
 Ordered roughly by leverage.
 
-1. **Orchestrator cutover follow-ups** — the cutover landed (orchestrator is the sole path),
-   but (a) it has not yet been exercised against a **real Claude run** end-to-end (fake e2e is
-   green), and (b) the orphaned `run_stage` activity + `pipeline.STAGES`/`should_retry_verify`
-   still need removing once their secret/audit tests move onto `agent_step`. Next Phase B
-   increment that builds on it: **parallel same-role engineers** (real concurrent waves +
-   quiescence + live messaging).
+1. **Orchestrator not yet run for real** — the cutover landed (orchestrator is the sole path;
+   legacy `run_stage`/fixed-pipeline symbols removed), but it has not yet been exercised against a
+   **real Claude run** end-to-end (fake e2e is green). Next Phase B increment that builds on it:
+   **parallel same-role engineers** (real concurrent waves + quiescence + live messaging).
 2. **Deployment unproven** — TODO.md's top three: validate locally, ship CI/CD, validate
    remotely. The deployment spec (K8s/Terraform/GitHub Actions) is written but nothing is
    shipped. Auth0 wiring deferred; single dev-user only.
