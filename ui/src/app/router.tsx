@@ -1,17 +1,17 @@
 import { createBrowserRouter, Navigate, type RouteObject } from "react-router-dom";
-import BoardPage from "@/features/board/BoardPage";
-import { InboxPage } from "@/features/inbox/InboxPage";
-import { AgentsPage } from "@/features/manage/AgentsPage";
-import { AuditPage } from "@/features/manage/AuditPage";
-import { BudgetPage } from "@/features/manage/BudgetPage";
-import { ManageLayout } from "@/features/manage/ManageLayout";
-import { McpServersPage } from "@/features/manage/McpServersPage";
-import { MemoryPage } from "@/features/manage/MemoryPage";
-import { SecretsPage } from "@/features/manage/SecretsPage";
-import { SkillsPage } from "@/features/manage/SkillsPage";
-import ProjectsPage from "@/features/projects/ProjectsPage";
-import { AgentDetailPage } from "@/features/team/AgentDetailPage";
-import { TeamPage } from "@/features/team/TeamPage";
+import BoardPage from "@/modules/board/BoardPage";
+import { InboxPage } from "@/modules/inbox/InboxPage";
+import { AgentsPage } from "@/modules/manage/AgentsPage";
+import { AuditPage } from "@/modules/manage/AuditPage";
+import { BudgetPage } from "@/modules/manage/BudgetPage";
+import { ManageLayout } from "@/modules/manage/ManageLayout";
+import { McpServersPage } from "@/modules/manage/McpServersPage";
+import { MemoryPage } from "@/modules/manage/MemoryPage";
+import { SecretsPage } from "@/modules/manage/SecretsPage";
+import { SkillsPage } from "@/modules/manage/SkillsPage";
+import ProjectsPage from "@/modules/projects/ProjectsPage";
+import { AgentDetailPage } from "@/modules/team/AgentDetailPage";
+import { TeamPage } from "@/modules/team/TeamPage";
 import { AppLayout } from "./AppLayout";
 
 export const routes: RouteObject[] = [
