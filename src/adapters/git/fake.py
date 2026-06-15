@@ -22,9 +22,10 @@ class FakeGit:
         workspace_path: str,
         branch: str,
         mode: Literal["worktree", "clone"],
+        base: str | None = None,
         token: str | None = None,
     ) -> None:
-        self.prepared.append((repo_ref, workspace_path, branch, mode))
+        self.prepared.append((repo_ref, workspace_path, branch, mode, base))
         self._branch = branch
 
     def commit_all(

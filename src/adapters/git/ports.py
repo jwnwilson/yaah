@@ -13,6 +13,7 @@ class GitPort(Protocol):
         workspace_path: str,
         branch: str,
         mode: Literal["worktree", "clone"],
+        base: str | None = None,
         token: str | None = None,
     ) -> None: ...
 

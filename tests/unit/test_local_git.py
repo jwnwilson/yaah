@@ -153,3 +153,18 @@ def test_merge_into_base_noop_when_branch_equals_base():
         ws = Path(tmp)
         _init_repo(ws)
         assert LocalGit().merge_into_base(str(ws), branch="main", base="main") is True
+
+
+def test_prepare_worktree_branches_off_base():
+    bare = _bare_repo_with_commit()
+    g = LocalGit()
+    base_ws = tempfile.mkdtemp()
+    g.prepare(repo_ref=bare, workspace_path=base_ws, branch="agent/t1", mode="clone")
+    (Path(base_ws) / "base.txt").write_text("on task branch")
+    assert g.commit_all(base_ws, "task work") is True
+    g.push(base_ws, "agent/t1")
+    eng_ws = tempfile.mkdtemp()
+    g.prepare(repo_ref=base_ws, workspace_path=eng_ws,
+              branch="agent/t1__backend-1-0", mode="worktree", base="agent/t1")
+    assert (Path(eng_ws) / "base.txt").exists()
+    assert g.current_branch(eng_ws) == "agent/t1__backend-1-0"

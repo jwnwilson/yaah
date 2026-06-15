@@ -32,10 +32,14 @@ class LocalGit:
         workspace_path: str,
         branch: str,
         mode: Literal["worktree", "clone"],
+        base: str | None = None,
         token: str | None = None,
     ) -> None:
         if mode == "worktree":
-            self._run(["worktree", "add", "-b", branch, workspace_path], cwd=repo_ref)
+            args = ["worktree", "add", "-b", branch, workspace_path]
+            if base is not None:
+                args.append(base)
+            self._run(args, cwd=repo_ref)
         else:  # clone
             self._run([*self._auth_args(token), "clone", repo_ref, workspace_path])
             self._run([*_AUTHOR, "checkout", "-b", branch], cwd=workspace_path)
