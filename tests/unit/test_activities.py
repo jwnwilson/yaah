@@ -157,3 +157,16 @@ def test_integrate_branches_clean_and_conflict():
         "workspace_key": f"runs/{run_id}", "branches": ["agent/t__e0", "agent/t__e1"]})
     assert out2["merged"] == ["agent/t__e0"]
     assert out2["conflict"]["branch"] == "agent/t__e1"
+
+
+def test_open_pr_records_branch_when_ahead_without_worktree_changes():
+    factory = _factory()
+    run_id = _seed_run(factory)
+    git = FakeGit(has_changes=False, ahead=True)
+    acts = _acts(factory, git=git)
+    out = acts.open_pr({"run_id": run_id, "owner_id": "u1", "profile": "local",
+                        "branch": "agent/t1", "base": "main", "title": "t", "body": "b"})
+    assert out["outcome"] == "ok"
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        assert uow.runs.get(run_id).branch == "agent/t1"

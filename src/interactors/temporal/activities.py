@@ -540,8 +540,8 @@ class RunActivities:
     def open_pr(self, payload: dict) -> dict:
         run_id, owner_id = payload["run_id"], payload["owner_id"]
         workspace = self._storage.local_path(f"runs/{run_id}")
-        committed = self._git.commit_all(workspace, payload["title"], exclude=WORKSPACE_SCRATCH)
-        if not committed:
+        self._git.commit_all(workspace, payload["title"], exclude=WORKSPACE_SCRATCH)
+        if not self._git.has_commits_ahead(workspace, payload["base"]):
             self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "pr",
                                "type": "stage_completed", "message": "no changes to PR"})
             return {"outcome": "ok", "pr_url": None}
