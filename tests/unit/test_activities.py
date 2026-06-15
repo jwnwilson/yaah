@@ -144,7 +144,8 @@ def test_provision_engineer_workspace_branches_off_task():
 
 
 def test_integrate_branches_clean_and_conflict():
-    factory = _factory(); run_id = _seed_run(factory)
+    factory = _factory()
+    run_id = _seed_run(factory)
     git = FakeGit()
     acts = _acts(factory, git=git)
     out = acts.integrate_branches({"run_id": run_id, "owner_id": "u1",

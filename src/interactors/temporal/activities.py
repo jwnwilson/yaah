@@ -525,9 +525,9 @@ class RunActivities:
         for branch in payload["branches"]:
             result = self._git.merge_branch(workspace, branch=branch)
             if not result.ok:
+                msg = f"merge conflict on {branch}: {result.conflict_files}"
                 self.record_event({"run_id": payload["run_id"], "owner_id": payload["owner_id"],
-                                   "stage": "implement", "type": "agent_reported",
-                                   "message": f"merge conflict on {branch}: {result.conflict_files}"})
+                                   "stage": "implement", "type": "agent_reported", "message": msg})
                 return {"merged": merged,
                         "conflict": {"branch": branch, "files": result.conflict_files}}
             merged.append(branch)
