@@ -26,7 +26,11 @@ def epic_board(
             t
             for parent_id in parent_ids
             for t in uow.work_items.list(
-                filters={"project_id": project_id, "parent_id": parent_id, "kind": WorkItemKind.TASK},
+                filters={
+                    "project_id": project_id,
+                    "parent_id": parent_id,
+                    "kind": WorkItemKind.TASK,
+                },
                 page_size=200,
                 order_by="created_at",
             ).results

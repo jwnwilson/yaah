@@ -66,14 +66,16 @@ def test_anthropic_agent_parses_tool_use(monkeypatch):
 
 
 def test_fake_agent_proposes_feature_and_epic_update_when_epic_scoped():
+    from adapters.agent.refinement.fake import FakeRefinementAgent
     from domain.models import ChatMessage, ChatRole
     from domain.refinement import RefinementContext
-    from adapters.agent.refinement.fake import FakeRefinementAgent
 
     ctx = RefinementContext(
         project_name="p",
         epic_id="epic-1",
-        history=[ChatMessage(owner_id="u", session_id="s", role=ChatRole.USER, content="cart flow")],
+        history=[
+            ChatMessage(owner_id="u", session_id="s", role=ChatRole.USER, content="cart flow")
+        ],
     )
     out = FakeRefinementAgent().respond(ctx)
     assert out.epic_update is not None

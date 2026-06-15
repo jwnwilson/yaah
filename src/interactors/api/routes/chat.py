@@ -59,7 +59,11 @@ def post_message(
         if epic_scope:
             epic = uow.work_items.get(epic_scope)
             features = uow.work_items.list(
-                filters={"project_id": project_id, "parent_id": epic.id, "kind": WorkItemKind.FEATURE},
+                filters={
+                    "project_id": project_id,
+                    "parent_id": epic.id,
+                    "kind": WorkItemKind.FEATURE,
+                },
                 page_size=200,
             ).results
             parent_ids = [epic.id, *(f.id for f in features)]
@@ -67,7 +71,11 @@ def post_message(
                 t
                 for parent_id in parent_ids
                 for t in uow.work_items.list(
-                    filters={"project_id": project_id, "parent_id": parent_id, "kind": WorkItemKind.TASK},
+                    filters={
+                        "project_id": project_id,
+                        "parent_id": parent_id,
+                        "kind": WorkItemKind.TASK,
+                    },
                     page_size=200,
                 ).results
             ]

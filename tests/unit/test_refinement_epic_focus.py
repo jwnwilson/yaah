@@ -17,7 +17,9 @@ def test_epic_focus_prompt_names_epic_and_instructs_breakdown():
 
 
 def test_refinement_output_parses_epic_update():
-    out = RefinementOutput(**{"reply": "ok", "epic_update": {"body": "new", "acceptance_criteria": ["a"]}})
+    out = RefinementOutput(
+        **{"reply": "ok", "epic_update": {"body": "new", "acceptance_criteria": ["a"]}}
+    )
     assert isinstance(out.epic_update, EpicSpecEdit)
     assert out.epic_update.body == "new"
     assert out.epic_update.acceptance_criteria == ["a"]
