@@ -5,6 +5,7 @@ import { useChat } from "./useChat";
 
 interface ChatRailProps {
   projectId: string;
+  epicId?: string;
 }
 
 export function ChatRail({ projectId }: ChatRailProps) {
