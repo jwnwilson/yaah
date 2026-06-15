@@ -100,12 +100,24 @@ class LocalGit:
         return True
 
     def merge_branch(self, workspace_path: str, *, branch: str) -> MergeResult:
+        # Use subprocess directly (not _run): _run raises on non-zero, but here a
+        # non-zero exit is the signal we need to distinguish a content conflict from
+        # a precondition failure.
         proc = subprocess.run(
             ["git", *_AUTHOR, "merge", "--no-ff", "-m", f"merge {branch}", branch],
             cwd=workspace_path, capture_output=True, text=True,
         )
         if proc.returncode == 0:
             return MergeResult(ok=True, branch=branch)
+        merging = subprocess.run(
+            ["git", "-C", workspace_path, "rev-parse", "-q", "--verify", "MERGE_HEAD"],
+            capture_output=True,
+        ).returncode == 0
+        if not merging:
+            # The merge never started (nonexistent branch, dirty tree, in-progress
+            # merge) — a precondition error, not a content conflict. Surface the real
+            # cause instead of masking it with a `merge --abort` that itself fails.
+            raise GitError(proc.stderr.strip() or f"git merge {branch} failed")
         files = self._run(["diff", "--name-only", "--diff-filter=U"], cwd=workspace_path)
         self._run(["merge", "--abort"], cwd=workspace_path)
         return MergeResult(ok=False, branch=branch,

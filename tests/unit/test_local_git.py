@@ -2,7 +2,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from adapters.git.local_git import LocalGit
+import pytest
+
+from adapters.git.local_git import GitError, LocalGit
 
 
 def _bare_repo_with_commit() -> str:
@@ -208,3 +210,17 @@ def test_merge_branch_conflict_aborts_clean():
     st = subprocess.run(["git", "-C", main_ws, "status", "--porcelain"],
                         capture_output=True, text=True).stdout
     assert "UU" not in st
+
+
+def test_merge_branch_nonexistent_branch_raises():
+    bare = _bare_repo_with_commit()
+    g = LocalGit()
+    main_ws = tempfile.mkdtemp()
+    g.prepare(repo_ref=bare, workspace_path=main_ws, branch="agent/t1", mode="clone")
+    # No merge ever starts (branch does not exist), so the real cause must surface
+    # as a GitError rather than a masked `merge --abort` failure.
+    with pytest.raises(GitError) as exc:
+        g.merge_branch(main_ws, branch="agent/does-not-exist")
+    # The real cause must surface, not a masked "no merge to abort" artifact from an
+    # unconditional `merge --abort` on a merge that never started.
+    assert "MERGE_HEAD missing" not in str(exc.value)
