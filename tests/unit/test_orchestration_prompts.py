@@ -74,3 +74,10 @@ def test_prompt_surfaces_unmet_acceptance_feedback():
         available_roles=[AgentRole.BACKEND])
     assert "NOT yet met" in prompt
     assert "tests are missing" in prompt
+
+
+def test_prompt_includes_integration_conflict():
+    s = OrchestrationState().record_integration({"branch": "agent/t__e1", "files": ["a.py"]})
+    p = build_orchestrator_prompt(task_title="T", acceptance_criteria=[], body="",
+                                  state=s, available_roles=[AgentRole.BACKEND])
+    assert "a.py" in p and "conflict" in p.lower()

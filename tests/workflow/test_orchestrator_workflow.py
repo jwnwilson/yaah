@@ -310,15 +310,50 @@ async def test_orchestrator_runs_two_parallel_engineers_to_done():
     assert len(git.merged_branches) == 2
 
 
+def _conflict_then_fix_lead():
+    seen = {"n": 0}
+
+    def lead(instr):
+        if "wave 0" in instr:
+            return {"intent": "continue", "dispatches": [
+                {"target_role": "backend", "instructions": "api"},
+                {"target_role": "backend", "instructions": "ui"}]}
+        if "Integration conflict" in instr and seen["n"] == 0:
+            seen["n"] = 1
+            return {"intent": "continue",
+                    "dispatches": [{"target_role": "backend", "instructions": "resolve"}]}
+        return {"intent": "verify"}
+
+    return lead
+
+
 @pytest.mark.asyncio
-async def test_orchestrator_blocks_on_merge_conflict():
+async def test_orchestrator_replans_on_merge_conflict_then_done():
     factory = _factory()
     _seed(factory)
-    # Seeded task id t1 -> task branch agent/t1; the 2nd engineer instance (wave 1, i=1)
-    # is agent/t1__backend-1-1. e0 merges cleanly, e1 conflicts -> BLOCK.
     git = FakeGit(merge_conflict_on=("agent/t1__backend-1-1",))
     async with await WorkflowEnvironment.start_time_skipping() as env:
-        async with _worker(env, factory, lead=_two_engineer_lead, git=git):
+        async with _worker(env, factory, lead=_conflict_then_fix_lead(), git=git):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    assert _status(factory) == RunStatus.DONE
+
+
+def _always_conflict_lead(instr):
+    if "wave 0" in instr or "Integration conflict" in instr:
+        return {"intent": "continue",
+                "dispatches": [{"target_role": "backend", "instructions": "x"}]}
+    return {"intent": "verify"}
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_blocks_after_max_integration_rounds():
+    factory = _factory()
+    _seed(factory)
+    git = FakeGit(merge_conflict_all=True)
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory, lead=_always_conflict_lead, git=git):
             await env.client.execute_workflow(
                 OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
                 id="r1", task_queue="t")

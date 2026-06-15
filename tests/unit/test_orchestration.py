@@ -189,3 +189,8 @@ def test_wave_exceeds_parallel_per_role():
     assert wave_exceeds_parallel(["backend", "backend"], limits) is False
     assert wave_exceeds_parallel(["backend", "backend", "backend"], limits) is True
     assert wave_exceeds_parallel(["backend", "qa"], limits) is False
+
+
+def test_record_integration_sets_last_integration():
+    s = OrchestrationState().record_integration({"branch": "agent/t__e1", "files": ["a.py"]})
+    assert s.last_integration["branch"] == "agent/t__e1"
