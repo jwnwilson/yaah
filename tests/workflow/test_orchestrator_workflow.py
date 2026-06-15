@@ -28,7 +28,8 @@ from interactors.temporal.workflows import AgentWorkflow, OrchestratorWorkflow
 
 def _default_lead(instr):
     return ({"intent": "continue",
-             "dispatches": [{"target_role": "backend", "instructions": "build"}]}
+             "dispatches": [{"target_role": "backend", "instructions": "build"}],
+             "assignee_role": "backend"}
             if "wave 0" in instr else {"intent": "verify"})
 
 
@@ -229,3 +230,17 @@ async def test_orchestrator_blocks_after_max_verify_rounds():
                 OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
                 id="r1", task_queue="t")
     assert _status(factory) == RunStatus.BLOCKED
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_persists_lead_assignee():
+    factory = _factory()
+    _seed(factory)
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        assert uow.work_items.get("t1").assignee_agent_id == "a-eng"  # lead's assignee_role
