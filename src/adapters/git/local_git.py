@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 from adapters.git.ports import GitError
+from domain.orchestration import MergeResult
 
 _AUTHOR = ["-c", "user.email=agent@yaah.local", "-c", "user.name=yaah-agent"]
 
@@ -97,3 +98,19 @@ class LocalGit:
         # ff: point the base ref at the branch tip (compare-and-swap on the old sha).
         self._run(["update-ref", f"refs/heads/{base}", branch_sha, base_sha], cwd=repo_ref)
         return True
+
+    def merge_branch(self, workspace_path: str, *, branch: str) -> MergeResult:
+        proc = subprocess.run(
+            ["git", *_AUTHOR, "merge", "--no-ff", "-m", f"merge {branch}", branch],
+            cwd=workspace_path, capture_output=True, text=True,
+        )
+        if proc.returncode == 0:
+            return MergeResult(ok=True, branch=branch)
+        files = self._run(["diff", "--name-only", "--diff-filter=U"], cwd=workspace_path)
+        self._run(["merge", "--abort"], cwd=workspace_path)
+        return MergeResult(ok=False, branch=branch,
+                           conflict_files=[f for f in files.splitlines() if f.strip()])
+
+    def has_commits_ahead(self, workspace_path: str, base: str) -> bool:
+        out = self._run(["rev-list", "--count", f"{base}..HEAD"], cwd=workspace_path)
+        return int(out.strip() or "0") > 0
