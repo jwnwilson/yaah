@@ -6,10 +6,14 @@ import { useEpics, useFeatures } from "./useHierarchy";
 
 export function HierarchyTree({
   projectId,
+  selectedEpic,
+  onSelectEpic,
   selectedFeature,
   onSelectFeature,
 }: {
   projectId: string;
+  selectedEpic: string | undefined;
+  onSelectEpic: (epicId: string | undefined) => void;
   selectedFeature: string | undefined;
   onSelectFeature: (featureId: string | undefined) => void;
 }) {
@@ -43,7 +47,12 @@ export function HierarchyTree({
       <ul className="space-y-1">
         {epics.data?.map((epic) => (
           <li key={epic.id}>
-            <span className="font-medium text-fg">{epic.title}</span>
+            <button
+              className={`text-left font-medium ${selectedEpic === epic.id ? "text-accent underline" : "text-fg hover:text-accent"}`}
+              onClick={() => onSelectEpic(epic.id)}
+            >
+              {epic.title}
+            </button>
             <ul className="ml-3 mt-1 space-y-1">
               {features.data
                 ?.filter((f) => f.parent_id === epic.id)

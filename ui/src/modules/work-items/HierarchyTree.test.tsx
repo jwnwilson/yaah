@@ -10,7 +10,13 @@ function renderTree(onSelectFeature = () => {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <HierarchyTree projectId="p1" selectedFeature={undefined} onSelectFeature={onSelectFeature} />
+      <HierarchyTree
+        projectId="p1"
+        selectedEpic={undefined}
+        onSelectEpic={() => {}}
+        selectedFeature={undefined}
+        onSelectFeature={onSelectFeature}
+      />
     </QueryClientProvider>,
   );
 }

@@ -5,10 +5,14 @@ import { useChat } from "./useChat";
 
 interface ChatRailProps {
   projectId: string;
+  epicId?: string;
 }
 
-export function ChatRail({ projectId }: ChatRailProps) {
-  const { turns, send } = useChat(projectId);
+export function ChatRail({ projectId, epicId }: ChatRailProps) {
+  const { turns, send, proposedEpicUpdate, acceptEpicUpdate, dismissEpicUpdate } = useChat(
+    projectId,
+    epicId,
+  );
   const [text, setText] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -21,7 +25,9 @@ export function ChatRail({ projectId }: ChatRailProps) {
 
   return (
     <aside className="flex h-full w-80 shrink-0 flex-col border-l border-line bg-panel">
-      <h2 className="border-b border-line p-2 text-sm font-semibold text-fg">Team lead</h2>
+      <h2 className="border-b border-line p-2 text-sm font-semibold text-fg">
+        {epicId ? "Team lead — focused on epic" : "Team lead"}
+      </h2>
       <div className="flex-1 space-y-2 overflow-y-auto p-2 text-sm">
         {turns.map((t, i) => (
           <div key={i} className={t.role === "user" ? "text-right" : ""}>
@@ -34,6 +40,29 @@ export function ChatRail({ projectId }: ChatRailProps) {
             </span>
           </div>
         ))}
+        {proposedEpicUpdate && (
+          <div className="rounded-md border border-line bg-surface p-2">
+            <p className="mb-1 text-xs font-semibold text-fg">Suggested epic spec</p>
+            {proposedEpicUpdate.body && (
+              <p className="mb-1 text-xs text-muted">{proposedEpicUpdate.body}</p>
+            )}
+            {proposedEpicUpdate.acceptance_criteria?.length ? (
+              <ul className="mb-2 list-disc pl-4 text-xs text-muted">
+                {proposedEpicUpdate.acceptance_criteria.map((ac, i) => (
+                  <li key={i}>{ac}</li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="flex gap-2">
+              <Button size="sm" loading={acceptEpicUpdate.isPending} onClick={() => acceptEpicUpdate.mutate()}>
+                Apply
+              </Button>
+              <Button size="sm" variant="ghost" onClick={dismissEpicUpdate}>
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
       <form className="flex gap-1 border-t border-line p-2" onSubmit={handleSubmit}>
         <Input

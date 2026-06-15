@@ -15,6 +15,11 @@ class WorkItemProposal(BaseModel):
     acceptance_criteria: list[str] = []
 
 
+class EpicSpecEdit(BaseModel):
+    body: str | None = None
+    acceptance_criteria: list[str] | None = None
+
+
 class RefinementContext(BaseModel):
     """Input contract for a refinement turn: the project, conversation so far, current
     board hierarchy, and the lead system prompt."""
@@ -23,11 +28,13 @@ class RefinementContext(BaseModel):
     history: list[ChatMessage] = []
     hierarchy: list[WorkItem] = []
     system_prompt: str = ""
+    epic_id: str | None = None
 
 
 class RefinementOutput(BaseModel):
     reply: str = ""
     proposals: list[WorkItemProposal] = []
+    epic_update: EpicSpecEdit | None = None
 
 
 def validate_proposal(p: WorkItemProposal, *, parent_exists: Callable[[str], bool]) -> None:
@@ -47,3 +54,12 @@ def system_prompt(project_name: str, lead_system_prompt: str = "") -> str:
             "Converse with the user and propose epics, features, and tasks to draft onto the "
             "board. Features and tasks must reference an existing parent id. Everything you "
             "propose is created as a Draft for human review — never mark anything ready.")
+
+
+def epic_focus_prompt(epic: WorkItem) -> str:
+    return (
+        f"You are now refining the epic '{epic.title}' (id {epic.id}). Propose features "
+        f"under this epic (parent_id={epic.id}) and tasks under those features. You may also "
+        "return an epic_update to refine THIS epic's body and acceptance criteria. Everything "
+        "is created as a Draft for human review — never mark anything ready."
+    )
