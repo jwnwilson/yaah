@@ -1,7 +1,7 @@
 import { useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Field";
 import type { Run } from "@/lib/api/types";
-import { Button } from "@/ui/Button";
-import { Input } from "@/ui/Field";
 import { useRunActions } from "./useRunActions";
 
 const TERMINAL = new Set(["done", "failed", "cancelled"]);

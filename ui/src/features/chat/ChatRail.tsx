@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button } from "@/ui/Button";
-import { Input } from "@/ui/Field";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Field";
 import { useChat } from "./useChat";
 
 interface ChatRailProps {

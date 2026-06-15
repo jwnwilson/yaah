@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
+import { Button } from "@/components/ui/Button";
 import { ChatRail } from "@/features/chat/ChatRail";
 import { HierarchyTree } from "@/features/work-items/HierarchyTree";
 import { TicketPanel } from "@/features/work-items/TicketPanel";
-import { Button } from "@/ui/Button";
 import { Board } from "./Board";
 
 export default function BoardPage() {

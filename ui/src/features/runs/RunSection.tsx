@@ -1,5 +1,5 @@
+import { Button } from "@/components/ui/Button";
 import type { WorkItemStatus } from "@/lib/api/types";
-import { Button } from "@/ui/Button";
 import { MemoryProposalCard } from "./MemoryProposalCard";
 import { RunActions } from "./RunActions";
 import { RunStatusBadge } from "./RunStatusBadge";

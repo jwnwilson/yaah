@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Button } from "@/ui/Button";
-import { Dialog } from "@/ui/Dialog";
-import { Field, Input } from "@/ui/Field";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+import { Field, Input } from "@/components/ui/Field";
 import { useCreateProject } from "./useCreateProject";
 
 export function CreateProjectDialog({ onClose }: { onClose: () => void }) {

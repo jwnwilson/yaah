@@ -1,5 +1,5 @@
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import type { RunStatus } from "@/lib/api/types";
-import { Badge, type BadgeTone } from "@/ui/Badge";
 
 const TONES: Record<RunStatus, BadgeTone> = {
   pending: "neutral",

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button } from "@/ui/Button";
-import { Input, Select } from "@/ui/Field";
+import { Button } from "@/components/ui/Button";
+import { Input, Select } from "@/components/ui/Field";
 import { useCreateWorkItem } from "./useCreateWorkItem";
 import { useEpics, useFeatures } from "./useHierarchy";
 

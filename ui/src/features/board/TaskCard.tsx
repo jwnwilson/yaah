@@ -1,10 +1,10 @@
 import { useDraggable } from "@dnd-kit/core";
 import type { SyntheticEvent } from "react";
 import { useParams } from "react-router-dom";
+import { Badge } from "@/components/ui/Badge";
 import { initials, roleVisual } from "@/features/team/roleVisual";
 import { useTeamRoster } from "@/features/team/useTeamRoster";
 import type { WorkItem } from "@/lib/api/types";
-import { Badge } from "@/ui/Badge";
 import { useAssign } from "./useAssign";
 
 const ATTENTION_STATUSES = new Set(["blocked", "failed"]);
