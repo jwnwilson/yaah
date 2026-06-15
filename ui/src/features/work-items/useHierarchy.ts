@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { listWorkItems } from "@/lib/api/workItems";
 import type { WorkItem } from "@/lib/api/types";
+import { listWorkItems } from "@/lib/api/workItems";
 
 export function useEpics(projectId: string) {
   return useQuery<WorkItem[]>({

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { McpServer, McpTransport } from "@/lib/api/types";
-import { ResourceTable } from "@/features/components/ResourceTable";
 import { ConfirmDialog } from "@/features/components/ConfirmDialog";
+import { ResourceTable } from "@/features/components/ResourceTable";
+import type { McpServer, McpTransport } from "@/lib/api/types";
 import { Button } from "@/ui/Button";
 import { Dialog } from "@/ui/Dialog";
 import { Field, Input, Select } from "@/ui/Field";

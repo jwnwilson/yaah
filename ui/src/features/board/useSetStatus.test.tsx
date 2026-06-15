@@ -1,10 +1,10 @@
-import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { server } from "@/test/server";
-import { workItemKeys } from "@/lib/api/workItems";
-import { useSetStatus } from "./useSetStatus";
 import type { WorkItem } from "@/lib/api/types";
+import { workItemKeys } from "@/lib/api/workItems";
+import { server } from "@/test/server";
+import { useSetStatus } from "./useSetStatus";
 
 const PROJECT = "p1";
 function task(id: string, status: WorkItem["status"]): WorkItem {

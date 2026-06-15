@@ -1,10 +1,10 @@
+import type { WorkItemStatus } from "@/lib/api/types";
+import { Button } from "@/ui/Button";
+import { MemoryProposalCard } from "./MemoryProposalCard";
+import { RunActions } from "./RunActions";
+import { RunStatusBadge } from "./RunStatusBadge";
 import { useRuns } from "./useRuns";
 import { useStartRun } from "./useStartRun";
-import { RunStatusBadge } from "./RunStatusBadge";
-import { RunActions } from "./RunActions";
-import { MemoryProposalCard } from "./MemoryProposalCard";
-import { Button } from "@/ui/Button";
-import type { WorkItemStatus } from "@/lib/api/types";
 
 export function RunSection({
   projectId,
