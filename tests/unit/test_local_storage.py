@@ -21,3 +21,12 @@ def test_local_path_creates_dir_and_delete_directory():
     s.write_bytes("runs/r1/a.txt", b"x")
     s.delete_directory("runs/r1/")
     assert not s.exists("runs/r1")
+
+
+def test_local_path_is_absolute_even_for_relative_base():
+    # A workspace path is used as a process cwd and as the target of `git worktree add`
+    # (run with cwd=<target repo>); a relative path would resolve against the wrong cwd,
+    # splitting the agent's workspace from the provisioned worktree.
+    import os
+    s = LocalStorageAdapter(base_dir="data/workspaces")
+    assert os.path.isabs(s.local_path("runs/r1"))
