@@ -72,7 +72,7 @@ class FakeGit:
         self.merged_into_base.append((repo_ref, branch, base))
         return self._merge_ok
 
-    def merge_branch(self, workspace_path: str, *, branch: str):
+    def merge_branch(self, workspace_path: str, *, branch: str) -> MergeResult:
         if branch in self._merge_conflict_on:
             return MergeResult(ok=False, branch=branch, conflict_files=["conflict.txt"])
         self.merged_branches.append((workspace_path, branch))

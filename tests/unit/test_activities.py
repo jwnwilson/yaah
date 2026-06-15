@@ -128,8 +128,6 @@ def test_open_pr_local_records_branch_only():
     assert run.branch == "agent/t1"
 
 
-
-
 def test_provision_engineer_workspace_branches_off_task():
     factory = _factory()
     run_id = _seed_run(factory)
