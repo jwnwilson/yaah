@@ -17,6 +17,7 @@ from domain.orchestration.core import (
     guard_exceeded,
     is_quiescent,
     resolve_assignee,
+    wave_exceeds_parallel,
 )
 from domain.orchestration.prompts import (
     OrchestrationContractError,
@@ -45,4 +46,5 @@ __all__ = [
     "parse_decision",
     "parse_verdict",
     "resolve_assignee",
+    "wave_exceeds_parallel",
 ]
