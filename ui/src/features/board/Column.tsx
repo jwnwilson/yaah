@@ -1,6 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
-import type { BoardColumn } from "./columns";
 import type { WorkItem } from "@/lib/api/types";
+import type { BoardColumn } from "./columns";
 import { TaskCard } from "./TaskCard";
 
 export function Column({

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import { BOARD_COLUMNS, columnForStatus, groupByColumn, ATTENTION } from "./columns";
 import type { WorkItem } from "@/lib/api/types";
+import { BOARD_COLUMNS, columnForStatus, groupByColumn, ATTENTION } from "./columns";
 
 function task(id: string, status: WorkItem["status"]): WorkItem {
   return {

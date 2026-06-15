@@ -1,12 +1,12 @@
+import { DndContext } from "@dnd-kit/core";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { DndContext } from "@dnd-kit/core";
 import { http, HttpResponse } from "msw";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import type { WorkItem } from "@/lib/api/types";
 import { server } from "@/test/server";
 import { TaskCard } from "./TaskCard";
-import type { WorkItem } from "@/lib/api/types";
 
 const eng = {
   id: "a-eng", team_id: "tm1", role: "backend", name: "Engineer", persona: "",

@@ -1,8 +1,8 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { server } from "@/test/server";
 import { NotificationBell } from "./NotificationBell";

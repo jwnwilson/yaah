@@ -1,6 +1,6 @@
 import { Button } from "@/ui/Button";
-import { useMemoryProposal } from "./useMemoryProposal";
 import { MemoryDiff } from "./MemoryDiff";
+import { useMemoryProposal } from "./useMemoryProposal";
 
 export function MemoryProposalCard({ runId }: { runId: string }) {
   const { query, apply, reject } = useMemoryProposal(runId);

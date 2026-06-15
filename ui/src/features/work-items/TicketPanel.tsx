@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useWorkItem } from "./useWorkItem";
-import { useUpdateWorkItem } from "./useUpdateWorkItem";
-import { AcceptanceCriteria } from "./AcceptanceCriteria";
 import { RunSection } from "@/features/runs/RunSection";
 import { Button } from "@/ui/Button";
 import { Input, Textarea } from "@/ui/Field";
+import { AcceptanceCriteria } from "./AcceptanceCriteria";
+import { useUpdateWorkItem } from "./useUpdateWorkItem";
+import { useWorkItem } from "./useWorkItem";
 
 export function TicketPanel({
   projectId,

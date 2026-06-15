@@ -1,18 +1,18 @@
 import { createBrowserRouter, Navigate, type RouteObject } from "react-router-dom";
-import { AppLayout } from "./AppLayout";
-import ProjectsPage from "@/features/projects/ProjectsPage";
 import BoardPage from "@/features/board/BoardPage";
+import { InboxPage } from "@/features/inbox/InboxPage";
+import { AgentsPage } from "@/features/manage/AgentsPage";
+import { AuditPage } from "@/features/manage/AuditPage";
+import { BudgetPage } from "@/features/manage/BudgetPage";
 import { ManageLayout } from "@/features/manage/ManageLayout";
+import { McpServersPage } from "@/features/manage/McpServersPage";
+import { MemoryPage } from "@/features/manage/MemoryPage";
 import { SecretsPage } from "@/features/manage/SecretsPage";
 import { SkillsPage } from "@/features/manage/SkillsPage";
-import { McpServersPage } from "@/features/manage/McpServersPage";
-import { BudgetPage } from "@/features/manage/BudgetPage";
-import { AuditPage } from "@/features/manage/AuditPage";
-import { AgentsPage } from "@/features/manage/AgentsPage";
-import { MemoryPage } from "@/features/manage/MemoryPage";
-import { TeamPage } from "@/features/team/TeamPage";
+import ProjectsPage from "@/features/projects/ProjectsPage";
 import { AgentDetailPage } from "@/features/team/AgentDetailPage";
-import { InboxPage } from "@/features/inbox/InboxPage";
+import { TeamPage } from "@/features/team/TeamPage";
+import { AppLayout } from "./AppLayout";
 
 export const routes: RouteObject[] = [
   {

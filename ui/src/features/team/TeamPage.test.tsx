@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
+import { MemoryRouter } from "react-router-dom";
 import { server } from "@/test/server";
 import { TeamPage } from "./TeamPage";
 

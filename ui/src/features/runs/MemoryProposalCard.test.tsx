@@ -1,10 +1,10 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
+import type { MemoryProposal } from "@/lib/api/memory";
 import { server } from "@/test/server";
 import { MemoryProposalCard } from "./MemoryProposalCard";
-import type { MemoryProposal } from "@/lib/api/memory";
 
 function proposal(overrides: Partial<MemoryProposal> = {}): MemoryProposal {
   return {

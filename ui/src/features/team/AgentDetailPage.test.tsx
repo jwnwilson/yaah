@@ -1,8 +1,8 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { http, HttpResponse } from "msw";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { server } from "@/test/server";
 import { AgentDetailPage } from "./AgentDetailPage";
 

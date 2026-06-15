@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Agent } from "@/lib/api/agents";
 import { ResourceTable } from "@/features/components/ResourceTable";
+import type { Agent } from "@/lib/api/agents";
 import { Button } from "@/ui/Button";
 import { Dialog } from "@/ui/Dialog";
 import { Field, Input } from "@/ui/Field";
