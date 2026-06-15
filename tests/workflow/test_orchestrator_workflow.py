@@ -97,10 +97,11 @@ def _run_cost(factory, owner="u1"):
         return uow.runs.get("r1").cost_usd
 
 
-def _worker(env, factory, lead=_default_lead, monitor=None, worker_outcome="ok", cost=0.0):
+def _worker(env, factory, lead=_default_lead, monitor=None, worker_outcome="ok", cost=0.0,
+            git=None):
     storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
     acts = RunActivities(factory, _ScriptRuntime(storage, lead, monitor, worker_outcome, cost),
-                         storage, FakeGit(), FakeGitForge())
+                         storage, git or FakeGit(), FakeGitForge())
     return Worker(
         env.client, task_queue="t",
         workflows=[OrchestratorWorkflow, AgentWorkflow],
@@ -298,12 +299,30 @@ def _two_engineer_lead(instr):
 async def test_orchestrator_runs_two_parallel_engineers_to_done():
     factory = _factory()
     _seed(factory)
+    git = FakeGit()
     async with await WorkflowEnvironment.start_time_skipping() as env:
-        async with _worker(env, factory, lead=_two_engineer_lead):
+        async with _worker(env, factory, lead=_two_engineer_lead, git=git):
             await env.client.execute_workflow(
                 OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
                 id="r1", task_queue="t")
     assert _status(factory) == RunStatus.DONE
+    # Both instanced engineer branches were integrated (proves two actors ran, not one).
+    assert len(git.merged_branches) == 2
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_blocks_on_merge_conflict():
+    factory = _factory()
+    _seed(factory)
+    # Seeded task id t1 -> task branch agent/t1; the 2nd engineer instance (wave 1, i=1)
+    # is agent/t1__backend-1-1. e0 merges cleanly, e1 conflicts -> BLOCK.
+    git = FakeGit(merge_conflict_on=("agent/t1__backend-1-1",))
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory, lead=_two_engineer_lead, git=git):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    assert _status(factory) == RunStatus.BLOCKED
 
 
 @pytest.mark.asyncio
