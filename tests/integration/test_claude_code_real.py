@@ -6,8 +6,7 @@ import pytest
 
 from adapters.agent.model.anthropic import AnthropicProvider
 from adapters.agent.runtime.claude_code import ClaudeCodeRuntime
-from adapters.agent.runtime.fake import result_of
-from domain.agent import RunContext
+from domain.agent import RunContext, result_of
 from domain.models import RunStage
 
 _have = os.environ.get("ANTHROPIC_API_KEY") and shutil.which("claude")

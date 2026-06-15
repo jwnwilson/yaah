@@ -3,10 +3,10 @@
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from adapters.agent.refinement.ports import RefinementAgent, RefinementContext
+from adapters.agent.refinement.ports import RefinementAgent
 from adapters.database.ports import UnitOfWork
 from domain.models import ChatMessage, ChatRole, ChatSession, WorkItem, WorkItemStatus
-from domain.refinement import system_prompt, validate_proposal
+from domain.refinement import RefinementContext, system_prompt, validate_proposal
 from interactors.api.deps import get_uow, refinement_agent
 from interactors.api.envelope import ok
 

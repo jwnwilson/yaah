@@ -1,4 +1,5 @@
-from adapters.agent.runtime.fake import _default_events, result_of
+from adapters.agent.runtime.fake import _default_events
+from domain.agent import result_of
 from domain.models import RunStage
 
 

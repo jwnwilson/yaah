@@ -3,8 +3,8 @@ import httpx
 from adapters.agent.model.fake import FakeModelProvider
 from adapters.agent.refinement.anthropic import AnthropicRefinementAgent
 from adapters.agent.refinement.fake import FakeRefinementAgent
-from adapters.agent.refinement.ports import RefinementContext
 from domain.models import ChatMessage, ChatRole
+from domain.refinement import RefinementContext
 
 
 def _ctx():

@@ -1,10 +1,9 @@
 from temporalio import activity
 
 from adapters.agent.notify.ports import NotificationDispatcher
-from adapters.agent.runtime.fake import result_of
 from adapters.database.uow import SqlUnitOfWork
 from adapters.storage.ports import StoragePort
-from domain.agent import AgentRuntime, RunContext
+from domain.agent import AgentRuntime, RunContext, result_of
 from domain.errors import IntegrityConflict
 from domain.models import (
     AgentRole,

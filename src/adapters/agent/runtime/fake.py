@@ -16,14 +16,6 @@ _FAKE_USAGE = TokenUsage(
 )
 
 
-def result_of(events: list[AgentEvent]) -> StageResult:
-    """Extract the StageResult carried by the final 'result' event."""
-    for event in reversed(events):
-        if event.type == "result":
-            return StageResult(**event.data)
-    raise ValueError("no result event in stream")
-
-
 def _default_events(stage: RunStage) -> list[AgentEvent]:
     return [
         AgentEvent(type="progress", stage=stage, message=f"{stage} starting"),
