@@ -65,6 +65,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         audit,
         capabilities,
         chat,
+        epics,
         memory,
         messages,
         notifications,
@@ -89,6 +90,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(audit.router)
     app.include_router(memory.router)
     app.include_router(chat.router)
+    app.include_router(epics.router)
 
     ui_dist = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ui", "dist")
     if os.path.isdir(ui_dist):
