@@ -21,21 +21,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: ui/package.json
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: ui/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: ui/pnpm-lock.yaml
 
       - name: Install dependencies
         working-directory: ui
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         working-directory: ui
         env:
           VITE_API_BASE_URL: https://api.yaah.jwnwilson.co.uk
-        run: npm run build
+        run: pnpm build
 
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
