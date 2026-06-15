@@ -4,7 +4,7 @@
 
 install:
 	uv sync
-	cd ui && npm install
+	cd ui && pnpm install
 
 up:
 	docker compose up -d postgres
@@ -73,7 +73,7 @@ start: migrate
 	@echo "(Ctrl-C stops both)"
 	@trap 'kill 0' EXIT INT TERM; \
 		uv run uvicorn --app-dir src interactors.api.app:create_app --factory --reload & \
-		( cd ui && npm run dev ) & \
+		( cd ui && pnpm dev ) & \
 		wait
 
 # Start API (:8000), UI (:5173), and the Temporal worker together; Ctrl-C stops all three.
@@ -86,7 +86,7 @@ start-all: infra migrate
 	@echo "(Ctrl-C stops API, UI, and worker)"
 	@trap 'kill 0' EXIT INT TERM; \
 		uv run uvicorn --app-dir src interactors.api.app:create_app --factory --reload & \
-		( cd ui && npm run dev ) & \
+		( cd ui && pnpm dev ) & \
 		PYTHONPATH=src uv run python -m interactors.temporal.worker & \
 		wait
 
@@ -105,20 +105,20 @@ lint:
 lint-all: lint ui-lint
 
 ui:
-	cd ui && npm run dev
+	cd ui && pnpm dev
 
 ui-build:
-	cd ui && npm run build
+	cd ui && pnpm build
 
 ui-test:
-	cd ui && npm test
+	cd ui && pnpm test
 
 ui-lint:
-	cd ui && npm run lint
+	cd ui && pnpm lint
 
 # Playwright end-to-end tests (needs API :8000 + UI :5173 running)
 e2e:
-	cd ui && npm run e2e
+	cd ui && pnpm e2e
 
 # --- Full-stack agent-harness E2E (drives the API end-to-end against a dummy repo) ---
 # e2e-fake : FakeAgentRuntime — free, deterministic, proves orchestration/DB/usage/events.
