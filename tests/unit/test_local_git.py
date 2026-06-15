@@ -224,3 +224,26 @@ def test_merge_branch_nonexistent_branch_raises():
     # The real cause must surface, not a masked "no merge to abort" artifact from an
     # unconditional `merge --abort` on a merge that never started.
     assert "MERGE_HEAD missing" not in str(exc.value)
+
+
+def test_commit_all_excludes_nested_engineer_worktree():
+    # Reproduces the parallel-engineers pollution bug: per-engineer worktrees nest under
+    # the run workspace (`.yaah-eng/...`), and open_pr's commit_all over the main worktree
+    # would otherwise record them as gitlinks on the task branch. WORKSPACE_SCRATCH must
+    # exclude `.yaah-eng`. Real git is required — fakes can't create nested worktrees.
+    from domain.scm import WORKSPACE_SCRATCH
+
+    bare = _bare_repo_with_commit()
+    g = LocalGit()
+    main_ws = tempfile.mkdtemp()
+    g.prepare(repo_ref=bare, workspace_path=main_ws, branch="agent/t1", mode="clone")
+    eng_ws = str(Path(main_ws) / ".yaah-eng" / "backend-1-0")
+    g.prepare(repo_ref=main_ws, workspace_path=eng_ws,
+              branch="agent/t1__backend-1-0", mode="worktree", base="agent/t1")
+    _commit_file(g, eng_ws, "api.txt", "api", "eng work")  # nested worktree gets a HEAD
+    (Path(main_ws) / "real.txt").write_text("integrated work")
+    assert g.commit_all(main_ws, "open pr", exclude=WORKSPACE_SCRATCH) is True
+    tracked = subprocess.run(["git", "-C", main_ws, "ls-tree", "-r", "--name-only", "HEAD"],
+                             capture_output=True, text=True, check=True).stdout
+    assert "real.txt" in tracked
+    assert ".yaah-eng" not in tracked  # nested engineer worktree NOT committed as a gitlink
