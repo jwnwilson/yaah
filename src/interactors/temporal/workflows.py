@@ -201,6 +201,7 @@ class OrchestratorWorkflow:
 
         wave = 0
         verify_rounds = 0
+        integration_rounds = 0
         while True:
             if self._cancelled:
                 await self._persist(run_id, owner_id, status=RunStatus.CANCELLED)
@@ -336,11 +337,18 @@ class OrchestratorWorkflow:
                  "workspace_key": f"runs/{run_id}", "branches": committed_branches},
                 start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
             if integ["conflict"] is not None:
-                await self._persist(run_id, owner_id, status=RunStatus.BLOCKED)
-                await self._event(run_id, owner_id, "implement", RunEventType.BLOCKED,
-                                  f"merge conflict on {integ['conflict']['branch']}")
-                await self._cleanup(run_id, owner_id)
-                return RunStatus.BLOCKED
+                integration_rounds += 1
+                state = state.record_integration(integ["conflict"])
+                if integration_rounds >= limits.max_integration_rounds:
+                    await self._persist(run_id, owner_id, status=RunStatus.BLOCKED)
+                    await self._event(run_id, owner_id, "implement", RunEventType.BLOCKED,
+                                      f"unresolved merge conflict on {integ['conflict']['branch']}")
+                    await self._cleanup(run_id, owner_id)
+                    return RunStatus.BLOCKED
+                await self._event(run_id, owner_id, "implement", RunEventType.QUIESCENCE_REACHED,
+                                  f"wave {wave} conflict -> re-plan")
+                continue
+            state = state.record_integration(None)
             await self._event(run_id, owner_id, "implement", RunEventType.QUIESCENCE_REACHED,
                               f"wave {wave} complete")
 

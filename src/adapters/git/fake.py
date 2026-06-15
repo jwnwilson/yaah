@@ -12,12 +12,14 @@ class FakeGit:
         memory_diff: str = "",
         merge_ok: bool = True,
         merge_conflict_on: tuple[str, ...] = (),
+        merge_conflict_all: bool = False,
         ahead: bool = False,
     ):
         self._has_changes = has_changes
         self._memory_diff = memory_diff
         self._merge_ok = merge_ok
         self._merge_conflict_on = merge_conflict_on
+        self._merge_conflict_all = merge_conflict_all
         self._ahead = ahead
         self.prepared: list[tuple] = []
         self.committed: list[tuple] = []
@@ -74,7 +76,7 @@ class FakeGit:
         return self._merge_ok
 
     def merge_branch(self, workspace_path: str, *, branch: str) -> MergeResult:
-        if branch in self._merge_conflict_on:
+        if self._merge_conflict_all or branch in self._merge_conflict_on:
             return MergeResult(ok=False, branch=branch, conflict_files=["conflict.txt"])
         self.merged_branches.append((workspace_path, branch))
         return MergeResult(ok=True, branch=branch)
