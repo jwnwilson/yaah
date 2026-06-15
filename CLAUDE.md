@@ -33,7 +33,11 @@ A self-hosted platform for running **virtual dev teams** — role-based AI agent
 Hexagonal, three layers — domain logic never touches I/O:
 
 ```
-ui/              # UI code
+ui/src/          # React + Vite frontend (pnpm)
+  app/             # app shell: providers, router, layout, error boundary
+  modules/         # feature/domain slices (board, runs, manage, team, …); each owns its components + hooks + api
+  components/ui/    # design-system primitives (Button, Dialog, Card, …) + shared composed components
+  lib/api/         # typed envelope API client + per-domain modules + React Query key factories
 src/
   domain/        # pure business logic, no I/O
     models.py    # Project, WorkItem (epic/feature/task), Team, AgentDefinition, Run
