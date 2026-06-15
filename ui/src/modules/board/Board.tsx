@@ -1,12 +1,26 @@
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import type { WorkItemStatus } from "@/lib/api/types";
+import type { WorkItem, WorkItemStatus } from "@/lib/api/types";
 import { Column } from "./Column";
 import { BOARD_COLUMNS, columnForStatus, groupByColumn } from "./columns";
 import { useBoardItems } from "./useBoardItems";
 import { useSetStatus } from "./useSetStatus";
 
-export function Board({ projectId, parentId, onOpen }: { projectId: string; parentId?: string; onOpen?: (id: string) => void }) {
-  const { data, isLoading, isError, error } = useBoardItems(projectId, parentId);
+export function Board({
+  projectId,
+  parentId,
+  items,
+  onOpen,
+}: {
+  projectId: string;
+  parentId?: string;
+  items?: WorkItem[];
+  onOpen?: (id: string) => void;
+}) {
+  const query = useBoardItems(projectId, parentId, items === undefined);
+  const data = items ?? query.data;
+  const isLoading = items === undefined && query.isLoading;
+  const isError = items === undefined && query.isError;
+  const error = query.error;
   const setStatus = useSetStatus(projectId);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
