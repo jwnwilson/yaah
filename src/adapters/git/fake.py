@@ -27,7 +27,9 @@ class FakeGit:
         self.prepared.append((repo_ref, workspace_path, branch, mode))
         self._branch = branch
 
-    def commit_all(self, workspace_path: str, message: str) -> bool:
+    def commit_all(
+        self, workspace_path: str, message: str, *, exclude: tuple[str, ...] = ()
+    ) -> bool:
         if self._has_changes:
             self.committed.append((workspace_path, message))
         return self._has_changes

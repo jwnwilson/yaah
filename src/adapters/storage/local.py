@@ -7,7 +7,11 @@ class LocalStorageAdapter:
     with no caller changes."""
 
     def __init__(self, base_dir: str | Path = "data") -> None:
-        self._base = Path(base_dir)
+        # Resolve to absolute: local_path() is used as a process cwd and as the target of
+        # `git worktree add` (run with cwd=<target repo>). A relative base would resolve
+        # against whichever process's cwd, so the agent's workspace and the provisioned
+        # worktree would land in different directories. Absolute keeps them in agreement.
+        self._base = Path(base_dir).resolve()
 
     def _resolve(self, key: str) -> Path:
         return self._base / key

@@ -19,6 +19,7 @@ from domain.models import (
     utc_now,
 )
 from domain.notifications import notification_for_event, resolves
+from domain.scm import WORKSPACE_SCRATCH
 from domain.usage import TokenUsage
 
 _MAX_LEAD_RETRIES = 2  # bounded re-prompts when the lead emits an invalid decision
@@ -213,104 +214,6 @@ class RunActivities:
                 "cache_creation_tokens": totals.cache_creation_tokens,
             }))
 
-    @activity.defn(name="run_stage")
-    def run_stage(self, payload: dict) -> dict:
-        workspace_path = self._storage.local_path(f"runs/{payload['run_id']}")
-
-        agent_manifest = None
-        agent_role = None
-        team_id = payload.get("team_id")
-        if team_id:
-            from domain.agent import capabilities
-            uow = self._uow(payload["owner_id"])
-            with uow.transaction():
-                agents = uow.agents.list(filters={"team_id": team_id}, page_size=100).results
-                selected = capabilities.select_agent(agents, RunStage(payload["stage"]))
-                if selected is not None:
-                    skills, mcps = [], []
-                    for sid in selected.skill_ids:
-                        try:
-                            skills.append(uow.skills.get(sid))
-                        except Exception:  # noqa: BLE001 - deleted grant: skip, don't fail
-                            pass
-                    for mid in selected.mcp_server_ids:
-                        try:
-                            mcps.append(uow.mcp_servers.get(mid))
-                        except Exception:  # noqa: BLE001
-                            pass
-                    agent_manifest = capabilities.assemble(selected, skills, mcps)
-                    agent_role = selected.role
-                    if self._cipher is not None and selected.secret_ids:
-                        secret_env = {}
-                        for sec_id in selected.secret_ids:
-                            try:
-                                sec = uow.secrets.get(sec_id)
-                                if sec.encrypted_value:
-                                    secret_env[sec.name] = self._cipher.decrypt(sec.encrypted_value)
-                            except Exception:  # noqa: BLE001 - missing/bad secret: skip, don't fail
-                                pass
-                        agent_manifest = agent_manifest.model_copy(
-                            update={"secret_env": secret_env}
-                        )
-
-        if agent_manifest is not None:
-            self._record_audit(
-                payload["owner_id"], payload["run_id"], payload["stage"],
-                selected.role,
-                {
-                    "tools": list(agent_manifest.allowed_tools),
-                    "skills": [s.name for s in agent_manifest.skills],
-                    "mcp_servers": [m.name for m in agent_manifest.mcp_servers],
-                    "model_alias": agent_manifest.model_alias,
-                    "secret_count": len(agent_manifest.secret_env),
-                },
-            )
-
-        ctx = RunContext(
-            run_id=payload["run_id"],
-            stage=RunStage(payload["stage"]),
-            task_title=payload["task_title"],
-            acceptance_criteria=payload.get("acceptance_criteria", []),
-            workspace_path=workspace_path,
-            prior_artifacts=payload.get("prior_artifacts", {}),
-            agent=agent_manifest,
-        )
-        events = []
-        for event in self._runtime.run_stage(ctx):
-            events.append(event)
-            _heartbeat(event.message)
-            if event.type == "notification" and event.data.get("title"):
-                self.record_notification(
-                    {
-                        "run_id": payload["run_id"],
-                        "owner_id": payload["owner_id"],
-                        "category": event.data.get("category", "update"),
-                        "severity": event.data.get("severity", "info"),
-                        "title": event.data["title"],
-                        "body": event.data.get("body", ""),
-                    }
-                )
-            else:
-                self.record_event(
-                    {
-                        "run_id": payload["run_id"],
-                        "owner_id": payload["owner_id"],
-                        "stage": payload["stage"],
-                        "type": RunEventType.AGENT_EVENT,
-                        "message": event.message,
-                    }
-                )
-        result = result_of(events)
-        if result.model_usage:
-            self.record_usage({
-                "run_id": payload["run_id"], "owner_id": payload["owner_id"],
-                "stage": payload["stage"],
-                "agent_role": agent_role.value if agent_role else None,
-                "model_usage": {m: u.model_dump() for m, u in result.model_usage.items()},
-            })
-        self._ingest_tool_audit(payload["owner_id"], payload["run_id"])
-        return result.model_dump()
-
     @activity.defn(name="persist_messages")
     def persist_messages(self, payload: dict) -> None:
         from domain.models import Message
@@ -393,10 +296,19 @@ class RunActivities:
         for event in self._runtime.run_stage(ctx):
             events.append(event)
             _heartbeat(event.message)
-            self.record_event({
-                "run_id": run_id, "owner_id": owner_id, "stage": stage.value,
-                "type": RunEventType.AGENT_EVENT, "message": event.message,
-            })
+            if event.type == "notification" and event.data.get("title"):
+                self.record_notification({
+                    "run_id": run_id, "owner_id": owner_id,
+                    "category": event.data.get("category", "update"),
+                    "severity": event.data.get("severity", "info"),
+                    "title": event.data["title"],
+                    "body": event.data.get("body", ""),
+                })
+            else:
+                self.record_event({
+                    "run_id": run_id, "owner_id": owner_id, "stage": stage.value,
+                    "type": RunEventType.AGENT_EVENT, "message": event.message,
+                })
         result = result_of(events)
         if result.model_usage:
             self.record_usage({
@@ -599,7 +511,7 @@ class RunActivities:
     def open_pr(self, payload: dict) -> dict:
         run_id, owner_id = payload["run_id"], payload["owner_id"]
         workspace = self._storage.local_path(f"runs/{run_id}")
-        committed = self._git.commit_all(workspace, payload["title"])
+        committed = self._git.commit_all(workspace, payload["title"], exclude=WORKSPACE_SCRATCH)
         if not committed:
             self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "pr",
                                "type": "stage_completed", "message": "no changes to PR"})

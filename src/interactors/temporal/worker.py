@@ -15,7 +15,6 @@ from interactors.temporal.config import TemporalConfig
 from interactors.temporal.workflows import (
     AgentWorkflow,
     OrchestratorWorkflow,
-    RunWorkflow,
 )
 
 
@@ -76,7 +75,7 @@ def build_activities(database_url: str, profile: str = "local") -> list:
     from adapters.agent.notify.ports import NotificationDispatcher
     notifier = NotificationDispatcher([InAppChannel()])
     acts = RunActivities(factory, runtime, storage, git, forge, cipher=cipher, notifier=notifier)
-    return [acts.persist_run_state, acts.record_event, acts.record_usage, acts.run_stage,
+    return [acts.persist_run_state, acts.record_event, acts.record_usage,
             acts.cleanup_workspace, acts.provision_workspace, acts.open_pr,
             acts.record_notification, acts.capture_memory,
             acts.persist_messages, acts.invoke_lead, acts.agent_step, acts.run_monitor]
@@ -89,7 +88,7 @@ async def run_worker(  # pragma: no cover
     worker = Worker(
         client,
         task_queue=config.task_queue,
-        workflows=[RunWorkflow, AgentWorkflow, OrchestratorWorkflow],
+        workflows=[AgentWorkflow, OrchestratorWorkflow],
         activities=build_activities(database_url, profile=profile),
         activity_executor=ThreadPoolExecutor(max_workers=8),
     )

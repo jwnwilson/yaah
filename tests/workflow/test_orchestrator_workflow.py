@@ -38,15 +38,20 @@ def _block_lead(instr):
 
 
 class _ScriptRuntime:
-    """Lead decision via `lead` callable; monitor writes a complete verdict; workers ok."""
+    """Lead decision via `lead` callable; monitor writes a verdict; worker steps return a
+    scripted outcome + cost (lead/monitor steps stay cost-free so run cost isolates workers)."""
 
-    def __init__(self, storage=None, lead=_default_lead, monitor=None):
+    def __init__(self, storage=None, lead=_default_lead, monitor=None,
+                 worker_outcome="ok", cost=0.0):
         self._storage = storage
         self._lead = lead
         self._monitor = monitor or (lambda instr: {"complete": True})
+        self._worker_outcome = worker_outcome
+        self._cost = cost
 
     def run_stage(self, ctx):
         instr = ctx.instructions or ""
+        outcome, cost = "ok", 0.0
         if "decision.json" in instr:
             self._storage.write_bytes(
                 f"runs/{ctx.run_id}/.orchestration/decision.json",
@@ -55,8 +60,10 @@ class _ScriptRuntime:
             self._storage.write_bytes(
                 f"runs/{ctx.run_id}/.orchestration/verdict.json",
                 json.dumps(self._monitor(instr)).encode())
+        else:  # a dispatched worker step
+            outcome, cost = self._worker_outcome, self._cost
         yield AgentEvent(type="result", stage=ctx.stage,
-                         data=StageResult(outcome="ok").model_dump())
+                         data=StageResult(outcome=outcome, cost_usd=cost).model_dump())
 
     def cancel(self, run_id):
         return None
@@ -84,10 +91,16 @@ def _status(factory, owner="u1"):
         return uow.runs.get("r1").status
 
 
-def _worker(env, factory, lead=_default_lead, monitor=None):
+def _run_cost(factory, owner="u1"):
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": owner})
+    with uow.transaction():
+        return uow.runs.get("r1").cost_usd
+
+
+def _worker(env, factory, lead=_default_lead, monitor=None, worker_outcome="ok", cost=0.0):
     storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
-    acts = RunActivities(factory, _ScriptRuntime(storage, lead, monitor), storage,
-                         FakeGit(), FakeGitForge())
+    acts = RunActivities(factory, _ScriptRuntime(storage, lead, monitor, worker_outcome, cost),
+                         storage, FakeGit(), FakeGitForge())
     return Worker(
         env.client, task_queue="t",
         workflows=[OrchestratorWorkflow, AgentWorkflow],
@@ -244,3 +257,43 @@ async def test_orchestrator_persists_lead_assignee():
     uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
     with uow.transaction():
         assert uow.work_items.get("t1").assignee_agent_id == "a-eng"  # lead's assignee_role
+
+
+def _block_on_failed_report_lead(instr):
+    """Dispatch once; if a worker reports failure (visible in the prompt's Reports), block."""
+    if "wave 0" in instr:
+        return {"intent": "continue",
+                "dispatches": [{"target_role": "backend", "instructions": "build"}]}
+    if "backend: fail" in instr:
+        return {"intent": "block", "rationale": "backend reported failure"}
+    return {"intent": "verify"}
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_surfaces_failed_worker_to_lead():
+    """A failing worker's real outcome must reach the lead (via state -> prompt), not be
+    masked as OK. The lead sees 'backend: fail' and blocks."""
+    factory = _factory()
+    _seed(factory)
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory, lead=_block_on_failed_report_lead,
+                           worker_outcome="fail"):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    assert _status(factory) == RunStatus.BLOCKED
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_threads_worker_cost_into_run():
+    """Real per-step worker cost must roll into the run total (and orchestration state for
+    the cost guard), not be dropped as 0.0."""
+    factory = _factory()
+    _seed(factory)
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory, cost=3.5):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    assert _status(factory) == RunStatus.DONE
+    assert _run_cost(factory) == 3.5

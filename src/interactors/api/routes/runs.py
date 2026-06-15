@@ -67,8 +67,7 @@ def start_run(
             "available_roles": available_roles,
             "role_to_agent_id": role_to_agent_id,
         }
-    workflow_name = "OrchestratorWorkflow" if settings.orchestrator_enabled else "RunWorkflow"
-    temporal.start_run_workflow(run_input, workflow_name)  # after commit: run row exists
+    temporal.start_run_workflow(run_input, "OrchestratorWorkflow")  # after commit: run row exists
     return ok(run.model_dump(mode="json"))
 
 

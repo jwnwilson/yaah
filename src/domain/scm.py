@@ -1,5 +1,10 @@
 """Pure source-control naming/body policy. No I/O."""
 
+# Workspace dirs yaah injects into every run worktree (Claude hook/settings + skills, and
+# the orchestration decision/verdict/outbox scratch). They must NOT land in the agent's
+# commit/PR, so commit_all excludes them.
+WORKSPACE_SCRATCH: tuple[str, ...] = (".claude", ".orchestration")
+
 
 def branch_name(task_id: str) -> str:
     return f"agent/{task_id}"

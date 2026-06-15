@@ -48,6 +48,34 @@ def test_commit_all_false_when_no_changes():
     assert g.commit_all(ws, "noop") is False
 
 
+def test_commit_all_excludes_scratch_dirs():
+    bare = _bare_repo_with_commit()
+    ws = tempfile.mkdtemp()
+    g = LocalGit()
+    g.prepare(repo_ref=bare, workspace_path=ws, branch="agent/t3", mode="clone")
+    (Path(ws) / "WELCOME.md").write_text("hi")  # real work
+    (Path(ws) / ".orchestration").mkdir()
+    (Path(ws) / ".orchestration" / "decision.json").write_text("{}")  # scratch
+    (Path(ws) / ".claude").mkdir()
+    (Path(ws) / ".claude" / "settings.json").write_text("{}")  # scratch
+    assert g.commit_all(ws, "work", exclude=(".claude", ".orchestration")) is True
+    tracked = subprocess.run(
+        ["git", "-C", ws, "ls-tree", "-r", "--name-only", "HEAD"],
+        capture_output=True, text=True, check=True).stdout
+    assert "WELCOME.md" in tracked
+    assert ".orchestration" not in tracked and ".claude" not in tracked
+
+
+def test_commit_all_false_when_only_scratch_changes():
+    bare = _bare_repo_with_commit()
+    ws = tempfile.mkdtemp()
+    g = LocalGit()
+    g.prepare(repo_ref=bare, workspace_path=ws, branch="agent/t4", mode="clone")
+    (Path(ws) / ".orchestration").mkdir()
+    (Path(ws) / ".orchestration" / "decision.json").write_text("{}")
+    assert g.commit_all(ws, "scratch only", exclude=(".claude", ".orchestration")) is False
+
+
 def _init_repo(path: Path) -> None:
     subprocess.run(["git", "init", "-b", "main"], cwd=path, check=True,
                    capture_output=True)
