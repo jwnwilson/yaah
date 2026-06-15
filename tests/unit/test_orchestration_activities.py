@@ -257,3 +257,20 @@ def test_run_monitor_incomplete_when_no_verdict(tmp_path):
         "acceptance_criteria": ["c"], "team_id": None,
     })
     assert out["complete"] is False
+
+
+def test_ingest_tool_audit_is_idempotent(tmp_path):
+    from interactors.temporal.activities import RunActivities
+
+    factory = _factory()
+    storage = LocalStorageAdapter(base_dir=str(tmp_path))
+    storage.write_bytes(
+        "runs/r1/audit.jsonl",
+        b'{"tool":"Read","decision":"allow"}\n{"tool":"Bash","decision":"deny"}\n',
+    )
+    acts = RunActivities(factory, None, storage, None, None)
+    acts._ingest_tool_audit("u1", "r1")
+    acts._ingest_tool_audit("u1", "r1")  # file consumed -> no double-count
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        assert uow.audit_events.list(filters={"run_id": "r1"}).total == 2

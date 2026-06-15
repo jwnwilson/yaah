@@ -75,6 +75,7 @@ class RunActivities:
                         detail={"tool": rec.get("tool", ""), "reason": rec.get("reason", "")},
                         created_at=utc_now(),
                     ))
+            self._storage.delete(f"runs/{run_id}/audit.jsonl")  # consume -> idempotent
         except Exception:  # noqa: BLE001 - audit ingest is best-effort, never fails the stage
             pass
 
@@ -404,6 +405,7 @@ class RunActivities:
                 "agent_role": agent_role.value if agent_role else None,
                 "model_usage": {m: u.model_dump() for m, u in result.model_usage.items()},
             })
+        self._ingest_tool_audit(owner_id, run_id)
         return result
 
     def _read_artifact(self, run_id: str, name: str):
