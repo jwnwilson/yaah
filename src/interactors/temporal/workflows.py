@@ -20,6 +20,7 @@ with workflow.unsafe.imports_passed_through():
         OrchestrationLimits,
         OrchestrationState,
         guard_exceeded,
+        wave_exceeds_parallel,
     )
     from domain.transitions import pipeline
 
@@ -78,7 +79,8 @@ class AgentWorkflow:
                     {"run_id": run_id, "owner_id": owner_id, "role": role,
                      "incoming": msg.get("body", ""), "task_title": inp["task_title"],
                      "acceptance_criteria": inp.get("acceptance_criteria", []),
-                     "team_id": inp.get("team_id")},
+                     "team_id": inp.get("team_id"),
+                     "workspace_key": inp.get("workspace_key")},
                     start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
                 processed += 1
                 total_cost += float(result.get("cost_usd", 0.0))
@@ -264,27 +266,35 @@ class OrchestratorWorkflow:
                     return RunStatus.BLOCKED
                 continue
 
-            # intent == continue: dispatch a wave of actors
+            # intent == continue: dispatch a wave of instanced actors, each in its own
+            # provisioned worktree/branch; run concurrently, then commit + integrate.
             dispatches = decision.get("dispatches", [])
+            target_roles = [d["target_role"] for d in dispatches]
             guard = guard_exceeded(state, limits)
-            if guard or not dispatches:
+            if guard or not dispatches or wave_exceeds_parallel(target_roles, limits):
+                reason = guard or ("max_parallel_per_role"
+                                   if dispatches else "no dispatches")
                 await self._persist(run_id, owner_id, status=RunStatus.BLOCKED)
-                await self._event(run_id, owner_id, "plan", RunEventType.BLOCKED,
-                                  f"guard:{guard}" if guard else "no dispatches")
+                await self._event(run_id, owner_id, "plan", RunEventType.BLOCKED, f"guard:{reason}")
                 await self._cleanup(run_id, owner_id)
                 return RunStatus.BLOCKED
 
             wave += 1
             await self._persist(run_id, owner_id, status=RunStatus.RUNNING,
                                 stage=RunStage.IMPLEMENT)
-            handles = []
-            for d in dispatches:
+            handles, eng_branches = [], []
+            for i, d in enumerate(dispatches):
                 role = d["target_role"]
-                await self._event(run_id, owner_id, "implement", RunEventType.AGENT_DISPATCHED,
-                                  f"dispatch {role}")
-                # Child id has no wave suffix so peer routing (agent-{run}-{role}) resolves;
-                # each wave's actor is gathered to completion before the next, so the id is
-                # free to reuse. One actor per role per wave (concurrency: parallel-engineers).
+                inst_branch = f"{branch}__{role}-{wave}-{i}"
+                ws_key = f"runs/{run_id}/w/{role}-{wave}-{i}"
+                await workflow.execute_activity(
+                    "provision_engineer_workspace",
+                    {"run_id": run_id, "owner_id": owner_id, "profile": inp["profile"],
+                     "repo_ref": inp["repo_ref"], "base": branch,
+                     "branch": inst_branch, "workspace_key": ws_key},
+                    start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+                await self._event(run_id, owner_id, "implement",
+                                  RunEventType.AGENT_DISPATCHED, f"dispatch {role} #{i}")
                 child = await workflow.start_child_workflow(
                     AgentWorkflow.run,
                     {"run_id": run_id, "owner_id": owner_id, "role": role,
@@ -293,11 +303,13 @@ class OrchestratorWorkflow:
                      "task_title": inp["task_title"],
                      "acceptance_criteria": inp.get("acceptance_criteria", []),
                      "team_id": inp.get("team_id"), "role_to_agent_id": role_to_agent_id,
-                     "project_id": inp.get("project_id"), "work_item_id": inp.get("task_id")},
-                    id=f"agent-{run_id}-{role}")
+                     "project_id": inp.get("project_id"), "work_item_id": inp.get("task_id"),
+                     "workspace_key": ws_key},
+                    id=f"agent-{run_id}-{role}-{wave}-{i}")
                 await child.signal("deliver", {"body": d["instructions"]})
                 await child.signal("stop_now")
                 handles.append((role, child))
+                eng_branches.append((ws_key, inst_branch))
             results = await asyncio.gather(*[h for _, h in handles])
             wave_cost = sum(float(r.get("cost_usd", 0.0)) for r in results)
             cost += wave_cost
@@ -309,6 +321,26 @@ class OrchestratorWorkflow:
                     AgentReport(role=AgentRole(role),
                                 outcome=AgentOutcome(r.get("outcome", "ok")),
                                 cost_usd=float(r.get("cost_usd", 0.0))))
+            committed_branches = []
+            for ws_key, inst_branch in eng_branches:
+                ok = await workflow.execute_activity(
+                    "commit_engineer_branch",
+                    {"run_id": run_id, "owner_id": owner_id, "workspace_key": ws_key,
+                     "title": inp["task_title"]},
+                    start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+                if ok:
+                    committed_branches.append(inst_branch)
+            integ = await workflow.execute_activity(
+                "integrate_branches",
+                {"run_id": run_id, "owner_id": owner_id,
+                 "workspace_key": f"runs/{run_id}", "branches": committed_branches},
+                start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+            if integ["conflict"] is not None:
+                await self._persist(run_id, owner_id, status=RunStatus.BLOCKED)
+                await self._event(run_id, owner_id, "implement", RunEventType.BLOCKED,
+                                  f"merge conflict on {integ['conflict']['branch']}")
+                await self._cleanup(run_id, owner_id)
+                return RunStatus.BLOCKED
             await self._event(run_id, owner_id, "implement", RunEventType.QUIESCENCE_REACHED,
                               f"wave {wave} complete")
 

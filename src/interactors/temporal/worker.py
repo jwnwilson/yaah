@@ -78,7 +78,9 @@ def build_activities(database_url: str, profile: str = "local") -> list:
     return [acts.persist_run_state, acts.record_event, acts.record_usage,
             acts.cleanup_workspace, acts.provision_workspace, acts.open_pr,
             acts.record_notification, acts.capture_memory,
-            acts.persist_messages, acts.invoke_lead, acts.agent_step, acts.run_monitor]
+            acts.persist_messages, acts.invoke_lead, acts.agent_step, acts.run_monitor,
+            acts.provision_engineer_workspace, acts.integrate_branches,
+            acts.commit_engineer_branch]
 
 
 async def run_worker(  # pragma: no cover

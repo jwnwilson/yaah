@@ -107,7 +107,9 @@ def _worker(env, factory, lead=_default_lead, monitor=None, worker_outcome="ok",
         activities=[acts.provision_workspace, acts.invoke_lead, acts.agent_step,
                     acts.run_monitor, acts.persist_messages, acts.persist_run_state,
                     acts.record_event, acts.record_usage, acts.open_pr,
-                    acts.capture_memory, acts.cleanup_workspace],
+                    acts.capture_memory, acts.cleanup_workspace,
+                    acts.provision_engineer_workspace, acts.integrate_branches,
+                    acts.commit_engineer_branch],
         activity_executor=ThreadPoolExecutor(max_workers=4))
 
 
@@ -282,6 +284,26 @@ async def test_orchestrator_surfaces_failed_worker_to_lead():
                 OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
                 id="r1", task_queue="t")
     assert _status(factory) == RunStatus.BLOCKED
+
+
+def _two_engineer_lead(instr):
+    if "wave 0" in instr:
+        return {"intent": "continue", "dispatches": [
+            {"target_role": "backend", "instructions": "build api"},
+            {"target_role": "backend", "instructions": "build ui"}]}
+    return {"intent": "verify"}
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_runs_two_parallel_engineers_to_done():
+    factory = _factory()
+    _seed(factory)
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory, lead=_two_engineer_lead):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    assert _status(factory) == RunStatus.DONE
 
 
 @pytest.mark.asyncio

@@ -536,6 +536,11 @@ class RunActivities:
                                "message": f"merged {branch}"})
         return {"merged": merged, "conflict": None}
 
+    @activity.defn(name="commit_engineer_branch")
+    def commit_engineer_branch(self, payload: dict) -> bool:
+        workspace = self._storage.local_path(payload["workspace_key"])
+        return self._git.commit_all(workspace, payload["title"], exclude=WORKSPACE_SCRATCH)
+
     @activity.defn(name="open_pr")
     def open_pr(self, payload: dict) -> dict:
         run_id, owner_id = payload["run_id"], payload["owner_id"]

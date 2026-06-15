@@ -9,8 +9,9 @@ from interactors.temporal.worker import _build_runtime, build_activities
 def test_build_activities_returns_all_registered():
     acts = build_activities("sqlite:///:memory:", profile="local")
     # 8 run activities + 4 orchestration activities (persist_messages,
-    # invoke_lead, agent_step, run_monitor).
-    assert len(acts) == 12
+    # invoke_lead, agent_step, run_monitor) + 3 parallel-engineer activities
+    # (provision_engineer_workspace, integrate_branches, commit_engineer_branch).
+    assert len(acts) == 15
     assert all(callable(a) for a in acts)
 
 
