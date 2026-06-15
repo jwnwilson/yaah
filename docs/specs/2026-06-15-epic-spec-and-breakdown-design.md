@@ -104,7 +104,9 @@ Tree: click epic ─▶ BoardPage selection (selectedEpicId)
 - **Chat rail** — sends `epic_id = selectedEpicId`; header reads "Lead — focused on:
   <epic title>"; renders an **accept/reject card** when the response includes
   `proposed_epic_update` (accept → PATCH epic + invalidate epic-board query; reject → dismiss).
-- **Task cards** — show a "↳ <feature>" tag so feature association is visible when unfiltered.
+
+Feature association is conveyed by the band's feature filter chips (each shows its task
+counts and filters the board). A per-task-card "↳ <feature>" tag is deferred (see Out of scope).
 
 ## Error handling
 
@@ -149,4 +151,7 @@ Tree: click epic ─▶ BoardPage selection (selectedEpicId)
   options — we chose tasks-only + feature-filter chips).
 - A dedicated epic route/page (the rejected epic-view layout — we chose the board-integrated
   context band).
+- Per-task-card "↳ <feature>" tag — the band's feature filter chips already convey association;
+  the per-card tag is a cosmetic follow-up that would thread feature labels through
+  Board → Column → TaskCard.
 - Schema changes — none required.
