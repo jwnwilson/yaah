@@ -138,6 +138,7 @@ class OrchestrationState(BaseModel):
     total_cost_usd: float = 0.0
     reports: list[AgentReport] = Field(default_factory=list)
     verdicts: list[MonitorVerdict] = Field(default_factory=list)
+    last_integration: dict | None = None
 
     def record_wave(
         self, *, dispatch_count: int, messages: int, cost: float
@@ -156,6 +157,9 @@ class OrchestrationState(BaseModel):
 
     def record_verdict(self, verdict: MonitorVerdict) -> "OrchestrationState":
         return self.model_copy(update={"verdicts": [*self.verdicts, verdict]})
+
+    def record_integration(self, conflict: dict | None) -> "OrchestrationState":
+        return self.model_copy(update={"last_integration": conflict})
 
 
 def guard_exceeded(state: OrchestrationState, limits: OrchestrationLimits) -> str | None:
