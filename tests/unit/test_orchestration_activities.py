@@ -274,3 +274,179 @@ def test_ingest_tool_audit_is_idempotent(tmp_path):
     uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
     with uow.transaction():
         assert uow.audit_events.list(filters={"run_id": "r1"}).total == 2
+
+
+# ---------------------------------------------------------------------------
+# Capability composition + audit + notifications via the agent_step path
+# (migrated from the removed run_stage activity — these behaviors now ride
+# _run_instructed_agent, which every orchestrator agent turn goes through).
+# ---------------------------------------------------------------------------
+class _ResultSpy:
+    """Runtime that captures ctx and yields a single ok result event."""
+
+    def __init__(self):
+        self.ctx = None
+
+    def run_stage(self, ctx):
+        self.ctx = ctx
+        yield AgentEvent(type="result", stage=ctx.stage,
+                         data=StageResult(outcome="ok").model_dump())
+
+    def cancel(self, run_id): ...
+
+
+def _agent_step(acts, team_id, role="backend"):
+    return acts.agent_step({"run_id": "r1", "owner_id": "dev-user", "role": role,
+                            "incoming": "do it", "task_title": "T",
+                            "acceptance_criteria": [], "team_id": team_id})
+
+
+def test_agent_step_populates_manifest_from_team(tmp_path):
+    from domain.models import AgentDefinition, Skill, Team
+
+    factory = _factory()
+    _seed_run(factory)
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        team = uow.teams.create(Team(owner_id="dev-user", name="T"))
+        sk = uow.skills.create(Skill(owner_id="dev-user", name="pytest", source="git@x/s.git"))
+        uow.agents.create(AgentDefinition(
+            team_id=team.id, role="backend", name="Eng", model_alias="m",
+            system_prompt="build", allowed_tools=["Read", "Edit"], skill_ids=[sk.id]))
+    spy = _ResultSpy()
+    acts = _acts(factory, runtime=spy, storage=LocalStorageAdapter(base_dir=str(tmp_path)))
+    _agent_step(acts, team.id)
+    assert spy.ctx.agent is not None
+    assert spy.ctx.agent.system_prompt == "build"
+    assert spy.ctx.agent.allowed_tools == ["Read", "Edit"]
+    assert spy.ctx.agent.skills[0].source == "git@x/s.git"
+
+
+def test_agent_step_injects_secret_env_without_leaking(tmp_path):
+    from cryptography.fernet import Fernet
+
+    from domain.models import AgentDefinition, Secret, Team
+    from interactors.temporal.activities import RunActivities
+    from lib.secrets import FernetCipher
+
+    factory = _factory()
+    _seed_run(factory)
+    cipher = FernetCipher(Fernet.generate_key().decode())
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        team = uow.teams.create(Team(owner_id="dev-user", name="T"))
+        sec = uow.secrets.create(Secret(owner_id="dev-user", name="GH_TOKEN",
+                                        encrypted_value=cipher.encrypt("ghp_TOPSECRET")))
+        uow.agents.create(AgentDefinition(team_id=team.id, role="backend", name="E",
+                                          model_alias="m", secret_ids=[sec.id]))
+    spy = _ResultSpy()
+    recorded = []
+    acts = RunActivities(factory, spy, LocalStorageAdapter(base_dir=str(tmp_path)),
+                         None, None, cipher=cipher)
+    orig = acts.record_event
+    acts.record_event = lambda p: recorded.append(p) or orig(p)
+    result = _agent_step(acts, team.id)
+    # security invariant: plaintext injected in-process, never in output or events
+    assert spy.ctx.agent.secret_env == {"GH_TOKEN": "ghp_TOPSECRET"}
+    assert "ghp_TOPSECRET" not in json.dumps(result)
+    assert "ghp_TOPSECRET" not in json.dumps(recorded)
+
+
+def test_agent_step_records_capability_audit_without_secret_values(tmp_path):
+    from cryptography.fernet import Fernet
+
+    from domain.models import AgentDefinition, Secret, Team
+    from interactors.temporal.activities import RunActivities
+    from lib.secrets import FernetCipher
+
+    factory = _factory()
+    _seed_run(factory)
+    cipher = FernetCipher(Fernet.generate_key().decode())
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        team = uow.teams.create(Team(owner_id="dev-user", name="T"))
+        sec = uow.secrets.create(Secret(owner_id="dev-user", name="GH",
+                                        encrypted_value=cipher.encrypt("ghp_SECRET")))
+        uow.agents.create(AgentDefinition(
+            team_id=team.id, role="backend", name="E", model_alias="engineer-model",
+            allowed_tools=["Read", "Edit"], secret_ids=[sec.id]))
+    acts = RunActivities(factory, _ResultSpy(), LocalStorageAdapter(base_dir=str(tmp_path)),
+                         None, None, cipher=cipher)
+    _agent_step(acts, team.id)
+    uow2 = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow2.transaction():
+        granted = [e for e in uow2.audit_events.list(filters={"run_id": "r1"}).results
+                   if e.action == "capability_granted"]
+    assert len(granted) == 1
+    detail = granted[0].detail
+    assert detail["tools"] == ["Read", "Edit"]
+    assert detail["model_alias"] == "engineer-model"
+    assert detail["secret_count"] == 1
+    assert "ghp_SECRET" not in json.dumps(detail)  # no secret value in the audit
+
+
+def test_agent_step_ingests_tool_audit_jsonl(tmp_path):
+    from domain.models import AgentDefinition, Team
+    from interactors.temporal.activities import RunActivities
+
+    factory = _factory()
+    _seed_run(factory)
+    storage = LocalStorageAdapter(base_dir=str(tmp_path))
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        team = uow.teams.create(Team(owner_id="dev-user", name="T"))
+        uow.agents.create(AgentDefinition(team_id=team.id, role="backend", name="E",
+                                          model_alias="m", allowed_tools=["Read"]))
+
+    class _AuditSpy:
+        def __init__(self, s):
+            self._s = s
+
+        def run_stage(self, ctx):
+            self._s.write_bytes(
+                f"runs/{ctx.run_id}/audit.jsonl",
+                (json.dumps({"tool": "Read", "decision": "allow", "reason": "granted"}) + "\n"
+                 + json.dumps({"tool": "Bash", "decision": "deny",
+                               "reason": "not in allowlist"}) + "\n").encode())
+            yield AgentEvent(type="result", stage=ctx.stage,
+                             data=StageResult(outcome="ok").model_dump())
+
+        def cancel(self, run_id): ...
+
+    acts = RunActivities(factory, _AuditSpy(storage), storage, None, None)
+    _agent_step(acts, team.id)
+    uow2 = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow2.transaction():
+        evs = uow2.audit_events.list(filters={"run_id": "r1"}).results
+    actions = sorted(e.action for e in evs if e.action in ("tool_allowed", "tool_denied"))
+    assert actions == ["tool_allowed", "tool_denied"]
+    denied = [e for e in evs if e.action == "tool_denied"][0]
+    assert denied.detail["tool"] == "Bash"  # detail carries tool + reason only, no inputs
+
+
+def test_agent_step_records_agent_raised_notification(tmp_path):
+    """A `notification` agent event (the yaah_notify capability) becomes an in-app
+    Notification on the orchestrator path, same as the old run_stage path did."""
+    factory = _factory()
+    _seed_run(factory)
+
+    class _NotifySpy:
+        def run_stage(self, ctx):
+            yield AgentEvent(type="notification", stage=ctx.stage, message="flag",
+                             data={"title": "Need a decision", "category": "decision",
+                                   "severity": "attention", "body": "which db?"})
+            yield AgentEvent(type="result", stage=ctx.stage,
+                             data=StageResult(outcome="ok").model_dump())
+
+        def cancel(self, run_id): ...
+
+    acts = _acts(factory, runtime=_NotifySpy(),
+                 storage=LocalStorageAdapter(base_dir=str(tmp_path)))
+    _agent_step(acts, team_id=None)
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        notifs = uow.notifications.list(filters={"run_id": "r1"}).results
+    assert len(notifs) == 1
+    assert notifs[0].title == "Need a decision"
+    assert notifs[0].category == "decision"
+    assert notifs[0].source == "agent"
