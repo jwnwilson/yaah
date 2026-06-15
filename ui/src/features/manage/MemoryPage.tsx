@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { MemoryProposalStatus } from "../../lib/api/memory";
-import { Badge, type BadgeTone } from "../../ui/Badge";
-import { MemoryDiff } from "../runs/MemoryDiff";
+import type { MemoryProposalStatus } from "@/lib/api/memory";
+import { Badge, type BadgeTone } from "@/ui/Badge";
+import { MemoryDiff } from "@/features/runs/MemoryDiff";
 import { useMemoryProposals } from "./useMemoryProposals";
 
 const STATUSES: MemoryProposalStatus[] = ["proposed", "applied", "rejected"];

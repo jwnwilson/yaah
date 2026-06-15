@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { server } from "../../test/server";
+import { server } from "@/test/server";
 import { listSecrets, setSecretValue, createSkill, listMcpServers } from "./capabilities";
 
 test("listSecrets unwraps the envelope and never includes a value", async () => {

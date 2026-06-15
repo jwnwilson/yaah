@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createProject, projectKeys } from "../../lib/api/projects";
+import { createProject, projectKeys } from "@/lib/api/projects";
 
 export function useCreateProject() {
   const qc = useQueryClient();

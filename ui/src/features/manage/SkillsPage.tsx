@@ -1,10 +1,10 @@
 import { useState } from "react";
-import type { Skill } from "../../lib/api/types";
-import { ResourceTable } from "../components/ResourceTable";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import { Button } from "../../ui/Button";
-import { Dialog } from "../../ui/Dialog";
-import { Field, Input } from "../../ui/Field";
+import type { Skill } from "@/lib/api/types";
+import { ResourceTable } from "@/features/components/ResourceTable";
+import { ConfirmDialog } from "@/features/components/ConfirmDialog";
+import { Button } from "@/ui/Button";
+import { Dialog } from "@/ui/Dialog";
+import { Field, Input } from "@/ui/Field";
 import { useCreateSkill, useDeleteSkill, useSkills, useUpdateSkill } from "./useSkills";
 
 interface Draft { name: string; description: string; source: string }

@@ -3,7 +3,7 @@ import {
   getUnreadCount,
   listNotifications,
   notificationKeys,
-} from "../../lib/api/notifications";
+} from "@/lib/api/notifications";
 
 // Poll the unread count on the same cadence the board uses to stay fresh
 // without SSE (deferred for A5e).

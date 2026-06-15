@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createSkill, deleteSkill, listSkills, skillKeys, updateSkill,
   type CreateSkillInput, type UpdateSkillInput,
-} from "../../lib/api/capabilities";
+} from "@/lib/api/capabilities";
 
 export function useSkills() {
   return useQuery({ queryKey: skillKeys.all, queryFn: listSkills });

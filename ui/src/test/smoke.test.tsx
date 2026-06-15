@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { AppProviders } from "../app/App";
+import { AppProviders } from "@/app/App";
 
 test("renders app shell", async () => {
   window.history.pushState({}, "", "/");

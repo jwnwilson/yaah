@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createWorkItem, workItemKeys, type CreateWorkItemInput } from "../../lib/api/workItems";
+import { createWorkItem, workItemKeys, type CreateWorkItemInput } from "@/lib/api/workItems";
 
 export function useCreateWorkItem(projectId: string) {
   const qc = useQueryClient();

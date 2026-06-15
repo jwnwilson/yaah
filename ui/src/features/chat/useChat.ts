@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { postChat } from "../../lib/api/chat";
-import { workItemKeys } from "../../lib/api/workItems";
+import { postChat } from "@/lib/api/chat";
+import { workItemKeys } from "@/lib/api/workItems";
 
 export interface Turn {
   role: "user" | "assistant";

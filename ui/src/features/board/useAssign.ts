@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateWorkItem, workItemKeys } from "../../lib/api/workItems";
-import type { WorkItem } from "../../lib/api/types";
+import { updateWorkItem, workItemKeys } from "@/lib/api/workItems";
+import type { WorkItem } from "@/lib/api/types";
 
 interface Vars {
   itemId: string;

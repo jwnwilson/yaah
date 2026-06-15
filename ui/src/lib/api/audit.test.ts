@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { server } from "../../test/server";
+import { server } from "@/test/server";
 import { listAudit } from "./audit";
 
 test("listAudit returns events and meta and forwards filters", async () => {

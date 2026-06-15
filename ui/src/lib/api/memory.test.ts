@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { server } from "../../test/server";
+import { server } from "@/test/server";
 import { listMemoryProposals } from "./memory";
 
 test("listMemoryProposals returns proposals + meta and forwards filters", async () => {

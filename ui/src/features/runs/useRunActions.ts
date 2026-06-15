@@ -6,7 +6,7 @@ import {
   runKeys,
   updateRun,
   type UpdateRunInput,
-} from "../../lib/api/runs";
+} from "@/lib/api/runs";
 
 export function useRunActions(taskId: string, runId: string) {
   const qc = useQueryClient();

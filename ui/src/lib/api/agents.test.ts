@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { server } from "../../test/server";
+import { server } from "@/test/server";
 import { listAgents, updateAgent } from "./agents";
 import { listTeams } from "./teams";
 

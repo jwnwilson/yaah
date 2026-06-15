@@ -1,4 +1,4 @@
-import type { WorkItem, WorkItemStatus } from "../../lib/api/types";
+import type { WorkItem, WorkItemStatus } from "@/lib/api/types";
 
 export const ATTENTION = "attention" as const;
 

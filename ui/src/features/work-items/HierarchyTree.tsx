@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useEpics, useFeatures } from "./useHierarchy";
 import { useCreateWorkItem } from "./useCreateWorkItem";
-import { Button } from "../../ui/Button";
-import { Input, Select } from "../../ui/Field";
+import { Button } from "@/ui/Button";
+import { Input, Select } from "@/ui/Field";
 
 export function HierarchyTree({
   projectId,

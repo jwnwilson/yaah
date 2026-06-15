@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
-import { server } from "../../test/server";
+import { server } from "@/test/server";
 import { useProjects } from "./useProjects";
 
 function wrapper({ children }: { children: React.ReactNode }) {

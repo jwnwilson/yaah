@@ -5,7 +5,7 @@ import {
   markMessageRead,
   sendMessage,
   type SendMessageInput,
-} from "../../lib/api/messages";
+} from "@/lib/api/messages";
 
 export function useMessages(box: string) {
   return useQuery({

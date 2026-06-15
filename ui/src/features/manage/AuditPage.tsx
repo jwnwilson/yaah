@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { AuditAction } from "../../lib/api/audit";
-import { Badge, type BadgeTone } from "../../ui/Badge";
-import { Button } from "../../ui/Button";
+import type { AuditAction } from "@/lib/api/audit";
+import { Badge, type BadgeTone } from "@/ui/Badge";
+import { Button } from "@/ui/Button";
 import { useAudit } from "./useAudit";
 
 const ACTIONS: AuditAction[] = ["capability_granted", "tool_allowed", "tool_denied"];

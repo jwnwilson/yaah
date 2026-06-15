@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { teamKeys, listTeams } from "../../lib/api/teams";
-import { agentKeys, listAgents, updateAgent, type UpdateAgentInput } from "../../lib/api/agents";
+import { teamKeys, listTeams } from "@/lib/api/teams";
+import { agentKeys, listAgents, updateAgent, type UpdateAgentInput } from "@/lib/api/agents";
 
 export function useTeams() {
   return useQuery({ queryKey: teamKeys.all, queryFn: listTeams });

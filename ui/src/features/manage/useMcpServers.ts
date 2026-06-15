@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createMcpServer, deleteMcpServer, listMcpServers, mcpServerKeys, updateMcpServer,
   type CreateMcpServerInput, type UpdateMcpServerInput,
-} from "../../lib/api/capabilities";
+} from "@/lib/api/capabilities";
 
 export function useMcpServers() {
   return useQuery({ queryKey: mcpServerKeys.all, queryFn: listMcpServers });
