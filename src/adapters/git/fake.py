@@ -45,6 +45,7 @@ class FakeGit:
     ) -> bool:
         if self._has_changes:
             self.committed.append((workspace_path, message))
+            self._ahead = True  # committing work advances the branch past base
         return self._has_changes
 
     def push(self, workspace_path: str, branch: str, *, token: str | None = None) -> None:

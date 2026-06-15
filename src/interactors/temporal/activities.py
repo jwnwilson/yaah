@@ -518,12 +518,35 @@ class RunActivities:
                            "message": f"engineer workspace {payload['branch']}"})
         return {"outcome": "ok"}
 
+    @activity.defn(name="integrate_branches")
+    def integrate_branches(self, payload: dict) -> dict:
+        workspace = self._storage.local_path(payload["workspace_key"])
+        merged: list[str] = []
+        for branch in payload["branches"]:
+            result = self._git.merge_branch(workspace, branch=branch)
+            if not result.ok:
+                msg = f"merge conflict on {branch}: {result.conflict_files}"
+                self.record_event({"run_id": payload["run_id"], "owner_id": payload["owner_id"],
+                                   "stage": "implement", "type": "agent_reported", "message": msg})
+                return {"merged": merged,
+                        "conflict": {"branch": branch, "files": result.conflict_files}}
+            merged.append(branch)
+            self.record_event({"run_id": payload["run_id"], "owner_id": payload["owner_id"],
+                               "stage": "implement", "type": "agent_reported",
+                               "message": f"merged {branch}"})
+        return {"merged": merged, "conflict": None}
+
+    @activity.defn(name="commit_engineer_branch")
+    def commit_engineer_branch(self, payload: dict) -> bool:
+        workspace = self._storage.local_path(payload["workspace_key"])
+        return self._git.commit_all(workspace, payload["title"], exclude=WORKSPACE_SCRATCH)
+
     @activity.defn(name="open_pr")
     def open_pr(self, payload: dict) -> dict:
         run_id, owner_id = payload["run_id"], payload["owner_id"]
         workspace = self._storage.local_path(f"runs/{run_id}")
-        committed = self._git.commit_all(workspace, payload["title"], exclude=WORKSPACE_SCRATCH)
-        if not committed:
+        self._git.commit_all(workspace, payload["title"], exclude=WORKSPACE_SCRATCH)
+        if not self._git.has_commits_ahead(workspace, payload["base"]):
             self.record_event({"run_id": run_id, "owner_id": owner_id, "stage": "pr",
                                "type": "stage_completed", "message": "no changes to PR"})
             return {"outcome": "ok", "pr_url": None}

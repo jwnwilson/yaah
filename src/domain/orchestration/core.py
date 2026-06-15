@@ -1,5 +1,6 @@
 """Pure orchestration policy: lead-decision/worker DTOs, guards, and mappings. No I/O."""
 
+from collections import Counter
 from enum import StrEnum
 
 from pydantic import BaseModel, Field, model_validator
@@ -124,6 +125,8 @@ class OrchestrationLimits(BaseModel):
     max_messages: int = 200
     max_cost_usd: float = 25.0
     max_verify_rounds: int = 3
+    max_parallel_per_role: int = 3
+    max_integration_rounds: int = 3
 
 
 class OrchestrationState(BaseModel):
@@ -169,6 +172,12 @@ def guard_exceeded(state: OrchestrationState, limits: OrchestrationLimits) -> st
     if state.total_cost_usd >= limits.max_cost_usd:
         return "max_cost_usd"
     return None
+
+
+def wave_exceeds_parallel(target_roles: list[str], limits: OrchestrationLimits) -> bool:
+    """True if any single role is dispatched more than max_parallel_per_role times in one wave."""
+    counts = Counter(target_roles)
+    return any(n > limits.max_parallel_per_role for n in counts.values())
 
 
 def is_quiescent(active_agents: int, in_flight_messages: int) -> bool:

@@ -21,6 +21,7 @@ from domain.orchestration import (
     guard_exceeded,
     is_quiescent,
     resolve_assignee,
+    wave_exceeds_parallel,
 )
 
 
@@ -181,3 +182,10 @@ def test_needs_human_with_rationale_is_valid():
 def test_needs_human_requires_rationale_or_user_message():
     with pytest.raises(ValueError, match="needs_human requires"):
         OrchestrationDecision(intent=OrchestrationIntent.NEEDS_HUMAN)
+
+
+def test_wave_exceeds_parallel_per_role():
+    limits = OrchestrationLimits(max_parallel_per_role=2)
+    assert wave_exceeds_parallel(["backend", "backend"], limits) is False
+    assert wave_exceeds_parallel(["backend", "backend", "backend"], limits) is True
+    assert wave_exceeds_parallel(["backend", "qa"], limits) is False
