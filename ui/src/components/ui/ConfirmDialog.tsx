@@ -1,5 +1,5 @@
-import { Button } from "@/ui/Button";
-import { Dialog } from "@/ui/Dialog";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 
 interface ConfirmDialogProps {
   title: string;

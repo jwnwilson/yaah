@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+import { Field, Input } from "@/components/ui/Field";
+import { ResourceTable } from "@/components/ui/ResourceTable";
 import type { Agent } from "@/lib/api/agents";
-import { Button } from "@/ui/Button";
-import { Dialog } from "@/ui/Dialog";
-import { Field, Input } from "@/ui/Field";
-import { ResourceTable } from "@/ui/ResourceTable";
 import { useAgents, useTeams, useUpdateAgent } from "./useAgents";
 
 interface Draft { model_alias: string; allowed_tools: string }

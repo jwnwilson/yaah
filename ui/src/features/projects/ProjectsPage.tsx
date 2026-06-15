@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/ui/Button";
-import { Card } from "@/ui/Card";
-import { EmptyState } from "@/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { CreateProjectDialog } from "./CreateProjectDialog";
 import { useProjects } from "./useProjects";
 

@@ -1,4 +1,4 @@
-import { Button } from "@/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { MemoryDiff } from "./MemoryDiff";
 import { useMemoryProposal } from "./useMemoryProposal";
 

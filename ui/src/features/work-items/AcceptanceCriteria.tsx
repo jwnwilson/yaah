@@ -1,4 +1,4 @@
-import { Input } from "@/ui/Field";
+import { Input } from "@/components/ui/Field";
 
 export function AcceptanceCriteria({
   value,

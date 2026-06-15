@@ -1,4 +1,4 @@
-import { IconButton } from "@/ui/IconButton";
+import { IconButton } from "@/components/ui/IconButton";
 import { useTheme } from "./useTheme";
 
 export function ThemeToggle() {
