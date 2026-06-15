@@ -63,3 +63,9 @@ test("assigning via the picker PATCHes the work item", async () => {
   await userEvent.selectOptions(select, "a-eng");
   await waitFor(() => expect(body).toEqual({ assignee_agent_id: "a-eng" }));
 });
+
+test("pulses the assignee avatar while the ticket is in progress", async () => {
+  renderCard(item({ assignee_agent_id: "a-eng", status: "in_progress" }));
+  const avatar = await screen.findByLabelText("Assignee Engineer");
+  expect(avatar).toHaveClass("animate-pulse");
+});
