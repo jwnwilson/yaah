@@ -77,6 +77,13 @@ make worker                       # run the Temporal worker (pipeline executor)
 ANTHROPIC_API_KEY=... docker compose up -d --build worker   # real agent worker (auto-selects claude)
 docker compose up -d litellm   # LiteLLM gateway on :4000 (set YAAH_LITELLM_BASE_URL=http://localhost:4000)
 # Deploy: push to main -> GitHub Actions (see docs/deployment.md). Manual: gh workflow run "Deploy Backend"
+
+# UI (run from ui/; pnpm is the package manager — never npm)
+cd ui && pnpm install        # install UI deps
+pnpm dev                     # Vite dev server on :5173 (proxies /api -> :8000)
+pnpm lint                    # eslint + tsc --noEmit
+pnpm test                    # vitest unit tests
+pnpm build                   # production build (tsc -b && vite build)
 ```
 
 ## Roadmap (phase A spine → C management plane → B full team)
