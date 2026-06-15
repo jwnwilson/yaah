@@ -5,6 +5,12 @@ export const workItemKeys = {
   list: (projectId: string) => ["work-items", projectId] as const,
 };
 
+export const hierarchyKeys = {
+  // Prefix key — invalidating this matches every kind under the project.
+  all: (projectId: string) => ["hierarchy", projectId] as const,
+  byKind: (projectId: string, kind: WorkItemKind) => ["hierarchy", projectId, kind] as const,
+};
+
 export interface WorkItemFilters {
   kind?: WorkItemKind;
   parent_id?: string;
