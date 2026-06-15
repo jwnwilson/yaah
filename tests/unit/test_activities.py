@@ -141,3 +141,18 @@ def test_provision_engineer_workspace_branches_off_task():
     repo_ref, ws, branch, mode, base = git.prepared[0]
     assert branch == "agent/task1__backend-1-0" and base == "agent/task1" and mode == "worktree"
     assert ws.endswith(f"runs/{run_id}/w/backend-1-0")
+
+
+def test_integrate_branches_clean_and_conflict():
+    factory = _factory(); run_id = _seed_run(factory)
+    git = FakeGit()
+    acts = _acts(factory, git=git)
+    out = acts.integrate_branches({"run_id": run_id, "owner_id": "u1",
+        "workspace_key": f"runs/{run_id}", "branches": ["agent/t__e0", "agent/t__e1"]})
+    assert out["conflict"] is None and out["merged"] == ["agent/t__e0", "agent/t__e1"]
+    git2 = FakeGit(merge_conflict_on=("agent/t__e1",))
+    acts2 = _acts(factory, git=git2)
+    out2 = acts2.integrate_branches({"run_id": run_id, "owner_id": "u1",
+        "workspace_key": f"runs/{run_id}", "branches": ["agent/t__e0", "agent/t__e1"]})
+    assert out2["merged"] == ["agent/t__e0"]
+    assert out2["conflict"]["branch"] == "agent/t__e1"

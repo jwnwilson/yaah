@@ -518,6 +518,24 @@ class RunActivities:
                            "message": f"engineer workspace {payload['branch']}"})
         return {"outcome": "ok"}
 
+    @activity.defn(name="integrate_branches")
+    def integrate_branches(self, payload: dict) -> dict:
+        workspace = self._storage.local_path(payload["workspace_key"])
+        merged: list[str] = []
+        for branch in payload["branches"]:
+            result = self._git.merge_branch(workspace, branch=branch)
+            if not result.ok:
+                self.record_event({"run_id": payload["run_id"], "owner_id": payload["owner_id"],
+                                   "stage": "implement", "type": "agent_reported",
+                                   "message": f"merge conflict on {branch}: {result.conflict_files}"})
+                return {"merged": merged,
+                        "conflict": {"branch": branch, "files": result.conflict_files}}
+            merged.append(branch)
+            self.record_event({"run_id": payload["run_id"], "owner_id": payload["owner_id"],
+                               "stage": "implement", "type": "agent_reported",
+                               "message": f"merged {branch}"})
+        return {"merged": merged, "conflict": None}
+
     @activity.defn(name="open_pr")
     def open_pr(self, payload: dict) -> dict:
         run_id, owner_id = payload["run_id"], payload["owner_id"]
