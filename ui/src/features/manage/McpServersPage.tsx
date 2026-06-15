@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ConfirmDialog } from "@/features/components/ConfirmDialog";
-import { ResourceTable } from "@/features/components/ResourceTable";
 import type { McpServer, McpTransport } from "@/lib/api/types";
 import { Button } from "@/ui/Button";
+import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { Dialog } from "@/ui/Dialog";
 import { Field, Input, Select } from "@/ui/Field";
+import { ResourceTable } from "@/ui/ResourceTable";
 import { useCreateMcpServer, useDeleteMcpServer, useMcpServers, useUpdateMcpServer } from "./useMcpServers";
 
 interface Draft { name: string; transport: McpTransport; command_or_url: string; tool_allowlist: string[] }
