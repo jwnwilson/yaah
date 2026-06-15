@@ -38,9 +38,13 @@ export function TaskCard({ item, onOpen }: { item: WorkItem; onOpen: (id: string
         </button>
         {assignee && (
           <span
-            title={`${assignee.name} (${roleVisual(assignee.role).label})`}
+            title={`${assignee.name} (${roleVisual(assignee.role).label})${
+              item.status === "in_progress" ? " — active now" : ""
+            }`}
             aria-label={`Assignee ${assignee.name}`}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white${
+              item.status === "in_progress" ? " ring-2 ring-accent ring-offset-1 animate-pulse" : ""
+            }`}
             style={{ backgroundColor: roleVisual(assignee.role).color }}
           >
             {initials(assignee.name)}
