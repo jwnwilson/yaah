@@ -1,39 +1,15 @@
 import httpx
 
 from adapters.agent.model.ports import ModelProvider
-from adapters.agent.refinement.ports import RefinementContext
-from domain.refinement import RefinementOutput
+from domain.refinement import RefinementContext, RefinementOutput
 
+# The tool's input_schema is derived from the domain model so the proposal shape has a
+# single source of truth (domain.refinement) and never drifts from it. The name/description
+# are the Anthropic tool-use wrapper — the one genuinely adapter-specific part.
 _TOOL = {
     "name": "propose",
     "description": "Reply to the user and propose work items to draft.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "reply": {"type": "string"},
-            "proposals": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "kind": {
-                            "type": "string",
-                            "enum": ["epic", "feature", "task"],
-                        },
-                        "parent_id": {"type": ["string", "null"]},
-                        "title": {"type": "string"},
-                        "body": {"type": "string"},
-                        "acceptance_criteria": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                        },
-                    },
-                    "required": ["kind", "title"],
-                },
-            },
-        },
-        "required": ["reply"],
-    },
+    "input_schema": RefinementOutput.model_json_schema(),
 }
 
 

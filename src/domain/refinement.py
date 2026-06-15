@@ -4,7 +4,7 @@ from typing import Callable
 
 from pydantic import BaseModel
 
-from domain.models import WorkItemKind
+from domain.models import ChatMessage, WorkItem, WorkItemKind
 
 
 class WorkItemProposal(BaseModel):
@@ -13,6 +13,16 @@ class WorkItemProposal(BaseModel):
     title: str
     body: str = ""
     acceptance_criteria: list[str] = []
+
+
+class RefinementContext(BaseModel):
+    """Input contract for a refinement turn: the project, conversation so far, current
+    board hierarchy, and the lead system prompt."""
+
+    project_name: str
+    history: list[ChatMessage] = []
+    hierarchy: list[WorkItem] = []
+    system_prompt: str = ""
 
 
 class RefinementOutput(BaseModel):

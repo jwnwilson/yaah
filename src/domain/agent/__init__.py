@@ -15,7 +15,13 @@ from domain.agent.capabilities import (
     select_agent,
 )
 from domain.agent.invocation import AgentInvocation, build_invocation
-from domain.agent.runtime import AgentEvent, AgentRuntime, RunContext, StageResult
+from domain.agent.runtime import (
+    AgentEvent,
+    AgentRuntime,
+    RunContext,
+    StageResult,
+    result_of,
+)
 
 __all__ = [
     "AgentEvent",
@@ -30,6 +36,7 @@ __all__ = [
     "build_invocation",
     "capabilities",
     "prompts",
+    "result_of",
     "role_for_stage",
     "select_agent",
 ]

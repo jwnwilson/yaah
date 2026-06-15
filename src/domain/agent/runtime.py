@@ -36,3 +36,11 @@ class RunContext(BaseModel):
 class AgentRuntime(Protocol):
     def run_stage(self, ctx: RunContext) -> Iterator[AgentEvent]: ...
     def cancel(self, run_id: str) -> None: ...
+
+
+def result_of(events: list[AgentEvent]) -> StageResult:
+    """Extract the StageResult carried by the final 'result' event in a stage's stream."""
+    for event in reversed(events):
+        if event.type == "result":
+            return StageResult(**event.data)
+    raise ValueError("no result event in stream")

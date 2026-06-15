@@ -1,6 +1,5 @@
-from adapters.agent.refinement.ports import RefinementContext
 from domain.models import WorkItemKind
-from domain.refinement import RefinementOutput, WorkItemProposal
+from domain.refinement import RefinementContext, RefinementOutput, WorkItemProposal
 
 
 class FakeRefinementAgent:
