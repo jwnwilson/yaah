@@ -383,6 +383,12 @@ class OrchestratorWorkflow:
                                  inp.get("acceptance_criteria", []))},
             start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
         await workflow.execute_activity(
+            "curate_memory",
+            {"run_id": run_id, "owner_id": owner_id, "task_title": inp["task_title"],
+             "acceptance_criteria": inp.get("acceptance_criteria", []),
+             "body": inp.get("body", "")},
+            start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
+        await workflow.execute_activity(
             "capture_memory",
             {"run_id": run_id, "owner_id": owner_id, "project_id": inp["project_id"],
              "base": inp.get("base", "main"), "profile": inp["profile"],
