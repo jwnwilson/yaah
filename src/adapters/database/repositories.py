@@ -17,6 +17,7 @@ from adapters.database.orm import (
     SkillRow,
     TeamRow,
     UsageRecordRow,
+    WorkItemAttachmentRow,
     WorkItemRow,
 )
 from adapters.database.repository import SqlRepository
@@ -39,6 +40,7 @@ from domain.models import (
     Team,
     UsageRecord,
     WorkItem,
+    WorkItemAttachment,
 )
 
 
@@ -50,6 +52,12 @@ class ProjectRepository(SqlRepository[Project]):
 class WorkItemRepository(SqlRepository[WorkItem]):
     orm_model = WorkItemRow
     dto = WorkItem
+
+
+class WorkItemAttachmentRepository(SqlRepository[WorkItemAttachment]):
+    orm_model = WorkItemAttachmentRow
+    dto = WorkItemAttachment
+    default_order_by = "created_at"
 
 
 class TeamRepository(SqlRepository[Team]):

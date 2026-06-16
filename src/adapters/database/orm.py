@@ -237,6 +237,20 @@ class UsageRecordRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class WorkItemAttachmentRow(Base):
+    __tablename__ = "work_item_attachments"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    work_item_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    filename: Mapped[str] = mapped_column(String(300), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(400), nullable=False)
+    origin: Mapped[str] = mapped_column(String(16), nullable=False, default="human")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class MemoryProposalRow(Base):
     __tablename__ = "memory_proposals"
 

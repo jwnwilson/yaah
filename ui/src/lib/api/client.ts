@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_BASE_URL || "/api";
+export const BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export interface Envelope<T> {
   success: boolean;
@@ -52,6 +52,20 @@ export async function apiGetPage<T>(path: string): Promise<{ data: T; meta?: Pag
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return (await request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }))
     .data as T;
+}
+
+export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
+  const res = await fetch(BASE + path, { method: "POST", body: form });
+  let body: Envelope<T>;
+  try {
+    body = (await res.json()) as Envelope<T>;
+  } catch {
+    throw new ApiError(res.status, res.statusText || "request failed");
+  }
+  if (!res.ok || !body.success) {
+    throw new ApiError(res.status, body.error ?? res.statusText);
+  }
+  return body.data as T;
 }
 
 export async function apiPatch<T>(path: string, body: unknown): Promise<T> {

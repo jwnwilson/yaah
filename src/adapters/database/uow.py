@@ -20,6 +20,7 @@ from adapters.database.repositories import (
     SkillRepository,
     TeamRepository,
     UsageRecordRepository,
+    WorkItemAttachmentRepository,
     WorkItemRepository,
 )
 
@@ -66,6 +67,10 @@ class SqlUnitOfWork:
     @property
     def work_items(self) -> WorkItemRepository:
         return WorkItemRepository(self.session, self._required_filters)
+
+    @property
+    def work_item_attachments(self) -> WorkItemAttachmentRepository:
+        return WorkItemAttachmentRepository(self.session, self._required_filters)
 
     @property
     def teams(self) -> TeamRepository:
