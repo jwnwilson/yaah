@@ -77,7 +77,7 @@ def build_activities(database_url: str, profile: str = "local") -> list:
     acts = RunActivities(factory, runtime, storage, git, forge, cipher=cipher, notifier=notifier)
     return [acts.persist_run_state, acts.record_event, acts.record_usage,
             acts.cleanup_workspace, acts.provision_workspace, acts.open_pr,
-            acts.record_notification, acts.capture_memory,
+            acts.record_notification, acts.capture_memory, acts.curate_memory,
             acts.persist_messages, acts.invoke_lead, acts.agent_step, acts.run_monitor,
             acts.provision_engineer_workspace, acts.integrate_branches,
             acts.commit_engineer_branch]

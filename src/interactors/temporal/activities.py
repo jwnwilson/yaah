@@ -628,6 +628,22 @@ class RunActivities:
             self._auto_apply_memory(payload, proposal)
         return {"outcome": "ok", "proposal_id": proposal.id}
 
+    @activity.defn(name="curate_memory")
+    def curate_memory(self, payload: dict) -> dict:
+        """Run the LEARN curator (generic role -> Read/Edit/Write) in the main run worktree to
+        update project memory. Advisory: a curator failure never fails the run."""
+        from domain.agent.prompts import for_stage
+        from domain.models import RunStage
+        learn_prompt, _tools = for_stage(
+            RunStage.LEARN, payload["task_title"],
+            payload.get("acceptance_criteria", []), payload.get("body", ""))
+        try:
+            self._run_instructed_agent(
+                payload, role=None, instructions=learn_prompt, stage=RunStage.LEARN)
+        except Exception:  # noqa: BLE001 - curation is advisory; never fail the run
+            pass
+        return {"outcome": "ok"}
+
     def _auto_apply_memory(self, payload: dict, proposal) -> None:
         from interactors.cli.memory_apply import MemoryApplier
         run_id, owner_id = payload["run_id"], payload["owner_id"]
