@@ -56,7 +56,9 @@ def for_stage(stage: RunStage, task_title: str, acceptance_criteria: list[str],
             "or AGENTS.md at the repo root (keep each concise, ~120 lines max) and add or "
             "update entries under docs/adr/ for architectural decisions. Propose additions "
             "AND deletions: remove stale or wrong guidance, record new conventions and "
-            "gotchas. Only durable, project-wide knowledge belongs here.",
+            "gotchas. Only durable, project-wide knowledge belongs here.\n\n"
+            f"This run completed the ticket: {task_title}\n{body}\n\nAcceptance criteria:\n{ac}\n"
+            "Record only durable, project-wide learnings — not this task's specifics.",
             ["Read", "Edit", "Write"],
         )
     # provision/pr are handled by dedicated activities, not the agent runtime

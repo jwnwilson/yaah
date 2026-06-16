@@ -50,6 +50,17 @@ def test_learn_prompt_requests_additions_and_deletions():
     assert "Edit" in tools  # editing existing memory files
 
 
+def test_for_stage_learn_includes_task_context():
+    from domain.agent.prompts import for_stage
+    from domain.models import RunStage
+    prompt, tools = for_stage(RunStage.LEARN, "Add OAuth login",
+                              ["users can log in with Google"], body="see ticket")
+    assert "project memory" in prompt.lower()
+    assert tools == ["Read", "Edit", "Write"]
+    assert "Add OAuth login" in prompt
+    assert "users can log in with Google" in prompt
+
+
 def test_memory_pointer_with_and_without_role():
     from domain.agent.prompts import memory_pointer
     from domain.models import AgentRole
