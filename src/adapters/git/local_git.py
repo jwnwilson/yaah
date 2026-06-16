@@ -13,9 +13,9 @@ class LocalGit:
     """GitPort via the system `git` binary. `mode='worktree'` adds a worktree off a
     local repo (local profile); `mode='clone'` clones a remote (remote profile)."""
 
-    def _run(self, args: list[str], cwd: str | None = None) -> str:
+    def _run(self, args: list[str], cwd: str | None = None, *, check: bool = True) -> str:
         proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
-        if proc.returncode != 0:
+        if proc.returncode != 0 and check:
             raise GitError(proc.stderr.strip() or f"git {args[0]} failed")
         return proc.stdout
 
@@ -51,7 +51,11 @@ class LocalGit:
         # `:!<path>` pathspec magic excludes the scratch dirs from staging + status, so
         # they are neither committed nor counted as changes.
         pathspec = [".", *[f":!{e}" for e in exclude]]
-        self._run(["add", "-A", "--", *pathspec], cwd=workspace_path)
+        # --ignore-errors + check=False: an agent can leave a path git refuses to stage (a nested
+        # repo with no commit, an explicitly-ignored path, etc.). Stage everything stageable and
+        # commit that, rather than letting one bad path abort the whole run in open_pr.
+        self._run(["add", "-A", "--ignore-errors", "--", *pathspec],
+                  cwd=workspace_path, check=False)
         status = self._run(["status", "--porcelain", "--", *pathspec], cwd=workspace_path)
         if not status.strip():
             return False

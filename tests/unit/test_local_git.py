@@ -282,3 +282,22 @@ def test_curate_after_pr_keeps_memory_out_of_work_branch():
         mem_claude = subprocess.run(["git", "-C", str(ws), "show", "agent/memory-r1:CLAUDE.md"],
                                     capture_output=True, text=True).stdout
         assert "learned: pin deps" in mem_claude
+
+
+def test_commit_all_commits_work_despite_unstageable_path():
+    # An agent can leave a path git refuses to stage (here: a nested git repo with no commit,
+    # which makes `git add` abort with exit 128). open_pr's commit_all must not fail the whole
+    # run over it — it should stage the legitimate work and commit that.
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = Path(tmp)
+        _init_repo(ws)
+        nested = ws / "data" / "workspaces"
+        nested.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", "."], cwd=nested, check=True, capture_output=True)
+        (ws / "feature.py").write_text("print('hi')\n")  # the legitimate work
+        committed = LocalGit().commit_all(str(ws), "work", exclude=(".claude", ".orchestration"))
+        assert committed is True
+        files = subprocess.run(
+            ["git", "-C", str(ws), "show", "--name-only", "--pretty=format:", "HEAD"],
+            capture_output=True, text=True).stdout
+        assert "feature.py" in files
