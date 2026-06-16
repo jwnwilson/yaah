@@ -12,6 +12,25 @@ _MEMORY_POINTER = (
 )
 
 
+def memory_pointer(role, role_digest: str = "") -> str:
+    """Prepended to an orchestrator agent's brief: revives the project-memory read pointer and
+    (when role is known) injects the role digest + a self-authoring instruction."""
+    base = (
+        "Before you begin, read project memory if present: CLAUDE.md or AGENTS.md at the repo "
+        "root, and relevant files under docs/adr/. Honor the conventions and gotchas there."
+    )
+    if role is None:
+        return base + "\n\n"
+    name = role.value if hasattr(role, "value") else str(role)
+    digest = role_digest.strip() or "(none yet)"
+    return (
+        f"{base}\n\nYour accumulated {name} memory from past work:\n{digest}\n\n"
+        f"If you learn something durable about working as {name}, append a concise note (one or "
+        "two lines) to .orchestration/role-memory.md — only durable role-level knowledge, not "
+        "task specifics.\n\n"
+    )
+
+
 def for_stage(stage: RunStage, task_title: str, acceptance_criteria: list[str],
               body: str = "") -> tuple[str, list[str]]:
     ac = "\n".join(f"- {c}" for c in acceptance_criteria)

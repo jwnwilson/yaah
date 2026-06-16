@@ -81,3 +81,9 @@ def test_prompt_includes_integration_conflict():
     p = build_orchestrator_prompt(task_title="T", acceptance_criteria=[], body="",
                                   state=s, available_roles=[AgentRole.BACKEND])
     assert "a.py" in p and "conflict" in p.lower()
+
+
+def test_orchestrator_prompt_documents_memory_scope():
+    p = build_orchestrator_prompt(task_title="T", acceptance_criteria=[], body="",
+                                  state=OrchestrationState(), available_roles=[AgentRole.BACKEND])
+    assert "memory_scope" in p
