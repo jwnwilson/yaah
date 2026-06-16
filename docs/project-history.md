@@ -2,7 +2,8 @@
 
 > **Read this first.** A consolidated, concise record of what has been built, what is
 > dormant, and what is missing. Authored 2026-06-15 by consolidating every spec in
-> `docs/specs/` and plan in `docs/plans/` against the merged git history. When this drifts
+> `docs/specs/` and plan in `docs/plans/` against the merged git history; **updated
+> 2026-06-16** with the Phase B increments + real-run validation below. When this drifts
 > from reality, fix it — it is the canonical orientation doc for a new session.
 
 ## What yaah is
@@ -26,9 +27,9 @@ produce reviewable PRs; and update persistent memory as they work.
 |---|---|
 | Phase A spine (A1–A6) | **Shipped** — real Claude Code runs produce real PRs |
 | Phase C management plane | **Partial** — C1a + C2 UIs shipped; budgets/run-inspector/autonomy-dial pending |
-| Lead-driven orchestration (ADR-0002) | **Live — the sole run path** (cutover done; `RunWorkflow` removed) |
+| Lead-driven orchestration (ADR-0002) | **Live — the sole run path**; **real-Claude validated** end-to-end (2026-06-16) |
 | Deployment | **Spec only** — not yet validated locally or shipped remotely |
-| Phase B (full team) | **Started** — orchestrator cutover landed as step 0; parallel engineers next |
+| Phase B (full team) | **Advancing** — parallel same-role engineers, role memory, full 6-role roster, project-memory curator all shipped |
 
 ## Phase A — the spine (shipped)
 
@@ -72,7 +73,8 @@ Each line is a merged increment; see the matching spec/plan for detail.
 - **A6b1/b2 project memory** — agents read `CLAUDE.md`/`AGENTS.md`/`docs/adr/` before plan/
   implement; LEARN curator's edits to those paths become durable, reviewable `MemoryProposal`
   artifacts on an `agent/memory-<run_id>` branch; human apply (local fast-forward / remote PR)
-  or reject from the board; auto-apply under `full_auto`.
+  or reject from the board; auto-apply under `full_auto`. **The curator was dormant after the
+  orchestrator cutover and is now revived/wired (see Phase B below).**
 
 ## Phase C — management plane (partial)
 
@@ -106,18 +108,66 @@ starts `OrchestratorWorkflow`, the `orchestrator_enabled` flag and the legacy fi
 `RunWorkflow` are removed. Before flipping, the simplified path was hardened to the old
 pipeline's fidelity — actors now return their real worst outcome + cost (the parent records a
 truthful report and threads cost into the run + cost guard, replacing the hardcoded `OK`/`0.0`),
-and the peer-routing id is fixed. Current shape is **one actor per role per wave** (gathered to
-completion before the next); true concurrency/quiescence/live-messaging is the parallel-engineers
-spec. The legacy `run_stage` activity + `pipeline.STAGES`/`should_retry_verify` have been removed
-(their secret-injection/capability-audit/tool-audit + agent-raised-notification behavior now rides
-the shared `_run_instructed_agent` path that every orchestrator agent turn goes through).
+and the peer-routing id is fixed. The legacy `run_stage` activity + `pipeline.STAGES`/
+`should_retry_verify` have been removed (their secret-injection/capability-audit/tool-audit +
+agent-raised-notification behavior now rides the shared `_run_instructed_agent` path that every
+orchestrator agent turn goes through). **Parallel same-role engineers (below) replaced the
+one-actor-per-role-per-wave shape with real concurrent instanced waves + deterministic integration.**
+
+## Phase B — full team (in progress, shipped 2026-06-16)
+
+Built on the orchestrator cutover; each line is merged.
+
+- **Parallel same-role engineers** (#119/#120/#122/#123) — K instanced actors per role per wave
+  (`agent-{run}-{role}-{wave}-{i}`) in isolated worktrees (`runs/{run}/.yaah-eng/{role}-{wave}-{i}`),
+  bounded by a `max_parallel_per_role` guard. `commit_engineer_branch` → `integrate_branches`
+  (deterministic merge); a merge conflict becomes a **bounded lead re-plan** (`max_integration_rounds`);
+  `open_pr` proceeds on commits-ahead-of-base. Engineer worktrees are kept out of the integrated
+  branch (dotted `.yaah-eng/` + `WORKSPACE_SCRATCH` exclusion).
+- **Role memory (A6b-3)** (#125) — DB-backed `role_memory_entries` (owner + role + `project_id`,
+  append-only with full history). `agent_step` injects a bounded role digest (project-default, or
+  cross-project when the lead sets `Dispatch.memory_scope=all` for larger jobs) and persists the
+  agent's authored role memory; **revived the dormant project-memory read pointer** in the process.
+  `GET /role-memory` (owner-scoped, newest-first).
+- **Project-memory curator revived** (#128/#130) — the cutover had dropped the LEARN curator, so
+  `capture_memory` always found an empty diff. `OrchestratorWorkflow` now runs
+  `open_pr → curate_memory → capture_memory`: a generic LEARN agent (`role=None` → Read/Edit/Write,
+  no manifest) edits memory **after** `open_pr` (so its edits land only on `agent/memory-<run>`,
+  never the work PR). Best-effort — a curator failure never fails the run.
+- **Full default team roster** (#132) — all 6 roles (lead, architect, backend, frontend, QA, devops)
+  with frontier/mid/cheap tiered model aliases; the orchestrator prompt describes when to dispatch
+  each role.
+- **Epic spec & breakdown** (#121) — context band + scoped lead chat for epic→feature breakdown.
+- **Work-item attachments** (#126) — upload / preview / download (`.md`, images) on tickets.
+
+### Real-run validation (2026-06-16)
+
+First end-to-end **real Claude** runs through the orchestrator (worker on the host `claude` CLI,
+`YAAH_AGENT_RUNTIME=claude_code`, no API key). Confirmed: the orchestrator drives plan → implement
+→ verify → PR, and the **revived curator is dispatched and runs**, producing sensible memory
+content. Two real fixes shipped from the exercise, plus one filed follow-up:
+
+- **Absolute storage base** (#131) — the worker hardcoded a cwd-relative `data/workspaces`, so a
+  host worker run from the repo nested agent workspaces *inside* the repo and a capable agent walked
+  up and edited the real repo. `storage_dir` now defaults to an absolute path outside any repo
+  (`~/.yaah/workspaces`), shared by worker + API; the Docker worker is pinned to its volume.
+- **`open_pr` robustness** (#133) — `commit_all` no longer aborts the run when an agent leaves an
+  unstageable path (a nested no-commit repo, an explicitly-ignored path); it stages what it can
+  (`git add --ignore-errors`, non-raising) and commits that.
+- **Known limitation (not a feature bug):** on an **unsandboxed host**, a capable agent recognises
+  it's a yaah agent and navigates the host filesystem to the real repo, so the run workspace stays
+  empty → no `MemoryProposal`. This is by design solved by the **Docker worker** (`read_only`, mounts
+  only its workspace volume) — which needs `ANTHROPIC_API_KEY` in the container. A clean
+  host-captured-proposal demo is therefore environment-blocked, not feature-blocked.
+- **Filed:** issue **#134** — an unhandled activity failure leaves the run row stuck in `running`
+  (no terminal `FAILED` persisted; only handled branches persist it).
 
 ## Architecture snapshot (current)
 
-- **16 tables:** projects, work_items, teams, skills, mcp_servers, secrets, agent_definitions,
+- **18 tables:** projects, work_items, teams, skills, mcp_servers, secrets, agent_definitions,
   runs, run_events, notifications, messages, audit_events, chat_sessions, chat_messages,
-  usage_records, memory_proposals. **Alembic migrations** in `migrations/versions/` (replaced
-  the A1 `create_all`).
+  usage_records, memory_proposals, **role_memory_entries**, **work_item_attachments**. **Alembic
+  migrations** in `migrations/versions/` (replaced the A1 `create_all`).
 - **Domain (pure):** `models`, `errors`, `memory`, `notifications`, `permissions`, `refinement`,
   `scm`, `teams`, `usage`; packages `transitions/` (pipeline + run + work-item machines),
   `orchestration/` (core + prompts), `agent/` (capabilities, invocation, prompts, runtime).
@@ -136,22 +186,25 @@ the shared `_run_instructed_agent` path that every orchestrator agent turn goes 
 
 Ordered roughly by leverage.
 
-1. **Orchestrator not yet run for real** — the cutover landed (orchestrator is the sole path;
-   legacy `run_stage`/fixed-pipeline symbols removed), but it has not yet been exercised against a
-   **real Claude run** end-to-end (fake e2e is green). Next Phase B increment that builds on it:
-   **parallel same-role engineers** (real concurrent waves + quiescence + live messaging).
-2. **Deployment unproven** — TODO.md's top three: validate locally, ship CI/CD, validate
+1. **Sandboxed real runs** — real Claude runs are validated on the **host**, but a host worker is
+   unsandboxed: a capable agent navigates the host filesystem to the real repo (see Phase B
+   real-run validation). Production real runs must use the **Docker worker** (`read_only`, workspace
+   volume only), which needs `ANTHROPIC_API_KEY` in the container; that path isn't exercised yet.
+2. **Run status on failure** — issue **#134**: an unhandled activity failure leaves the run row
+   stuck in `running` (no terminal `FAILED` persisted). Small, well-scoped fix.
+3. **Deployment unproven** — TODO.md's top three: validate locally, ship CI/CD, validate
    remotely. The deployment spec (K8s/Terraform/GitHub Actions) is written but nothing is
    shipped. Auth0 wiring deferred; single dev-user only.
-3. **Budget enforcement** — usage is tracked but never gates a run; no caps, no pause-on-
+4. **Budget enforcement** — usage is tracked but never gates a run; no caps, no pause-on-
    breach. A5e has the alert seam but it's inert until a threshold is configurable (Phase C).
-4. **Project-management UX is thin** (TODO.md) — no epic detail view, no epic→feature
-   breakdown flow, no ticket attachments/artifacts (`.md`, images).
-5. **Phase C remainder** — run inspector (transcripts/costs), autonomy-dial UI, model
+5. **Project-management UX** — epic→feature breakdown (#121) and ticket attachments (#126) shipped;
+   still missing an epic detail view and richer artifact handling (TODO.md).
+6. **Phase C remainder** — run inspector (transcripts/costs), autonomy-dial UI, model
    registry / validated alias picker, LiteLLM gateway config UI, budget limits UI.
-6. **Phase B (full team)** — parallel same-role engineers, role memory (A6b-3, deferred),
-   pgvector RAG capability, a second runtime adapter (OpenHands/CrewAI), multi-user RBAC.
-7. **Smaller deferrals** — memory-branch GC, conflict-resolution UI, message threading/replies,
+7. **Phase B remainder** — live concurrent quiescence + inter-agent messaging at scale, pgvector
+   RAG capability, a second runtime adapter (OpenHands/CrewAI), multi-user RBAC. (Parallel same-role
+   engineers, role memory, and the full 6-role roster are now shipped.)
+8. **Smaller deferrals** — memory-branch GC, conflict-resolution UI, message threading/replies,
    realtime sockets (polling only today), secret rotation/versioning, response/log redaction
    of agent-echoed secrets (the descoped C3c egress-broker work).
 
