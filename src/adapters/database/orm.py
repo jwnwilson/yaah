@@ -183,6 +183,18 @@ class AuditEventRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class RoleMemoryRow(Base):
+    __tablename__ = "role_memory_entries"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    run_id: Mapped[str | None] = mapped_column(String(32))
+    project_id: Mapped[str | None] = mapped_column(String(32), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class ChatSessionRow(Base):
     __tablename__ = "chat_sessions"
 
