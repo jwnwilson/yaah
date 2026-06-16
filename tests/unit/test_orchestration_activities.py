@@ -489,6 +489,7 @@ def test_agent_step_injects_role_digest_project_default_and_all(tmp_path):
                      "task_title": "T", "acceptance_criteria": [], "team_id": None,
                      "project_id": "p1", "memory_scope": "all"})
     assert "other-project note" in spy.ctx.instructions
+    assert "this-project note" in spy.ctx.instructions  # 'all' is a superset
 
 
 def test_agent_step_persists_authored_role_memory(tmp_path):
@@ -517,3 +518,29 @@ def test_agent_step_persists_authored_role_memory(tmp_path):
     assert len(rows) == 1
     assert rows[0].content == "Keep migrations reversible."
     assert rows[0].project_id == "p1" and rows[0].run_id == "r1"
+
+
+def test_agent_step_persists_role_memory_from_instance_workspace(tmp_path):
+    from adapters.database.uow import SqlUnitOfWork
+    from adapters.storage.local import LocalStorageAdapter
+    factory = _factory()
+    _seed_run(factory)
+    storage = LocalStorageAdapter(base_dir=str(tmp_path))
+    ws_key = "runs/r1/.yaah-eng/backend-1-0"  # a parallel-engineer instance worktree
+
+    class _Author:
+        def run_stage(self, ctx):
+            from domain.agent import AgentEvent, StageResult
+            storage.write_bytes(f"{ws_key}/.orchestration/role-memory.md", b"note from instance")
+            yield AgentEvent(type="result", stage=ctx.stage,
+                             data=StageResult(outcome="ok").model_dump())
+        def cancel(self, run_id): ...
+
+    acts = _acts(factory, runtime=_Author(), storage=storage)
+    acts.agent_step({"run_id": "r1", "owner_id": "dev-user", "role": "backend", "incoming": "do",
+                     "task_title": "T", "acceptance_criteria": [], "team_id": None,
+                     "project_id": "p1", "workspace_key": ws_key})
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        rows = uow.role_memory.list(filters={"role": "backend"}).results
+    assert len(rows) == 1 and rows[0].content == "note from instance"
