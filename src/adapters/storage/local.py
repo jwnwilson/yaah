@@ -30,6 +30,9 @@ class LocalStorageAdapter:
         path = self._resolve(key)
         return path.read_text(encoding=encoding) if path.exists() else ""
 
+    def read_bytes(self, key: str) -> bytes:
+        return self._resolve(key).read_bytes()
+
     def exists(self, key: str) -> bool:
         return self._resolve(key).exists()
 

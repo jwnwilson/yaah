@@ -30,3 +30,11 @@ def test_local_path_is_absolute_even_for_relative_base():
     import os
     s = LocalStorageAdapter(base_dir="data/workspaces")
     assert os.path.isabs(s.local_path("runs/r1"))
+
+
+def test_read_bytes_round_trips(tmp_path):
+    from adapters.storage.local import LocalStorageAdapter
+
+    s = LocalStorageAdapter(base_dir=tmp_path)
+    s.write_bytes("attachments/wi/x.png", b"\x89PNG\r\n")
+    assert s.read_bytes("attachments/wi/x.png") == b"\x89PNG\r\n"
