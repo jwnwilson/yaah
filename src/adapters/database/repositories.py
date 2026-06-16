@@ -85,7 +85,6 @@ class AuditEventRepository(SqlRepository[AuditEvent]):
 class RoleMemoryRepository(SqlRepository[RoleMemoryEntry]):
     orm_model = RoleMemoryRow
     dto = RoleMemoryEntry
-    default_order_by = "created_at"
 
 
 class SkillRepository(SqlRepository[Skill]):
