@@ -80,6 +80,8 @@ class AgentWorkflow:
                      "incoming": msg.get("body", ""), "task_title": inp["task_title"],
                      "acceptance_criteria": inp.get("acceptance_criteria", []),
                      "team_id": inp.get("team_id"),
+                     "project_id": inp.get("project_id"),
+                     "memory_scope": inp.get("memory_scope", "project"),
                      "workspace_key": inp.get("workspace_key")},
                     start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
                 processed += 1
@@ -308,6 +310,7 @@ class OrchestratorWorkflow:
                      "acceptance_criteria": inp.get("acceptance_criteria", []),
                      "team_id": inp.get("team_id"), "role_to_agent_id": role_to_agent_id,
                      "project_id": inp.get("project_id"), "work_item_id": inp.get("task_id"),
+                     "memory_scope": d.get("memory_scope", "project"),
                      "workspace_key": ws_key},
                     id=f"agent-{run_id}-{role}-{wave}-{i}")
                 await child.signal("deliver", {"body": d["instructions"]})
