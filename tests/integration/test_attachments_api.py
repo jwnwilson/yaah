@@ -1,11 +1,17 @@
 """Integration tests for work-item attachments."""
+import tempfile
+
 from fastapi.testclient import TestClient
 
 from interactors.api.app import create_app
 from interactors.api.settings import Settings
 
+# Isolate blobs to an OS temp dir so tests never write into the repo's ./data.
+_STORAGE_DIR = tempfile.mkdtemp(prefix="yaah-attach-test-")
+
 
 def _client(**overrides):
+    overrides.setdefault("storage_dir", _STORAGE_DIR)
     return TestClient(
         create_app(Settings(_env_file=None, database_url="sqlite:///:memory:", **overrides))
     )
