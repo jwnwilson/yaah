@@ -544,3 +544,38 @@ def test_agent_step_persists_role_memory_from_instance_workspace(tmp_path):
     with uow.transaction():
         rows = uow.role_memory.list(filters={"role": "backend"}).results
     assert len(rows) == 1 and rows[0].content == "note from instance"
+
+
+# ---------------------------------------------------------------------------
+# curate_memory
+# ---------------------------------------------------------------------------
+def test_curate_memory_runs_learn_agent_in_main_workspace(tmp_path):
+    from adapters.storage.local import LocalStorageAdapter
+    factory = _factory()
+    _seed_run(factory)
+    spy = _ResultSpy()
+    acts = _acts(factory, runtime=spy, storage=LocalStorageAdapter(base_dir=str(tmp_path)))
+    acts.curate_memory({"run_id": "r1", "owner_id": "dev-user", "task_title": "Add OAuth",
+                        "acceptance_criteria": ["login works"], "body": ""})
+    from domain.models import RunStage
+    assert spy.ctx.stage == RunStage.LEARN
+    assert spy.ctx.workspace_path.endswith("runs/r1")
+    assert "project memory" in spy.ctx.instructions.lower()
+    assert "Add OAuth" in spy.ctx.instructions
+
+
+def test_curate_memory_swallows_agent_failure(tmp_path):
+    from adapters.storage.local import LocalStorageAdapter
+    factory = _factory()
+    _seed_run(factory)
+
+    class _Boom:
+        def run_stage(self, ctx):
+            raise RuntimeError("curation blew up")
+            yield  # pragma: no cover - makes this a generator
+        def cancel(self, run_id): ...
+
+    acts = _acts(factory, runtime=_Boom(), storage=LocalStorageAdapter(base_dir=str(tmp_path)))
+    out = acts.curate_memory({"run_id": "r1", "owner_id": "dev-user", "task_title": "T",
+                              "acceptance_criteria": [], "body": ""})
+    assert out["outcome"] == "ok"
