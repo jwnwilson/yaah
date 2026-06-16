@@ -17,6 +17,7 @@ from domain.models import (
     AutonomyLevel,
     Project,
     Run,
+    RunStage,
     RunStatus,
     WorkItem,
     WorkItemKind,
@@ -42,14 +43,16 @@ class _ScriptRuntime:
     scripted outcome + cost (lead/monitor steps stay cost-free so run cost isolates workers)."""
 
     def __init__(self, storage=None, lead=_default_lead, monitor=None,
-                 worker_outcome="ok", cost=0.0):
+                 worker_outcome="ok", cost=0.0, stages_seen=None):
         self._storage = storage
         self._lead = lead
         self._monitor = monitor or (lambda instr: {"complete": True})
         self._worker_outcome = worker_outcome
         self._cost = cost
+        self._stages_seen = stages_seen if stages_seen is not None else []
 
     def run_stage(self, ctx):
+        self._stages_seen.append(ctx.stage)
         instr = ctx.instructions or ""
         outcome, cost = "ok", 0.0
         if "decision.json" in instr:
@@ -98,17 +101,19 @@ def _run_cost(factory, owner="u1"):
 
 
 def _worker(env, factory, lead=_default_lead, monitor=None, worker_outcome="ok", cost=0.0,
-            git=None):
+            git=None, stages_seen=None):
     storage = LocalStorageAdapter(base_dir=tempfile.mkdtemp())
-    acts = RunActivities(factory, _ScriptRuntime(storage, lead, monitor, worker_outcome, cost),
-                         storage, git or FakeGit(), FakeGitForge())
+    acts = RunActivities(
+        factory,
+        _ScriptRuntime(storage, lead, monitor, worker_outcome, cost, stages_seen),
+        storage, git or FakeGit(), FakeGitForge())
     return Worker(
         env.client, task_queue="t",
         workflows=[OrchestratorWorkflow, AgentWorkflow],
         activities=[acts.provision_workspace, acts.invoke_lead, acts.agent_step,
                     acts.run_monitor, acts.persist_messages, acts.persist_run_state,
                     acts.record_event, acts.record_usage, acts.open_pr,
-                    acts.capture_memory, acts.cleanup_workspace,
+                    acts.capture_memory, acts.curate_memory, acts.cleanup_workspace,
                     acts.provision_engineer_workspace, acts.integrate_branches,
                     acts.commit_engineer_branch],
         activity_executor=ThreadPoolExecutor(max_workers=4))
@@ -373,3 +378,54 @@ async def test_orchestrator_threads_worker_cost_into_run():
                 id="r1", task_queue="t")
     assert _status(factory) == RunStatus.DONE
     assert _run_cost(factory) == 3.5
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_curates_and_captures_proposal_on_success():
+    factory = _factory()
+    _seed(factory)
+    stages = []
+    git = FakeGit(memory_diff="--- a/CLAUDE.md\n+++ b/CLAUDE.md\n+learned: pin deps\n")
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory, git=git, stages_seen=stages):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    assert _status(factory) == RunStatus.DONE
+    assert RunStage.LEARN in stages
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        proposals = uow.memory_proposals.list(filters={"run_id": "r1"}).results
+    assert len(proposals) == 1
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_curation_noop_makes_no_proposal():
+    factory = _factory()
+    _seed(factory)
+    stages = []
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory, stages_seen=stages):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    assert _status(factory) == RunStatus.DONE
+    assert RunStage.LEARN in stages
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        proposals = uow.memory_proposals.list(filters={"run_id": "r1"}).results
+    assert proposals == []
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_blocked_run_never_curates():
+    factory = _factory()
+    _seed(factory)
+    stages = []
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory, lead=_block_lead, stages_seen=stages):
+            await env.client.execute_workflow(
+                OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                id="r1", task_queue="t")
+    assert _status(factory) == RunStatus.BLOCKED
+    assert RunStage.LEARN not in stages
