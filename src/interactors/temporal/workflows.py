@@ -184,6 +184,19 @@ class OrchestratorWorkflow:
 
     @workflow.run
     async def run(self, inp: dict) -> str:
+        # Persist a terminal FAILED status if the run fails unhandled, so the run row never gets
+        # stuck in `running` when an activity raises (issue #134). Re-raise so Temporal still
+        # records the workflow failure.
+        run_id, owner_id = inp["run_id"], inp["owner_id"]
+        try:
+            return await self._drive(inp)
+        except Exception as exc:  # noqa: BLE001 - surface terminal failure to the run row
+            await self._persist(run_id, owner_id, status=RunStatus.FAILED)
+            await self._event(run_id, owner_id, "implement", RunEventType.ERROR,
+                              f"run failed: {exc}")
+            raise
+
+    async def _drive(self, inp: dict) -> str:
         run_id, owner_id = inp["run_id"], inp["owner_id"]
         autonomy = AutonomyLevel(inp["autonomy"])
         gates = pipeline.gates_for(autonomy)

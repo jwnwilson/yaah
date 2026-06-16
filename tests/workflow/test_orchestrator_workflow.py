@@ -429,3 +429,24 @@ async def test_orchestrator_blocked_run_never_curates():
                 id="r1", task_queue="t")
     assert _status(factory) == RunStatus.BLOCKED
     assert RunStage.LEARN not in stages
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_persists_failed_on_unhandled_activity_error():
+    # An activity that fails for an unhandled reason (here: provision_workspace's git.prepare
+    # raising) must leave the run row at FAILED, not stuck in `running` (issue #134).
+    from adapters.git.ports import GitError
+
+    class _BoomGit(FakeGit):
+        def prepare(self, *a, **k):
+            raise GitError("provision blew up")
+
+    factory = _factory()
+    _seed(factory)
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with _worker(env, factory, git=_BoomGit()):
+            with pytest.raises(Exception):
+                await env.client.execute_workflow(
+                    OrchestratorWorkflow.run, _input(AutonomyLevel.FULL_AUTO),
+                    id="r1", task_queue="t")
+    assert _status(factory) == RunStatus.FAILED
