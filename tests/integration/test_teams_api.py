@@ -14,12 +14,13 @@ def test_create_default_team_and_fetch_agents():
     assert created.status_code == 201
     team = created.json()["data"]["team"]
     agents = created.json()["data"]["agents"]
-    assert [a["role"] for a in agents] == ["lead", "backend", "qa"]
+    expected_roles = ["lead", "architect", "backend", "frontend", "qa", "devops"]
+    assert [a["role"] for a in agents] == expected_roles
 
     assert c.get("/teams").json()["data"][0]["id"] == team["id"]
     fetched = c.get(f"/teams/{team['id']}").json()["data"]
     assert fetched["team"]["id"] == team["id"]
-    assert [a["role"] for a in fetched["agents"]] == ["lead", "backend", "qa"]
+    assert [a["role"] for a in fetched["agents"]] == expected_roles
 
 
 def test_get_missing_team_404():
