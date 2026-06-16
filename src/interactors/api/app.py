@@ -62,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     from interactors.api.routes import (
         agents,
+        attachments,
         audit,
         capabilities,
         chat,
@@ -91,6 +92,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(memory.router)
     app.include_router(chat.router)
     app.include_router(epics.router)
+    app.include_router(attachments.router)
 
     ui_dist = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ui", "dist")
     if os.path.isdir(ui_dist):

@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     temporal_address: str = "localhost:7233"
     temporal_namespace: str = "default"
     task_queue: str = "yaah-runs"
+    storage_dir: str = "data"
+    max_attachment_bytes: int = 10 * 1024 * 1024
 
     github_app_id: str | None = None
     github_private_key: str | None = None      # PEM contents or a file path

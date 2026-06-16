@@ -31,6 +31,12 @@ def memory_applier(request: Request):
     return MemoryApplier(LocalGit(), _build_forge(s.profile), profile=s.profile)
 
 
+def storage(request: Request):
+    from adapters.storage.local import LocalStorageAdapter
+
+    return LocalStorageAdapter(base_dir=request.app.state.settings.storage_dir)
+
+
 def cipher(request: Request):
     from lib.secrets import FernetCipher
 
