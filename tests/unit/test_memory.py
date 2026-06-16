@@ -24,3 +24,17 @@ def test_changed_files_parses_unified_diff():
 
 def test_changed_files_empty_for_empty_diff():
     assert changed_files("") == []
+
+
+def test_role_memory_digest_bounds_and_order():
+    from domain.memory import role_memory_digest
+    from domain.models import AgentRole, RoleMemoryEntry
+    entries = [RoleMemoryEntry(owner_id="u1", role=AgentRole.BACKEND, content=f"note {i}")
+               for i in range(5)]
+    out = role_memory_digest(entries, max_entries=3, max_chars=10_000)
+    assert out == "- note 0\n- note 1\n- note 2"
+    big = [RoleMemoryEntry(owner_id="u1", role=AgentRole.BACKEND, content="x" * 50)
+           for _ in range(5)]
+    capped = role_memory_digest(big, max_entries=5, max_chars=60)
+    assert capped.count("\n") == 0  # only the first entry fits
+    assert role_memory_digest([], max_entries=3, max_chars=100) == ""

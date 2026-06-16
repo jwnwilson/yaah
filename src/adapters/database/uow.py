@@ -13,6 +13,7 @@ from adapters.database.repositories import (
     MessageRepository,
     NotificationRepository,
     ProjectRepository,
+    RoleMemoryRepository,
     RunEventRepository,
     RunRepository,
     SecretRepository,
@@ -85,6 +86,10 @@ class SqlUnitOfWork:
     @property
     def audit_events(self) -> AuditEventRepository:
         return AuditEventRepository(self.session, self._required_filters)
+
+    @property
+    def role_memory(self) -> RoleMemoryRepository:
+        return RoleMemoryRepository(self.session, self._required_filters)
 
     @property
     def skills(self) -> SkillRepository:

@@ -48,3 +48,14 @@ def test_learn_prompt_requests_additions_and_deletions():
     assert "CLAUDE.md" in prompt
     assert "docs/adr" in prompt
     assert "Edit" in tools  # editing existing memory files
+
+
+def test_memory_pointer_with_and_without_role():
+    from domain.agent.prompts import memory_pointer
+    from domain.models import AgentRole
+    p = memory_pointer(AgentRole.BACKEND, role_digest="- prefer small PRs")
+    assert "CLAUDE.md" in p and "docs/adr" in p
+    assert "backend" in p and "prefer small PRs" in p
+    assert ".orchestration/role-memory.md" in p
+    none = memory_pointer(None, role_digest="")
+    assert "CLAUDE.md" in none and "role-memory.md" not in none

@@ -199,6 +199,19 @@ class AuditEvent(BaseModel):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class RoleMemoryEntry(BaseModel):
+    """One durable, append-only role-level learning. Owner-scoped; cross-project (project_id
+    records origin but reads can span projects)."""
+
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    role: AgentRole
+    content: str
+    run_id: str | None = None
+    project_id: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class Run(BaseModel):
     id: str = Field(default_factory=new_id)
     owner_id: str

@@ -425,17 +425,41 @@ class RunActivities:
 
     @activity.defn(name="agent_step")
     def agent_step(self, payload: dict) -> dict:
-        from domain.models import AgentRole, RunStage
+        from domain.agent.prompts import memory_pointer
+        from domain.memory import role_memory_digest
+        from domain.models import AgentRole, RoleMemoryEntry, RunStage
         from domain.orchestration import AgentOutcome, AgentStepResult, OutboundMessage
         run_id, owner_id = payload["run_id"], payload["owner_id"]
         role = AgentRole(payload["role"]) if payload.get("role") else None
+        digest = ""
+        if role is not None:
+            mem_filters = {"role": role.value}
+            if payload.get("memory_scope") != "all" and payload.get("project_id"):
+                mem_filters["project_id"] = payload["project_id"]
+            mem_uow = self._uow(owner_id)
+            with mem_uow.transaction():
+                entries = mem_uow.role_memory.list(
+                    filters=mem_filters, order_by="-created_at", page_size=20).results
+            digest = role_memory_digest(entries, max_entries=15, max_chars=2000)
         instructions = (
-            f"{payload.get('incoming', '')}\n\nIf you need to message a teammate or the "
+            memory_pointer(role, digest)
+            + f"{payload.get('incoming', '')}\n\nIf you need to message a teammate or the "
             "user, write a JSON list of outbound messages to .orchestration/outbox.json."
         )
         result = self._run_instructed_agent(
             payload, role=role, instructions=instructions, stage=RunStage.IMPLEMENT,
         )
+        workspace_key = payload.get("workspace_key") or f"runs/{run_id}"
+        learned = self._storage.read_text(f"{workspace_key}/.orchestration/role-memory.md")
+        if role is not None and learned and learned.strip():
+            try:
+                rm_uow = self._uow(owner_id)
+                with rm_uow.transaction():
+                    rm_uow.role_memory.create(RoleMemoryEntry(
+                        owner_id=owner_id, role=role, content=learned.strip(),
+                        run_id=run_id, project_id=payload.get("project_id")))
+            except Exception:  # noqa: BLE001 - role memory is advisory; never fail the stage
+                pass
         outcome = AgentOutcome(result.outcome)
         outgoing = []
         raw = self._read_artifact(run_id, "outbox.json")

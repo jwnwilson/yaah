@@ -117,3 +117,13 @@ def test_orchestration_run_event_types_exist():
     assert RunEventType.MONITOR_STARTED == "monitor_started"
     assert RunEventType.MONITOR_VERDICT == "monitor_verdict"
     assert RunEventType.QUIESCENCE_REACHED == "quiescence_reached"
+
+
+def test_role_memory_entry_defaults_and_role():
+    from domain.models import AgentRole, RoleMemoryEntry
+    e = RoleMemoryEntry(owner_id="u1", role=AgentRole.BACKEND, content="prefer small PRs",
+                        run_id="r1", project_id="p1")
+    assert len(e.id) == 32 and e.role == AgentRole.BACKEND
+    assert e.content == "prefer small PRs" and e.created_at is not None
+    e2 = RoleMemoryEntry(owner_id="u1", role="qa", content="run the full suite")
+    assert e2.role == AgentRole.QA and e2.run_id is None and e2.project_id is None

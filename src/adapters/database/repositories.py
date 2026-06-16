@@ -10,6 +10,7 @@ from adapters.database.orm import (
     MessageRow,
     NotificationRow,
     ProjectRow,
+    RoleMemoryRow,
     RunEventRow,
     RunRow,
     SecretRow,
@@ -30,6 +31,7 @@ from domain.models import (
     Message,
     Notification,
     Project,
+    RoleMemoryEntry,
     Run,
     RunEvent,
     Secret,
@@ -78,6 +80,11 @@ class AuditEventRepository(SqlRepository[AuditEvent]):
     orm_model = AuditEventRow
     dto = AuditEvent
     default_order_by = "created_at"
+
+
+class RoleMemoryRepository(SqlRepository[RoleMemoryEntry]):
+    orm_model = RoleMemoryRow
+    dto = RoleMemoryEntry
 
 
 class SkillRepository(SqlRepository[Skill]):
