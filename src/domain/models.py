@@ -87,6 +87,18 @@ class WorkItem(BaseModel):
         return self
 
 
+class WorkItemAttachment(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    work_item_id: str
+    filename: str
+    content_type: str
+    size_bytes: int
+    storage_key: str
+    origin: str = "human"
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class RunStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
