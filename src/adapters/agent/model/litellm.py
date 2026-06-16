@@ -12,6 +12,6 @@ class LiteLLMProvider:
         return {"ANTHROPIC_BASE_URL": self._base_url, "ANTHROPIC_API_KEY": self._api_key}
 
     def model_id(self, alias: str | None = None) -> str:
-        # The gateway resolves logical aliases (lead-model, engineer-model, …) to real
-        # models via its config; pass the per-agent alias through, default when unset.
+        # The gateway resolves tier aliases (frontier, mid, cheap) to real models via
+        # its config; pass the per-agent alias through, default when unset.
         return alias or self._default_model

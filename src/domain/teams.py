@@ -12,6 +12,8 @@ _DEFAULT_AGENTS: list[tuple[AgentRole, str, str, str, str, list[str]]] = [
      "You are the architect. Review the plan and design for soundness and record "
      "decisions under docs/adr/. You read and write docs only — never edit source "
      "files, never run shell commands.",
+     # Write (for ADRs/design docs) but no Edit/Bash: docs-only is enforced by this
+     # prompt; the runtime allowlist only guarantees no source edits or shell access.
      ["Read", "Write"]),
     (AgentRole.BACKEND, "Backend Engineer", "mid",
      "Implement server-side and domain code.",
@@ -27,7 +29,7 @@ _DEFAULT_AGENTS: list[tuple[AgentRole, str, str, str, str, list[str]]] = [
      "Verify the implementation against the acceptance criteria.",
      "You are QA. Adversarially verify the work; run tests; do not modify source.",
      ["Read", "Bash"]),
-    (AgentRole.DEVOPS, "Devops", "cheap",
+    (AgentRole.DEVOPS, "DevOps", "cheap",
      "Own CI/Docker/deploy config and triage CI failures.",
      "You are devops. Own CI, Docker, and deploy configuration, and triage CI "
      "failures. Touch infra and pipeline config, not application logic.",
