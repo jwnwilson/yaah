@@ -70,6 +70,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         messages,
         notifications,
         projects,
+        role_memory,
         runs,
         teams,
         usage,
@@ -88,6 +89,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(notifications.router)
     app.include_router(usage.router)
     app.include_router(audit.router)
+    app.include_router(role_memory.router)
     app.include_router(memory.router)
     app.include_router(chat.router)
     app.include_router(epics.router)
