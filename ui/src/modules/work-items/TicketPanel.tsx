@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Field";
 import { RunSection } from "@/modules/runs/RunSection";
 import { AcceptanceCriteria } from "./AcceptanceCriteria";
+import { Attachments } from "./Attachments";
 import { useUpdateWorkItem } from "./useUpdateWorkItem";
 import { useWorkItem } from "./useWorkItem";
 
@@ -45,6 +46,7 @@ export function TicketPanel({
             <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-subtle">Acceptance criteria</h3>
             <AcceptanceCriteria value={criteria} onChange={setCriteria} />
           </div>
+          <Attachments itemId={itemId} />
           {update.isError && <p className="text-sm text-danger">{(update.error as Error).message}</p>}
           <Button size="sm" loading={update.isPending} onClick={() => update.mutate({ title, body, acceptance_criteria: criteria })}>Save</Button>
           <RunSection projectId={projectId} taskId={itemId} taskStatus={data.status} />

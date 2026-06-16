@@ -26,6 +26,7 @@ test("shows the ticket and saves an edited acceptance criterion", async () => {
       return HttpResponse.json({ success: true, data: current, error: null });
     }),
     http.get("/api/work-items/t1/runs", () => HttpResponse.json({ success: true, data: [], error: null, meta: { total: 0, page_size: 100, page_number: 1 } })),
+    http.get("/api/work-items/:id/attachments", () => HttpResponse.json({ success: true, data: [], error: null })),
   );
 
   renderPanel();
