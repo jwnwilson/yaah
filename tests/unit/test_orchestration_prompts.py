@@ -83,6 +83,19 @@ def test_prompt_includes_integration_conflict():
     assert "a.py" in p and "conflict" in p.lower()
 
 
+def test_prompt_describes_when_to_use_each_available_role():
+    prompt = build_orchestrator_prompt(
+        task_title="T",
+        acceptance_criteria=[],
+        body="",
+        state=OrchestrationState(),
+        available_roles=[AgentRole.ARCHITECT, AgentRole.FRONTEND],
+    )
+    # Each available role is rendered with a "when to dispatch" guide, not just its name.
+    assert "architect: review the plan/design and record decisions (no code)" in prompt
+    assert "frontend: implement the ui/ frontend" in prompt
+
+
 def test_orchestrator_prompt_documents_memory_scope():
     p = build_orchestrator_prompt(task_title="T", acceptance_criteria=[], body="",
                                   state=OrchestrationState(), available_roles=[AgentRole.BACKEND])

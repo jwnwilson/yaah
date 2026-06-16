@@ -21,6 +21,18 @@ _INTENTS = (
 )
 
 
+# Pure "when to dispatch" hints, rendered next to the available roles so the lead
+# knows what each role is for. Roles absent here fall back to their bare name.
+_ROLE_GUIDE: dict[AgentRole, str] = {
+    AgentRole.LEAD: "you — orchestrate; do not dispatch yourself",
+    AgentRole.ARCHITECT: "review the plan/design and record decisions (no code)",
+    AgentRole.BACKEND: "implement server/domain code",
+    AgentRole.FRONTEND: "implement the ui/ frontend",
+    AgentRole.QA: "verify the work against acceptance criteria (read-only)",
+    AgentRole.DEVOPS: "CI/Docker/deploy config and CI-failure triage",
+}
+
+
 # Security: task_title/body are user-controlled and interpolated into the lead prompt;
 # callers must trust-scope or sanitise input (hardening tracked for the runtime layer).
 def build_orchestrator_prompt(
@@ -32,7 +44,9 @@ def build_orchestrator_prompt(
     available_roles: list[AgentRole],
 ) -> str:
     ac = "\n".join(f"- {c}" for c in acceptance_criteria) or "- (none given)"
-    roles = ", ".join(r.value for r in available_roles) or "(none)"
+    roles = "\n".join(
+        f"- {r.value}: {_ROLE_GUIDE.get(r, r.value)}" for r in available_roles
+    ) or "- (none)"
     reports = "\n".join(
         f"- {r.role.value}: {r.outcome.value} — {r.summary}" for r in state.reports
     ) or "- (no reports yet)"
@@ -58,7 +72,7 @@ def build_orchestrator_prompt(
         "NOT do the work yourself. Respond ONLY with a JSON object matching the decision "
         "schema.\n\n"
         f"Ticket: {task_title}\n{body}\n\nAcceptance criteria:\n{ac}\n\n"
-        f"Available agent roles you may dispatch: {roles}\n\n"
+        f"Available agent roles you may dispatch:\n{roles}\n\n"
         f"Progress so far — wave {state.waves}, dispatches {state.total_dispatches}, "
         f"cost ${state.total_cost_usd:.2f}.\nReports:\n{reports}{feedback}{integration}\n\n"
         f"Choose one intent: {_INTENTS}.\n"
