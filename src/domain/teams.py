@@ -1,24 +1,43 @@
 from domain.models import AgentDefinition, AgentRole, Team
 
-# role, name, model alias, purpose, system prompt, allowed tools
+# role, name, model alias (tier), purpose, system prompt, allowed tools
 _DEFAULT_AGENTS: list[tuple[AgentRole, str, str, str, str, list[str]]] = [
-    (AgentRole.LEAD, "Lead", "lead-model",
+    (AgentRole.LEAD, "Lead", "frontier",
      "Plan the work and coordinate the team.",
-     "You are the team lead. Read the ticket and produce a clear implementation plan.",
+     "You are the team lead and orchestrator. Read the ticket, plan the work, and "
+     "dispatch the right agents. You coordinate; you do not write code yourself.",
      ["Read", "Write"]),
-    (AgentRole.BACKEND, "Engineer", "engineer-model",
-     "Implement the ticket in the repository.",
-     "You are a senior engineer. Implement the ticket and keep changes focused.",
+    (AgentRole.ARCHITECT, "Architect", "frontier",
+     "Review the plan and design; record architectural decisions.",
+     "You are the architect. Review the plan and design for soundness and record "
+     "decisions under docs/adr/. You read and write docs only — never edit source "
+     "files, never run shell commands.",
+     ["Read", "Write"]),
+    (AgentRole.BACKEND, "Backend Engineer", "mid",
+     "Implement server-side and domain code.",
+     "You are a senior backend engineer. Implement the ticket in src/, keep changes "
+     "focused, and run the tests.",
      ["Read", "Edit", "Write", "Bash"]),
-    (AgentRole.QA, "QA", "qa-model",
+    (AgentRole.FRONTEND, "Frontend Engineer", "mid",
+     "Implement the ui/ frontend.",
+     "You are a senior frontend engineer. Implement the ticket in ui/. Use pnpm "
+     "(never npm) for all package and script commands.",
+     ["Read", "Edit", "Write", "Bash"]),
+    (AgentRole.QA, "QA", "cheap",
      "Verify the implementation against the acceptance criteria.",
      "You are QA. Adversarially verify the work; run tests; do not modify source.",
      ["Read", "Bash"]),
+    (AgentRole.DEVOPS, "Devops", "cheap",
+     "Own CI/Docker/deploy config and triage CI failures.",
+     "You are devops. Own CI, Docker, and deploy configuration, and triage CI "
+     "failures. Touch infra and pipeline config, not application logic.",
+     ["Read", "Edit", "Write", "Bash"]),
 ]
 
 
 def default_team(owner_id: str, name: str = "Default Team") -> tuple[Team, list[AgentDefinition]]:
-    """The Phase-A starter team: lead + engineer + QA (spec §10)."""
+    """The full virtual team: lead + architect + backend + frontend + QA + devops
+    (spec docs/specs/2026-06-16-yaah-full-team-roster-design.md)."""
     team = Team(owner_id=owner_id, name=name)
     agents = [
         AgentDefinition(
