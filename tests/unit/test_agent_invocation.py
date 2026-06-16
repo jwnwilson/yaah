@@ -115,9 +115,9 @@ def test_yaah_env_block_set_when_agent_present():
 
 def test_model_id_is_used_verbatim():
     man = AgentManifest(allowed_tools=["Read"])
-    inv = build_invocation(_ctx(agent=man), model_id="engineer-model")
+    inv = build_invocation(_ctx(agent=man), model_id="mid")
     i = inv.argv.index("--model")
-    assert inv.argv[i + 1] == "engineer-model"
+    assert inv.argv[i + 1] == "mid"
 
 
 def test_run_context_accepts_instructions():
