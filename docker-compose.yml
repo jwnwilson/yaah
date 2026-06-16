@@ -44,6 +44,8 @@ services:
       YAAH_PROFILE: ${YAAH_PROFILE:-local}
       YAAH_AGENT_RUNTIME: ${YAAH_AGENT_RUNTIME:-auto}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Pin to the mounted volume; the default storage dir is now home-based (outside any repo).
+      YAAH_STORAGE_DIR: /app/data/workspaces
     volumes:
       - workspaces:/app/data/workspaces
     read_only: true

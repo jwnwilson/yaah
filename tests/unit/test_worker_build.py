@@ -1,9 +1,19 @@
 import tempfile
+from pathlib import Path
 
 from adapters.agent.runtime.fake import FakeAgentRuntime
 from adapters.storage.local import LocalStorageAdapter
 from interactors.api.settings import Settings
-from interactors.temporal.worker import _build_runtime, build_activities
+from interactors.temporal.worker import _build_runtime, _build_storage, build_activities
+
+
+def test_build_storage_uses_settings_storage_dir():
+    # The worker must build storage from settings.storage_dir (the single source of truth
+    # shared with the API), NOT a hardcoded cwd-relative path that nests in the repo.
+    s = Settings(_env_file=None, storage_dir=tempfile.mkdtemp())
+    storage = _build_storage(s)
+    resolved = Path(storage.local_path("runs/r1"))
+    assert resolved == Path(s.storage_dir).resolve() / "runs" / "r1"
 
 
 def test_build_activities_returns_all_registered():

@@ -1,6 +1,15 @@
+from pathlib import Path
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _default_storage_dir() -> str:
+    """Absolute, outside any git repo. Agent workspaces nest under this base; a cwd-relative
+    default would land inside whatever repo the worker runs from, letting an agent walk up the
+    tree and edit the enclosing repo. Override with YAAH_STORAGE_DIR (e.g. the Docker volume)."""
+    return str(Path.home() / ".yaah" / "workspaces")
 
 
 class Settings(BaseSettings):
@@ -12,7 +21,7 @@ class Settings(BaseSettings):
     temporal_address: str = "localhost:7233"
     temporal_namespace: str = "default"
     task_queue: str = "yaah-runs"
-    storage_dir: str = "data"
+    storage_dir: str = Field(default_factory=_default_storage_dir)
     max_attachment_bytes: int = 10 * 1024 * 1024
 
     github_app_id: str | None = None
