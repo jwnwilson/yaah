@@ -247,3 +247,38 @@ def test_commit_all_excludes_nested_engineer_worktree():
                              capture_output=True, text=True, check=True).stdout
     assert "real.txt" in tracked
     assert ".yaah-eng" not in tracked  # nested engineer worktree NOT committed as a gitlink
+
+
+def test_curate_after_pr_keeps_memory_out_of_work_branch():
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = Path(tmp)
+        _init_repo(ws)                                   # repo on main with an initial commit
+        # seed a tracked CLAUDE.md (so the curator's change is a modify, like a real repo)
+        (ws / "CLAUDE.md").write_text("# Project\n")
+        subprocess.run(["git", "-C", str(ws), "add", "CLAUDE.md"], check=True,
+                       capture_output=True)
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "-C", str(ws),
+                        "commit", "-m", "add project memory"], check=True, capture_output=True)
+        git = LocalGit()
+        # 1) open_pr: the agent's work is committed to the task branch
+        subprocess.run(["git", "-C", str(ws), "checkout", "-b", "agent/t1"], check=True,
+                       capture_output=True)
+        (ws / "feature.py").write_text("print('hi')\n")
+        assert git.commit_all(str(ws), "work") is True
+        # 2) curator edits project memory AFTER the work commit (uncommitted working tree)
+        (ws / "CLAUDE.md").write_text("# Project\n- learned: pin deps\n")
+        # 3) capture_memory: commit ONLY the memory paths to a separate branch off the work branch
+        assert git.commit_to_branch(str(ws), branch="agent/memory-r1", base="agent/t1",
+                                    paths=["CLAUDE.md", "AGENTS.md", "docs/adr"],
+                                    message="memory update") is True
+        # work branch (agent/t1) has the work but NOT the curator's CLAUDE.md edit
+        work_claude = subprocess.run(["git", "-C", str(ws), "show", "agent/t1:CLAUDE.md"],
+                                     capture_output=True, text=True).stdout
+        assert "learned: pin deps" not in work_claude
+        work_files = subprocess.run(["git", "-C", str(ws), "ls-tree", "-r", "--name-only",
+                                     "agent/t1"], capture_output=True, text=True).stdout
+        assert "feature.py" in work_files
+        # memory branch HAS the curator's edit
+        mem_claude = subprocess.run(["git", "-C", str(ws), "show", "agent/memory-r1:CLAUDE.md"],
+                                    capture_output=True, text=True).stdout
+        assert "learned: pin deps" in mem_claude
