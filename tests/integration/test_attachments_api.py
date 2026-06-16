@@ -69,7 +69,10 @@ def test_rejects_disallowed_type():
     c = _client()
     pid = _project(c)
     wi = _epic(c, pid)
-    r = c.post(f"/work-items/{wi}/attachments", files={"file": ("x.svg", b"<svg/>", "image/svg+xml")})
+    r = c.post(
+        f"/work-items/{wi}/attachments",
+        files={"file": ("x.svg", b"<svg/>", "image/svg+xml")},
+    )
     assert r.status_code == 415
 
 
@@ -77,7 +80,10 @@ def test_rejects_oversized():
     c = _client(max_attachment_bytes=8)
     pid = _project(c)
     wi = _epic(c, pid)
-    r = c.post(f"/work-items/{wi}/attachments", files={"file": ("big.png", b"123456789", "image/png")})
+    r = c.post(
+        f"/work-items/{wi}/attachments",
+        files={"file": ("big.png", b"123456789", "image/png")},
+    )
     assert r.status_code == 413
 
 
