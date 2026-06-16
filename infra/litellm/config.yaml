@@ -1,13 +1,13 @@
 model_list:
-  - model_name: lead-model
+  - model_name: frontier
     litellm_params:
       model: anthropic/claude-sonnet-4-6
       api_key: os.environ/ANTHROPIC_API_KEY
-  - model_name: engineer-model
+  - model_name: mid
     litellm_params:
       model: anthropic/claude-sonnet-4-6
       api_key: os.environ/ANTHROPIC_API_KEY
-  - model_name: qa-model
+  - model_name: cheap
     litellm_params:
       model: anthropic/claude-haiku-4-5-20251001
       api_key: os.environ/ANTHROPIC_API_KEY

@@ -9,5 +9,5 @@ def test_litellm_service_in_compose():
 
 def test_litellm_config_lists_aliases():
     cfg = Path("infra/litellm/config.yaml").read_text()
-    for alias in ("lead-model", "engineer-model", "qa-model"):
+    for alias in ("frontier", "mid", "cheap"):
         assert alias in cfg
