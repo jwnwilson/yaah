@@ -54,16 +54,22 @@ def _build_runtime(settings, storage):
     return FakeAgentRuntime(storage=storage)
 
 
+def _build_storage(settings):
+    # Single source of truth shared with the API (see api/deps.storage). settings.storage_dir
+    # defaults to an absolute path outside any repo so agent workspaces never nest in one.
+    return LocalStorageAdapter(base_dir=settings.storage_dir)
+
+
 def build_activities(database_url: str, profile: str = "local") -> list:
     engine = make_engine(database_url)
     # SQLite (tests) builds the schema directly; Postgres is managed by Alembic migrations.
     if engine.dialect.name == "sqlite":
         Base.metadata.create_all(engine)
     factory = make_session_factory(engine)
-    storage = LocalStorageAdapter(base_dir="data/workspaces")
     from adapters.git.local_git import LocalGit
     from interactors.api.settings import Settings
     settings = Settings()
+    storage = _build_storage(settings)
     git = LocalGit()
     forge = _build_forge(profile)
     runtime = _build_runtime(settings, storage)
