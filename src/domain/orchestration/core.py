@@ -2,6 +2,7 @@
 
 from collections import Counter
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -28,6 +29,7 @@ class Dispatch(BaseModel):
     target_role: AgentRole
     instructions: str
     acceptance: list[str] = Field(default_factory=list)
+    memory_scope: Literal["project", "all"] = "project"
 
 
 class OutboundMessage(BaseModel):

@@ -12,6 +12,7 @@ from domain.orchestration import (
     AgentStepResult,
     Dispatch,
     MonitorVerdict,
+    OrchestrationContractError,
     OrchestrationDecision,
     OrchestrationIntent,
     OrchestrationLimits,
@@ -20,6 +21,7 @@ from domain.orchestration import (
     decision_to_messages,
     guard_exceeded,
     is_quiescent,
+    parse_decision,
     resolve_assignee,
     wave_exceeds_parallel,
 )
@@ -194,3 +196,15 @@ def test_wave_exceeds_parallel_per_role():
 def test_record_integration_sets_last_integration():
     s = OrchestrationState().record_integration({"branch": "agent/t__e1", "files": ["a.py"]})
     assert s.last_integration["branch"] == "agent/t__e1"
+
+
+def test_dispatch_memory_scope_default_and_validation():
+    d = Dispatch(target_role="backend", instructions="x")
+    assert d.memory_scope == "project"
+    d2 = Dispatch(target_role="backend", instructions="x", memory_scope="all")
+    assert d2.memory_scope == "all"
+    raw = {"intent": "continue",
+           "dispatches": [{"target_role": "backend", "instructions": "x",
+                           "memory_scope": "everything"}]}
+    with pytest.raises(OrchestrationContractError):
+        parse_decision(raw)
