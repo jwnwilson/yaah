@@ -22,9 +22,13 @@ def _build_forge(profile: str):
     if profile != "remote":
         from adapters.git.fake import FakeGitForge
         return FakeGitForge()
-    from adapters.git.github_app import GitHubApp
     from interactors.api.settings import Settings
     s = Settings()
+    if s.github_token:
+        from adapters.git.github_token import GitHubTokenForge
+        return GitHubTokenForge(token=s.github_token, repo=s.github_repo,
+                                base_branch=s.github_base_branch)
+    from adapters.git.github_app import GitHubApp
     return GitHubApp(app_id=s.github_app_id, private_key=s.github_private_key,
                      installation_id=s.github_installation_id, repo=s.github_repo,
                      base_branch=s.github_base_branch)

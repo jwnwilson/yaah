@@ -60,3 +60,11 @@ def test_build_runtime_claude_code_when_selected(monkeypatch):
     rt = _build_runtime(s, LocalStorageAdapter(base_dir=tempfile.mkdtemp()))
     from adapters.agent.runtime.claude_code import ClaudeCodeRuntime
     assert isinstance(rt, ClaudeCodeRuntime)
+
+
+def test_build_forge_prefers_pat_when_token_set(monkeypatch):
+    from adapters.git.github_token import GitHubTokenForge
+    from interactors.temporal.worker import _build_forge
+    monkeypatch.setenv("YAAH_GITHUB_TOKEN", "ghp_x")
+    monkeypatch.setenv("YAAH_GITHUB_REPO", "o/r")
+    assert isinstance(_build_forge("remote"), GitHubTokenForge)
