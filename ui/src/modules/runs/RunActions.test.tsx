@@ -7,7 +7,7 @@ import { server } from "@/test/server";
 import { RunActions } from "./RunActions";
 
 function run(status: Run["status"]): Run {
-  return { id: "r1", owner_id: "u", task_id: "t1", team_id: "tm", status, stage: null, branch: null, pr_url: null, cost_usd: 0, created_at: "x" };
+  return { id: "r1", owner_id: "u", task_id: "t1", team_id: "tm", status, stage: null, branch: null, pr_url: null, cost_usd: 0, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_creation_tokens: 0, created_at: "x" };
 }
 
 function renderActions(r: Run) {
