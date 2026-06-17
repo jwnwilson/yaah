@@ -427,9 +427,9 @@ class RunActivities:
 
     @activity.defn(name="agent_step")
     def agent_step(self, payload: dict) -> dict:
+        from domain.agent.memory import RoleMemoryEntry, role_memory_digest
         from domain.agent.models import AgentRole
         from domain.agent.prompts import memory_pointer
-        from domain.memory import RoleMemoryEntry, role_memory_digest
         from domain.orchestration import AgentOutcome, AgentStepResult, OutboundMessage
         from domain.runs import RunStage
         run_id, owner_id = payload["run_id"], payload["owner_id"]
@@ -599,7 +599,7 @@ class RunActivities:
 
     @activity.defn(name="capture_memory")
     def capture_memory(self, payload: dict) -> dict:
-        from domain.memory import MEMORY_PATHS, MemoryProposal, changed_files
+        from domain.agent.memory import MEMORY_PATHS, MemoryProposal, changed_files
         run_id, owner_id = payload["run_id"], payload["owner_id"]
         workspace = self._storage.local_path(f"runs/{run_id}")
         diff = self._git.diff(workspace, paths=MEMORY_PATHS)

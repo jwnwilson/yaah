@@ -42,8 +42,8 @@ ui/src/          # React + Vite frontend (pnpm)
 src/
   domain/        # pure business logic, no I/O — entity models live with the logic that owns them
     base.py         # shared id/timestamp factories (new_id, utc_now)
-    projects.py     # Project + AutonomyLevel
-    work_items.py   # WorkItem (epic/feature/task) + kind/status enums
+    projects/       # task-management domain: projects.py (Project + AutonomyLevel), work_items.py
+                    #   (WorkItem + kind/status enums), epics.py (epic-board read-model); re-exported via __init__
     runs.py         # Run + RunStage/RunStatus/RunEvent
     messages.py     # Message + inter-agent mailbox enums
     audit.py        # AuditEvent + AuditAction
@@ -51,14 +51,13 @@ src/
     attachments.py  # WorkItemAttachment + attachment policy
     notifications.py # Notification model + event→notification policy
     usage.py        # UsageRecord + TokenUsage rollups
-    memory.py       # RoleMemoryEntry, MemoryProposal + project-memory helpers
     refinement.py   # ChatSession/ChatMessage + refinement proposal policy
-    epics.py        # epic-board read-model
     errors.py       # typed persistence errors (RecordNotFound, IntegrityConflict, InvalidFilter)
     transitions/    # state-progression rules (work-item + run state machines, run-stage pipeline)
     orchestration/  # lead-driven orchestration DTOs, guards, mappings + orchestrator prompt/parse contract
     agent/          # agent domain: models.py (AgentRole, Team, AgentDefinition), teams.py (default team
-                    #   factory), + execution policy (runtime DTOs, capability manifest, prompts, CLI invocation)
+                    #   factory), memory.py (RoleMemoryEntry, MemoryProposal + project-memory helpers),
+                    #   + execution policy (runtime DTOs, capability manifest, prompts, CLI invocation)
   adapters/      # concrete port implementations
     database/    # ports.py (Repository/UnitOfWork protocols + PaginatedResult), orm.py, repository.py, repositories.py, uow.py, engine.py
   interactors/   # entry points: wiring only, no business logic

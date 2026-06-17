@@ -7,9 +7,8 @@ from adapters.agent.notify.ports import NotificationDispatcher
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
 from domain.notifications import NotificationCategory
-from domain.projects import Project
+from domain.projects import Project, WorkItem, WorkItemKind, WorkItemStatus
 from domain.runs import Run, RunEventType
-from domain.work_items import WorkItem, WorkItemKind, WorkItemStatus
 from interactors.temporal.activities import RunActivities
 
 

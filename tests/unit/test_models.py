@@ -2,8 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from domain.agent.models import AgentRole
-from domain.projects import AutonomyLevel, Project
-from domain.work_items import WorkItem, WorkItemKind, WorkItemStatus
+from domain.projects import AutonomyLevel, Project, WorkItem, WorkItemKind, WorkItemStatus
 
 
 def test_project_gets_id_and_defaults():
@@ -117,8 +116,8 @@ def test_orchestration_run_event_types_exist():
 
 
 def test_role_memory_entry_defaults_and_role():
+    from domain.agent.memory import RoleMemoryEntry
     from domain.agent.models import AgentRole
-    from domain.memory import RoleMemoryEntry
     e = RoleMemoryEntry(owner_id="u1", role=AgentRole.BACKEND, content="prefer small PRs",
                         run_id="r1", project_id="p1")
     assert len(e.id) == 32 and e.role == AgentRole.BACKEND

@@ -1,12 +1,12 @@
 import pytest
 
+from domain.projects import WorkItemKind
 from domain.refinement import (
     RefinementOutput,
     WorkItemProposal,
     system_prompt,
     validate_proposal,
 )
-from domain.work_items import WorkItemKind
 
 
 def test_output_and_proposal_shapes():

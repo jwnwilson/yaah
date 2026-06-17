@@ -1,7 +1,7 @@
 import pytest
 
 from domain.messages import Message, MessageKind, MessageRecipientKind, MessageSenderKind
-from domain.work_items import WorkItem, WorkItemKind
+from domain.projects import WorkItem, WorkItemKind
 
 
 def test_agent_to_agent_message_is_valid():

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from adapters.agent.refinement.ports import RefinementAgent
 from adapters.database.ports import UnitOfWork
+from domain.projects import WorkItem, WorkItemKind, WorkItemStatus
 from domain.refinement import (
     ChatMessage,
     ChatRole,
@@ -14,7 +15,6 @@ from domain.refinement import (
     system_prompt,
     validate_proposal,
 )
-from domain.work_items import WorkItem, WorkItemKind, WorkItemStatus
 from interactors.api.deps import get_uow, refinement_agent
 from interactors.api.envelope import ok
 

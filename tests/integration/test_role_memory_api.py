@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
 from adapters.database.uow import SqlUnitOfWork
+from domain.agent.memory import RoleMemoryEntry
 from domain.agent.models import AgentRole
-from domain.memory import RoleMemoryEntry
 from interactors.api.app import create_app
 from interactors.api.settings import Settings
 

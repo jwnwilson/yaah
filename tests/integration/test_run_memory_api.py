@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from adapters.database.uow import SqlUnitOfWork
-from domain.memory import MemoryProposal
+from domain.agent.memory import MemoryProposal
 from domain.runs import Run
 from interactors.api.app import create_app
 from interactors.api.settings import Settings

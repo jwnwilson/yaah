@@ -14,7 +14,7 @@ def _client():
 def _seed(client):
     app = client.app
     from adapters.database.uow import SqlUnitOfWork
-    from domain.memory import MemoryProposal, MemoryProposalStatus
+    from domain.agent.memory import MemoryProposal, MemoryProposalStatus
     uow = SqlUnitOfWork(app.state.session_factory, required_filters={"owner_id": "dev-user"})
     with uow.transaction():
         uow.memory_proposals.create(MemoryProposal(
@@ -79,7 +79,7 @@ def test_memory_excludes_other_owner_proposals():
     _seed(client)
     app = client.app
     from adapters.database.uow import SqlUnitOfWork
-    from domain.memory import MemoryProposal, MemoryProposalStatus
+    from domain.agent.memory import MemoryProposal, MemoryProposalStatus
     other = SqlUnitOfWork(app.state.session_factory, required_filters={"owner_id": "other-user"})
     with other.transaction():
         other.memory_proposals.create(MemoryProposal(

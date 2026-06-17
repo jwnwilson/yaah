@@ -1,4 +1,4 @@
-from domain.work_items import WorkItemStatus as S
+from domain.projects import WorkItemStatus as S
 
 
 class InvalidTransition(Exception):

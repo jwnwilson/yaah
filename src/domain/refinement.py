@@ -8,7 +8,7 @@ from typing import Callable
 from pydantic import BaseModel, Field
 
 from domain.base import new_id, utc_now
-from domain.work_items import WorkItem, WorkItemKind
+from domain.projects import WorkItem, WorkItemKind
 
 
 class ChatRole(StrEnum):

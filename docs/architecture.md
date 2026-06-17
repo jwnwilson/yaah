@@ -15,13 +15,14 @@ ui/              # React/Vite/Tailwind SPA (features/ + ui/ primitives + lib/api
 src/
   domain/        # pure business logic, no I/O — each entity model lives with its logic
     base.py          # shared id/timestamp factories (new_id, utc_now)
-    projects.py · work_items.py · runs.py · messages.py · audit.py · capabilities.py
-    attachments.py · notifications.py · usage.py · memory.py · refinement.py · epics.py
-    errors.py · permissions.py · scm.py
+    projects/        # task-management domain: projects, work_items, epics (re-exported via __init__)
+    runs.py · messages.py · audit.py · capabilities.py · attachments.py
+    notifications.py · usage.py · refinement.py · errors.py · permissions.py · scm.py
     transitions/     # work-item + run state machines, run-stage pipeline
     orchestration/   # lead-driven orchestration DTOs/guards + orchestrator prompt contract
-    agent/           # agent domain: models.py (AgentRole/Team/AgentDefinition), teams.py
-                     #   (default team factory) + execution policy: capabilities, invocation, prompts, runtime
+    agent/           # agent domain: models.py (AgentRole/Team/AgentDefinition), teams.py (default
+                     #   team factory), memory.py (role memory + proposals) + execution policy:
+                     #   capabilities, invocation, prompts, runtime
   adapters/
     database/    # ports.py (Repository/UnitOfWork protocols), orm, repository, uow, engine
     storage/     # StoragePort + LocalStorageAdapter (run workspaces / blobs)

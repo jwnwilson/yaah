@@ -13,9 +13,8 @@ from adapters.database.uow import SqlUnitOfWork
 from adapters.git.fake import FakeGit, FakeGitForge
 from adapters.storage.local import LocalStorageAdapter
 from domain.agent import AgentEvent, StageResult
-from domain.projects import AutonomyLevel, Project
+from domain.projects import AutonomyLevel, Project, WorkItem, WorkItemKind, WorkItemStatus
 from domain.runs import Run, RunStage, RunStatus
-from domain.work_items import WorkItem, WorkItemKind, WorkItemStatus
 from interactors.temporal.activities import RunActivities
 from interactors.temporal.workflows import AgentWorkflow, OrchestratorWorkflow
 

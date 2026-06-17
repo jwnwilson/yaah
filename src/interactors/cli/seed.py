@@ -23,8 +23,7 @@ from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.ports import UnitOfWork
 from adapters.database.uow import SqlUnitOfWork
 from domain.agent.teams import default_team
-from domain.projects import AutonomyLevel, Project
-from domain.work_items import WorkItem, WorkItemKind, WorkItemStatus
+from domain.projects import AutonomyLevel, Project, WorkItem, WorkItemKind, WorkItemStatus
 from interactors.api.auth import DEV_USER_ID
 from interactors.api.settings import Settings
 

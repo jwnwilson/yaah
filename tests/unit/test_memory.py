@@ -1,4 +1,4 @@
-from domain.memory import MEMORY_PATHS, changed_files
+from domain.agent.memory import MEMORY_PATHS, changed_files
 
 
 def test_memory_paths_are_the_bounded_set():
@@ -27,8 +27,8 @@ def test_changed_files_empty_for_empty_diff():
 
 
 def test_role_memory_digest_bounds_and_order():
+    from domain.agent.memory import RoleMemoryEntry, role_memory_digest
     from domain.agent.models import AgentRole
-    from domain.memory import RoleMemoryEntry, role_memory_digest
     entries = [RoleMemoryEntry(owner_id="u1", role=AgentRole.BACKEND, content=f"note {i}")
                for i in range(5)]
     out = role_memory_digest(entries, max_entries=3, max_chars=10_000)

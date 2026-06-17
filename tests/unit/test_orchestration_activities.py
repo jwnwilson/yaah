@@ -6,9 +6,8 @@ from adapters.database.uow import SqlUnitOfWork
 from adapters.storage.local import LocalStorageAdapter
 from domain.agent import AgentEvent, StageResult
 from domain.messages import MessageKind, MessageRecipientKind, MessageSenderKind
-from domain.projects import Project
+from domain.projects import Project, WorkItem, WorkItemKind, WorkItemStatus
 from domain.runs import Run, RunStage
-from domain.work_items import WorkItem, WorkItemKind, WorkItemStatus
 
 
 def _factory():
@@ -464,8 +463,8 @@ def test_agent_step_uses_custom_workspace_key(tmp_path):
 def test_agent_step_injects_role_digest_project_default_and_all(tmp_path):
     from adapters.database.uow import SqlUnitOfWork
     from adapters.storage.local import LocalStorageAdapter
+    from domain.agent.memory import RoleMemoryEntry
     from domain.agent.models import AgentRole
-    from domain.memory import RoleMemoryEntry
     factory = _factory()
     _seed_run(factory)
     uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})

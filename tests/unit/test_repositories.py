@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from adapters.database.orm import Base
 from adapters.database.repositories import AgentDefinitionRepository, WorkItemRepository
 from domain.agent.models import AgentDefinition, AgentRole
-from domain.work_items import WorkItem, WorkItemKind
+from domain.projects import WorkItem, WorkItemKind
 
 
 def _session():

@@ -13,10 +13,9 @@ def _client():
 def _seed_run_with_usage(client):
     app = client.app
     from adapters.database.uow import SqlUnitOfWork
-    from domain.projects import Project
+    from domain.projects import Project, WorkItem, WorkItemKind
     from domain.runs import Run, RunStage
     from domain.usage import UsageRecord
-    from domain.work_items import WorkItem, WorkItemKind
     uow = SqlUnitOfWork(app.state.session_factory, required_filters={"owner_id": "dev-user"})
     with uow.transaction():
         uow.projects.create(Project(id="p1", owner_id="dev-user", name="P", local_path="/x"))

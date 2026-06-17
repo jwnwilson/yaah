@@ -14,10 +14,9 @@ def _client():
 def _seed(client):
     app = client.app
     from adapters.database.uow import SqlUnitOfWork
-    from domain.projects import Project
+    from domain.projects import Project, WorkItem, WorkItemKind
     from domain.runs import Run, RunStage
     from domain.usage import UsageRecord
-    from domain.work_items import WorkItem, WorkItemKind
     uow = SqlUnitOfWork(app.state.session_factory, required_filters={"owner_id": "dev-user"})
     with uow.transaction():
         for pid in ("p1", "p2"):
@@ -91,10 +90,9 @@ def test_global_usage_excludes_other_owner_records():
     _seed(client)
     app = client.app
     from adapters.database.uow import SqlUnitOfWork
-    from domain.projects import Project
+    from domain.projects import Project, WorkItem, WorkItemKind
     from domain.runs import Run, RunStage
     from domain.usage import UsageRecord
-    from domain.work_items import WorkItem, WorkItemKind
     other = SqlUnitOfWork(app.state.session_factory, required_filters={"owner_id": "other-user"})
     with other.transaction():
         other.projects.create(Project(id="po", owner_id="other-user", name="po", local_path="/x"))
