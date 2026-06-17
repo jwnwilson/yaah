@@ -1,5 +1,7 @@
 from domain.agent import capabilities as cap
-from domain.models import AgentDefinition, AgentRole, McpServer, RunStage, Skill
+from domain.agent.models import AgentDefinition, AgentRole
+from domain.capabilities import McpServer, Skill
+from domain.runs import RunStage
 
 
 def _agent(role, **kw):
@@ -42,7 +44,7 @@ def test_manifest_has_secret_env_default_empty():
 
 def test_assemble_sets_model_alias():
     from domain.agent import assemble
-    from domain.models import AgentDefinition, AgentRole
+    from domain.agent.models import AgentDefinition, AgentRole
     agent = AgentDefinition(team_id="t", role=AgentRole.BACKEND, name="E",
                             model_alias="engineer-model")
     man = assemble(agent, [], [])

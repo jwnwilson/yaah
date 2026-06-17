@@ -2,7 +2,7 @@ import json
 from typing import Iterator
 
 from domain.agent import AgentEvent, RunContext, StageResult
-from domain.models import RunStage
+from domain.runs import RunStage
 from domain.usage import TokenUsage
 
 _DEFAULT_COST = 0.25

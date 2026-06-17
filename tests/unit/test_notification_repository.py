@@ -4,12 +4,12 @@ from sqlalchemy.orm import sessionmaker
 
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
-from domain.models import (
+from domain.base import utc_now
+from domain.notifications import (
     Notification,
     NotificationAction,
     NotificationCategory,
     NotificationSource,
-    utc_now,
 )
 
 

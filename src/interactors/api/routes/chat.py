@@ -5,8 +5,16 @@ from pydantic import BaseModel
 
 from adapters.agent.refinement.ports import RefinementAgent
 from adapters.database.ports import UnitOfWork
-from domain.models import ChatMessage, ChatRole, ChatSession, WorkItem, WorkItemKind, WorkItemStatus
-from domain.refinement import RefinementContext, epic_focus_prompt, system_prompt, validate_proposal
+from domain.refinement import (
+    ChatMessage,
+    ChatRole,
+    ChatSession,
+    RefinementContext,
+    epic_focus_prompt,
+    system_prompt,
+    validate_proposal,
+)
+from domain.work_items import WorkItem, WorkItemKind, WorkItemStatus
 from interactors.api.deps import get_uow, refinement_agent
 from interactors.api.envelope import ok
 

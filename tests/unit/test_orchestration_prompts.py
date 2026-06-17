@@ -1,6 +1,6 @@
 import pytest
 
-from domain.models import AgentRole
+from domain.agent.models import AgentRole
 from domain.orchestration import (
     OrchestrationContractError,
     OrchestrationIntent,

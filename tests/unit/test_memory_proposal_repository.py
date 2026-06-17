@@ -4,7 +4,8 @@ from sqlalchemy.orm import sessionmaker
 
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
-from domain.models import MemoryProposal, MemoryProposalStatus, utc_now
+from domain.base import utc_now
+from domain.memory import MemoryProposal, MemoryProposalStatus
 
 
 @pytest.fixture

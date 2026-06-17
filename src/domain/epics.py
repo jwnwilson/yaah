@@ -3,7 +3,7 @@ from collections import defaultdict
 
 from pydantic import BaseModel
 
-from domain.models import WorkItem, WorkItemStatus
+from domain.work_items import WorkItem, WorkItemStatus
 
 
 class FeatureProgress(BaseModel):

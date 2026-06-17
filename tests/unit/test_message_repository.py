@@ -1,12 +1,7 @@
 from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
-from domain.models import (
-    Message,
-    MessageKind,
-    MessageRecipientKind,
-    MessageSenderKind,
-)
+from domain.messages import Message, MessageKind, MessageRecipientKind, MessageSenderKind
 
 
 def _uow(owner: str = "dev-user") -> SqlUnitOfWork:

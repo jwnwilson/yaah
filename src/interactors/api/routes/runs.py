@@ -3,15 +3,11 @@ from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
 from adapters.git.ports import ForgeError, GitError
-from domain.models import (
-    MemoryProposalStatus,
-    Run,
-    RunStatus,
-    WorkItemKind,
-    WorkItemStatus,
-    utc_now,
-)
+from domain.base import utc_now
+from domain.memory import MemoryProposalStatus
+from domain.runs import Run, RunStatus
 from domain.transitions import validate_transition
+from domain.work_items import WorkItemKind, WorkItemStatus
 from interactors.api.deps import get_uow, memory_applier, temporal_client
 from interactors.api.deps import settings as get_settings
 from interactors.api.envelope import ok

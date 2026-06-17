@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from adapters.database.ports import UnitOfWork
 from domain.epics import build_epic_board
-from domain.models import WorkItemKind
+from domain.work_items import WorkItemKind
 from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
 

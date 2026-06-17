@@ -5,7 +5,7 @@ import tempfile
 from adapters.agent.model.fake import FakeModelProvider
 from adapters.agent.runtime.claude_code import ClaudeCodeRuntime
 from domain.agent import RunContext
-from domain.models import RunStage
+from domain.runs import RunStage
 
 
 class _FakeProc:

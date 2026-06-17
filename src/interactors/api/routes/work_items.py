@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
-from domain.models import WorkItem, WorkItemKind, WorkItemStatus, utc_now
+from domain.base import utc_now
 from domain.transitions import validate_transition
+from domain.work_items import WorkItem, WorkItemKind, WorkItemStatus
 from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
 

@@ -3,7 +3,7 @@ import tempfile
 from adapters.agent.runtime.fake import FakeAgentRuntime
 from adapters.storage.local import LocalStorageAdapter
 from domain.agent import AgentEvent, RunContext, StageResult, result_of
-from domain.models import RunStage
+from domain.runs import RunStage
 
 
 def _ctx(stage):
@@ -41,7 +41,7 @@ def test_fake_runtime_drives_orchestrator_decision_and_verdict(tmp_path):
     from adapters.agent.runtime.fake import FakeAgentRuntime
     from adapters.storage.local import LocalStorageAdapter
     from domain.agent import RunContext, result_of
-    from domain.models import RunStage
+    from domain.runs import RunStage
 
     storage = LocalStorageAdapter(base_dir=str(tmp_path))
     rt = FakeAgentRuntime(storage=storage)

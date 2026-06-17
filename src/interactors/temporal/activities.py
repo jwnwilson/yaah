@@ -4,23 +4,20 @@ from adapters.agent.notify.ports import NotificationDispatcher
 from adapters.database.uow import SqlUnitOfWork
 from adapters.storage.ports import StoragePort
 from domain.agent import AgentRuntime, RunContext, result_of
+from domain.agent.models import AgentRole
+from domain.base import utc_now
 from domain.errors import IntegrityConflict
-from domain.models import (
-    AgentRole,
+from domain.notifications import (
     Notification,
     NotificationCategory,
     NotificationSeverity,
     NotificationSource,
-    RunEvent,
-    RunEventType,
-    RunStage,
-    RunStatus,
-    UsageRecord,
-    utc_now,
+    notification_for_event,
+    resolves,
 )
-from domain.notifications import notification_for_event, resolves
+from domain.runs import RunEvent, RunEventType, RunStage, RunStatus
 from domain.scm import WORKSPACE_SCRATCH
-from domain.usage import TokenUsage
+from domain.usage import TokenUsage, UsageRecord
 
 _MAX_LEAD_RETRIES = 2  # bounded re-prompts when the lead emits an invalid decision
 
@@ -53,7 +50,9 @@ class RunActivities:
     def _ingest_tool_audit(self, owner_id: str, run_id: str) -> None:
         import json
 
-        from domain.models import AuditAction, AuditEvent, RunStage, utc_now
+        from domain.audit import AuditAction, AuditEvent
+        from domain.base import utc_now
+        from domain.runs import RunStage
         try:
             raw = self._storage.read_text(f"runs/{run_id}/audit.jsonl")
             if not raw:
@@ -82,7 +81,9 @@ class RunActivities:
     def _record_audit(
         self, owner_id: str, run_id: str, stage: str, actor: str, detail: dict
     ) -> None:
-        from domain.models import AuditAction, AuditEvent, RunStage, utc_now
+        from domain.audit import AuditAction, AuditEvent
+        from domain.base import utc_now
+        from domain.runs import RunStage
         try:
             uow = self._uow(owner_id)
             with uow.transaction():
@@ -216,7 +217,7 @@ class RunActivities:
 
     @activity.defn(name="persist_messages")
     def persist_messages(self, payload: dict) -> None:
-        from domain.models import Message
+        from domain.messages import Message
         owner_id = payload["owner_id"]
         uow = self._uow(owner_id)
         with uow.transaction():
@@ -337,7 +338,7 @@ class RunActivities:
     def _persist_lead_messages(self, payload: dict, decision) -> None:
         """Persist the lead dispatches and notes as Messages so the inbox reflects
         orchestration. No-op when the lead agent id is unknown."""
-        from domain.models import AgentRole
+        from domain.agent.models import AgentRole
         from domain.orchestration import decision_to_messages
         role_map = payload.get("role_to_agent_id") or {}
         lead_id = role_map.get(AgentRole.LEAD.value)
@@ -372,13 +373,14 @@ class RunActivities:
 
     @activity.defn(name="invoke_lead")
     def invoke_lead(self, payload: dict) -> dict:
-        from domain.models import AgentRole, RunStage
+        from domain.agent.models import AgentRole
         from domain.orchestration import (
             OrchestrationContractError,
             OrchestrationState,
             build_orchestrator_prompt,
             parse_decision,
         )
+        from domain.runs import RunStage
         run_id, owner_id = payload["run_id"], payload["owner_id"]
         state = OrchestrationState.model_validate(payload.get("state") or {})
         roles = [AgentRole(r) for r in payload.get("available_roles", [])]
@@ -425,10 +427,11 @@ class RunActivities:
 
     @activity.defn(name="agent_step")
     def agent_step(self, payload: dict) -> dict:
+        from domain.agent.models import AgentRole
         from domain.agent.prompts import memory_pointer
-        from domain.memory import role_memory_digest
-        from domain.models import AgentRole, RoleMemoryEntry, RunStage
+        from domain.memory import RoleMemoryEntry, role_memory_digest
         from domain.orchestration import AgentOutcome, AgentStepResult, OutboundMessage
+        from domain.runs import RunStage
         run_id, owner_id = payload["run_id"], payload["owner_id"]
         role = AgentRole(payload["role"]) if payload.get("role") else None
         digest = ""
@@ -484,8 +487,9 @@ class RunActivities:
 
     @activity.defn(name="run_monitor")
     def run_monitor(self, payload: dict) -> dict:
-        from domain.models import AgentRole, RunStage
+        from domain.agent.models import AgentRole
         from domain.orchestration import MonitorVerdict, OrchestrationContractError, parse_verdict
+        from domain.runs import RunStage
         run_id, owner_id = payload["run_id"], payload["owner_id"]
         role = AgentRole(payload["role"]) if payload.get("role") else AgentRole.QA
         ac = "\n".join(f"- {c}" for c in payload.get("acceptance_criteria", []))
@@ -595,8 +599,7 @@ class RunActivities:
 
     @activity.defn(name="capture_memory")
     def capture_memory(self, payload: dict) -> dict:
-        from domain.memory import MEMORY_PATHS, changed_files
-        from domain.models import MemoryProposal
+        from domain.memory import MEMORY_PATHS, MemoryProposal, changed_files
         run_id, owner_id = payload["run_id"], payload["owner_id"]
         workspace = self._storage.local_path(f"runs/{run_id}")
         diff = self._git.diff(workspace, paths=MEMORY_PATHS)
@@ -633,7 +636,7 @@ class RunActivities:
         """Run the LEARN curator (generic role -> Read/Edit/Write) in the main run worktree to
         update project memory. Advisory: a curator failure never fails the run."""
         from domain.agent.prompts import for_stage
-        from domain.models import RunStage
+        from domain.runs import RunStage
         learn_prompt, _tools = for_stage(
             RunStage.LEARN, payload["task_title"],
             payload.get("acceptance_criteria", []), payload.get("body", ""))

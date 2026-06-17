@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from adapters.database.ports import UnitOfWork
-from domain.models import MemoryProposalStatus
+from domain.memory import MemoryProposalStatus
 from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
 

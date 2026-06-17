@@ -3,24 +3,17 @@ from typing import Any, Generic, Protocol, TypeVar
 
 from pydantic import BaseModel
 
-from domain.models import (
-    AgentDefinition,
-    AuditEvent,
-    ChatMessage,
-    ChatSession,
-    McpServer,
-    MemoryProposal,
-    Message,
-    Notification,
-    Project,
-    Run,
-    RunEvent,
-    Secret,
-    Skill,
-    Team,
-    UsageRecord,
-    WorkItem,
-)
+from domain.agent.models import AgentDefinition, Team
+from domain.audit import AuditEvent
+from domain.capabilities import McpServer, Secret, Skill
+from domain.memory import MemoryProposal
+from domain.messages import Message
+from domain.notifications import Notification
+from domain.projects import Project
+from domain.refinement import ChatMessage, ChatSession
+from domain.runs import Run, RunEvent
+from domain.usage import UsageRecord
+from domain.work_items import WorkItem
 
 DTO = TypeVar("DTO", bound=BaseModel)
 

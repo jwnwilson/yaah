@@ -5,7 +5,8 @@ full_auto). Pure routing over injected GitPort / GitForgePort; returns an update
 (immutable) MemoryProposal — the caller persists it.
 """
 
-from domain.models import MemoryProposal, MemoryProposalStatus, utc_now
+from domain.base import utc_now
+from domain.memory import MemoryProposal, MemoryProposalStatus
 
 
 class MemoryApplier:

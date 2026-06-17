@@ -8,7 +8,9 @@ from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
 from adapters.git.fake import FakeGit
 from adapters.storage.local import LocalStorageAdapter
-from domain.models import Project, Run, WorkItem, WorkItemKind, WorkItemStatus
+from domain.projects import Project
+from domain.runs import Run
+from domain.work_items import WorkItem, WorkItemKind, WorkItemStatus
 from interactors.temporal.activities import RunActivities
 
 

@@ -17,7 +17,7 @@ def test_create_all_and_roundtrip():
                 local_path=None,
                 team_id=None,
                 autonomy="gated_all",
-                created_at=__import__("domain.models", fromlist=["utc_now"]).utc_now(),
+                created_at=__import__("domain.base", fromlist=["utc_now"]).utc_now(),
             )
         )
         session.commit()

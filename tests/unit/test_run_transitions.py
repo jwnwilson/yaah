@@ -1,6 +1,6 @@
 import pytest
 
-from domain.models import RunStatus as R
+from domain.runs import RunStatus as R
 from domain.transitions import InvalidTransition, validate_run_transition
 
 

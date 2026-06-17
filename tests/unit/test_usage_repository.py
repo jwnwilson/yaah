@@ -5,7 +5,8 @@ from sqlalchemy.orm import sessionmaker
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
 from domain.errors import IntegrityConflict
-from domain.models import RunStage, UsageRecord
+from domain.runs import RunStage
+from domain.usage import UsageRecord
 
 
 @pytest.fixture

@@ -1,4 +1,46 @@
-"""Project-memory paths and diff helpers. Pure; no I/O."""
+"""Role-memory + memory-proposal entities, project-memory paths, and diff helpers.
+Pure; no I/O."""
+from datetime import datetime
+from enum import StrEnum
+
+from pydantic import BaseModel, Field
+
+from domain.agent.models import AgentRole
+from domain.base import new_id, utc_now
+
+
+class RoleMemoryEntry(BaseModel):
+    """One durable, append-only role-level learning. Owner-scoped; cross-project (project_id
+    records origin but reads can span projects)."""
+
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    role: AgentRole
+    content: str
+    run_id: str | None = None
+    project_id: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class MemoryProposalStatus(StrEnum):
+    PROPOSED = "proposed"
+    APPLIED = "applied"
+    REJECTED = "rejected"
+
+
+class MemoryProposal(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    run_id: str
+    project_id: str
+    branch: str
+    diff: str = ""
+    files: list[str] = Field(default_factory=list)
+    status: MemoryProposalStatus = MemoryProposalStatus.PROPOSED
+    pr_url: str | None = None
+    resolved_at: datetime | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
 
 # The bounded set the harness captures and commits. Curator edits outside these
 # paths are ignored (structural blast-radius guard).

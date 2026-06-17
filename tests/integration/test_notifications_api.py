@@ -11,7 +11,7 @@ def _client():
 
 def _seed(client, **over):
     from adapters.database.uow import SqlUnitOfWork
-    from domain.models import Notification, NotificationCategory, NotificationSource
+    from domain.notifications import Notification, NotificationCategory, NotificationSource
     uow = SqlUnitOfWork(client.app.state.session_factory,
                         required_filters={"owner_id": "dev-user"})
     payload = dict(owner_id="dev-user", source=NotificationSource.SYSTEM,

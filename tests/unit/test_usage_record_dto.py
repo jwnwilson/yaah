@@ -1,4 +1,6 @@
-from domain.models import AgentRole, Run, RunStage, UsageRecord
+from domain.agent.models import AgentRole
+from domain.runs import Run, RunStage
+from domain.usage import UsageRecord
 
 
 def test_usage_record_has_hierarchy_and_token_fields():

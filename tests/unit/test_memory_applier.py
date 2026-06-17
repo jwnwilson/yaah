@@ -1,5 +1,5 @@
 from adapters.git.fake import FakeGit, FakeGitForge
-from domain.models import MemoryProposal, MemoryProposalStatus
+from domain.memory import MemoryProposal, MemoryProposalStatus
 from interactors.cli.memory_apply import MemoryApplier
 
 

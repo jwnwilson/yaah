@@ -1,6 +1,6 @@
 from adapters.agent.runtime.fake import _default_events
 from domain.agent import result_of
-from domain.models import RunStage
+from domain.runs import RunStage
 
 
 def test_default_result_event_carries_model_usage():

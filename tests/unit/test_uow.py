@@ -3,7 +3,8 @@ import pytest
 from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
-from domain.models import Project, Run
+from domain.projects import Project
+from domain.runs import Run
 
 
 def _uow(owner: str = "u1") -> SqlUnitOfWork:

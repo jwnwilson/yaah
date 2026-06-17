@@ -1,4 +1,4 @@
-from domain.models import MemoryProposal, MemoryProposalStatus
+from domain.memory import MemoryProposal, MemoryProposalStatus
 
 
 def test_memory_proposal_defaults():

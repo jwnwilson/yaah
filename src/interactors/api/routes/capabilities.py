@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
-from domain.models import McpServer, Secret, Skill
+from domain.capabilities import McpServer, Secret, Skill
 from interactors.api.auth import current_user_id
 from interactors.api.deps import cipher, get_uow
 from interactors.api.envelope import ok

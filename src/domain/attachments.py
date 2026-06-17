@@ -1,5 +1,24 @@
-"""Pure attachment policy: allowlist, filename sanitization, storage-key builder. No I/O."""
+"""Attachment entity + pure policy: allowlist, filename sanitization, storage-key
+builder. No I/O."""
 import re
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+from domain.base import new_id, utc_now
+
+
+class WorkItemAttachment(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    work_item_id: str
+    filename: str
+    content_type: str
+    size_bytes: int
+    storage_key: str
+    origin: str = "human"
+    created_at: datetime = Field(default_factory=utc_now)
+
 
 # ext -> canonical MIME. Single source of truth for what may be uploaded. SVG/HTML are
 # excluded: inline-served SVG/HTML is an XSS vector, and only raster images render inline.

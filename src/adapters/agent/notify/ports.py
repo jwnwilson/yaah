@@ -1,7 +1,7 @@
 import logging
 from typing import Protocol
 
-from domain.models import Notification
+from domain.notifications import Notification
 
 logger = logging.getLogger(__name__)
 

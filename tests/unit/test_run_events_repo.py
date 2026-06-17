@@ -1,7 +1,7 @@
 from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
-from domain.models import RunEvent, RunEventType, RunStage
+from domain.runs import RunEvent, RunEventType, RunStage
 
 
 def _uow():

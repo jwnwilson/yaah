@@ -6,13 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from domain.models import (
-    AgentRole,
-    Message,
-    MessageKind,
-    MessageRecipientKind,
-    MessageSenderKind,
-)
+from domain.agent.models import AgentRole
+from domain.messages import Message, MessageKind, MessageRecipientKind, MessageSenderKind
 
 
 class OrchestrationIntent(StrEnum):

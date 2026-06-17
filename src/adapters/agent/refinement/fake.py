@@ -1,10 +1,10 @@
-from domain.models import WorkItemKind
 from domain.refinement import (
     EpicSpecEdit,
     RefinementContext,
     RefinementOutput,
     WorkItemProposal,
 )
+from domain.work_items import WorkItemKind
 
 
 class FakeRefinementAgent:

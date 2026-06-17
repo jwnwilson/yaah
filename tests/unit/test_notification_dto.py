@@ -1,4 +1,4 @@
-from domain.models import (
+from domain.notifications import (
     Notification,
     NotificationAction,
     NotificationCategory,

@@ -1,11 +1,11 @@
 """Unit tests for epic-focused refinement contract additions."""
-from domain.models import WorkItem, WorkItemKind
 from domain.refinement import (
     EpicSpecEdit,
     RefinementContext,
     RefinementOutput,
     epic_focus_prompt,
 )
+from domain.work_items import WorkItem, WorkItemKind
 
 
 def test_epic_focus_prompt_names_epic_and_instructs_breakdown():

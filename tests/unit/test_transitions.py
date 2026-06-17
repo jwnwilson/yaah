@@ -1,7 +1,7 @@
 import pytest
 
-from domain.models import WorkItemStatus as S
 from domain.transitions import InvalidTransition, validate_transition
+from domain.work_items import WorkItemStatus as S
 
 
 @pytest.mark.parametrize(

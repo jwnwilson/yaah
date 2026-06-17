@@ -52,7 +52,7 @@ def test_patch_work_item_sets_assignee():
 
 def test_list_messages_by_sender_shows_agent_output():
     from adapters.database.uow import SqlUnitOfWork
-    from domain.models import Message, MessageKind, MessageRecipientKind, MessageSenderKind
+    from domain.messages import Message, MessageKind, MessageRecipientKind, MessageSenderKind
 
     c = _client()
     uow = SqlUnitOfWork(c.app.state.session_factory, required_filters={"owner_id": "dev-user"})

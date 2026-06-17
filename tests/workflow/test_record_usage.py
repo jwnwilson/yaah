@@ -4,14 +4,10 @@ from sqlalchemy.orm import sessionmaker
 
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
-from domain.models import (
-    AgentRole,
-    Project,
-    Run,
-    WorkItem,
-    WorkItemKind,
-    WorkItemStatus,
-)
+from domain.agent.models import AgentRole
+from domain.projects import Project
+from domain.runs import Run
+from domain.work_items import WorkItem, WorkItemKind, WorkItemStatus
 from interactors.temporal.activities import RunActivities
 
 

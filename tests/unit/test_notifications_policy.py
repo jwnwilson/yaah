@@ -1,15 +1,13 @@
-from domain.models import (
+from domain.notifications import (
     Notification,
     NotificationAction,
     NotificationCategory,
     NotificationSeverity,
     NotificationSource,
-    Run,
-    RunEvent,
-    RunEventType,
-    RunStage,
+    notification_for_event,
+    resolves,
 )
-from domain.notifications import notification_for_event, resolves
+from domain.runs import Run, RunEvent, RunEventType, RunStage
 
 
 def _run():
