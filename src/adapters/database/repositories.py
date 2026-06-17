@@ -21,11 +21,11 @@ from adapters.database.orm import (
     WorkItemRow,
 )
 from adapters.database.repository import SqlRepository
+from domain.agent.capability_grants import McpServer, Secret, Skill
 from domain.agent.memory import MemoryProposal, RoleMemoryEntry
 from domain.agent.models import AgentDefinition, Team
 from domain.attachments import WorkItemAttachment
 from domain.audit import AuditEvent
-from domain.capabilities import McpServer, Secret, Skill
 from domain.errors import IntegrityConflict
 from domain.messages import Message
 from domain.notifications import Notification

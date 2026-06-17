@@ -1,6 +1,6 @@
 from domain.agent import capabilities as cap
+from domain.agent.capability_grants import McpServer, Skill
 from domain.agent.models import AgentDefinition, AgentRole
-from domain.capabilities import McpServer, Skill
 from domain.runs import RunStage
 
 

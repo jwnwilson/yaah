@@ -47,7 +47,6 @@ src/
     runs.py         # Run + RunStage/RunStatus/RunEvent
     messages.py     # Message + inter-agent mailbox enums
     audit.py        # AuditEvent + AuditAction
-    capabilities.py # Skill, McpServer, Secret (owner-scoped grantables)
     attachments.py  # WorkItemAttachment + attachment policy
     notifications.py # Notification model + event→notification policy
     usage.py        # UsageRecord + TokenUsage rollups
@@ -57,7 +56,8 @@ src/
     orchestration/  # lead-driven orchestration DTOs, guards, mappings + orchestrator prompt/parse contract
     agent/          # agent domain: models.py (AgentRole, Team, AgentDefinition), teams.py (default team
                     #   factory), memory.py (RoleMemoryEntry, MemoryProposal + project-memory helpers),
-                    #   + execution policy (runtime DTOs, capability manifest, prompts, CLI invocation)
+                    #   capability_grants.py (Skill, McpServer, Secret), + execution policy (runtime DTOs,
+                    #   capability manifest assembly, prompts, CLI invocation)
   adapters/      # concrete port implementations
     database/    # ports.py (Repository/UnitOfWork protocols + PaginatedResult), orm.py, repository.py, repositories.py, uow.py, engine.py
   interactors/   # entry points: wiring only, no business logic

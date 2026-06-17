@@ -2,8 +2,8 @@
 
 from pydantic import BaseModel
 
+from domain.agent.capability_grants import McpServer, Skill
 from domain.agent.models import AgentDefinition, AgentRole
-from domain.capabilities import McpServer, Skill
 from domain.runs import RunStage
 
 _STAGE_ROLE: dict[RunStage, AgentRole] = {

@@ -294,8 +294,8 @@ def _agent_step(acts, team_id, role="backend"):
 
 
 def test_agent_step_populates_manifest_from_team(tmp_path):
+    from domain.agent.capability_grants import Skill
     from domain.agent.models import AgentDefinition, Team
-    from domain.capabilities import Skill
 
     factory = _factory()
     _seed_run(factory)
@@ -318,8 +318,8 @@ def test_agent_step_populates_manifest_from_team(tmp_path):
 def test_agent_step_injects_secret_env_without_leaking(tmp_path):
     from cryptography.fernet import Fernet
 
+    from domain.agent.capability_grants import Secret
     from domain.agent.models import AgentDefinition, Team
-    from domain.capabilities import Secret
     from interactors.temporal.activities import RunActivities
     from lib.secrets import FernetCipher
 
@@ -349,8 +349,8 @@ def test_agent_step_injects_secret_env_without_leaking(tmp_path):
 def test_agent_step_records_capability_audit_without_secret_values(tmp_path):
     from cryptography.fernet import Fernet
 
+    from domain.agent.capability_grants import Secret
     from domain.agent.models import AgentDefinition, Team
-    from domain.capabilities import Secret
     from interactors.temporal.activities import RunActivities
     from lib.secrets import FernetCipher
 

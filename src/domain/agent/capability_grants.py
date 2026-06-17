@@ -1,6 +1,6 @@
-"""Capability entities: owner-scoped skills, MCP servers, and secrets that can be
-granted to agents. Distinct from `domain.agent.capabilities`, which assembles the
-per-run capability manifest (execution policy)."""
+"""Capability-grant entities: owner-scoped skills, MCP servers, and secrets that can
+be granted to agents. Distinct from the sibling `domain.agent.capabilities`, which
+assembles the per-run capability manifest (execution policy) from these grants."""
 from datetime import datetime
 from typing import Literal
 

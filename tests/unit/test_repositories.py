@@ -37,8 +37,8 @@ def test_capability_repos_owner_scoped_and_agent_grants():
     from adapters.database.engine import make_engine, make_session_factory
     from adapters.database.orm import Base
     from adapters.database.uow import SqlUnitOfWork
+    from domain.agent.capability_grants import Skill
     from domain.agent.models import AgentDefinition, Team
-    from domain.capabilities import Skill
 
     engine = make_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -84,7 +84,7 @@ def test_secret_roundtrips_encrypted_value():
     from adapters.database.engine import make_engine, make_session_factory
     from adapters.database.orm import Base
     from adapters.database.uow import SqlUnitOfWork
-    from domain.capabilities import Secret
+    from domain.agent.capability_grants import Secret
 
     engine = make_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
