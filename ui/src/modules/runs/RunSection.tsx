@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import type { WorkItemStatus } from "@/lib/api/types";
 import { MemoryProposalCard } from "./MemoryProposalCard";
@@ -38,7 +39,12 @@ export function RunSection({
           <li key={run.id} className="rounded-md border border-line bg-surface p-2 text-sm">
             <div className="flex items-center justify-between">
               <RunStatusBadge status={run.status} />
-              <span className="text-xs text-subtle">{run.stage ?? "—"}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-subtle">{run.stage ?? "—"}</span>
+                <Link to={`/runs/${run.id}`} className="text-xs text-accent hover:underline">
+                  View run
+                </Link>
+              </div>
             </div>
             <RunActions taskId={taskId} run={run} />
             <MemoryProposalCard runId={run.id} />
