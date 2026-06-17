@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     storage_dir: str = Field(default_factory=_default_storage_dir)
     max_attachment_bytes: int = 10 * 1024 * 1024
 
+    github_token: str | None = None            # PAT; preferred over the GitHub App when set
     github_app_id: str | None = None
     github_private_key: str | None = None      # PEM contents or a file path
     github_installation_id: str | None = None
