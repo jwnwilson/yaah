@@ -6,13 +6,7 @@ from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
     from domain import scm
-    from domain.models import (
-        AgentRole,
-        AutonomyLevel,
-        RunEventType,
-        RunStage,
-        RunStatus,
-    )
+    from domain.agent.models import AgentRole
     from domain.orchestration import (
         AgentOutcome,
         AgentReport,
@@ -22,6 +16,8 @@ with workflow.unsafe.imports_passed_through():
         guard_exceeded,
         wave_exceeds_parallel,
     )
+    from domain.projects import AutonomyLevel
+    from domain.runs import RunEventType, RunStage, RunStatus
     from domain.transitions import pipeline
 
 _STAGE_TIMEOUT = timedelta(hours=24)

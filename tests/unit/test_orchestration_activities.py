@@ -5,17 +5,9 @@ from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
 from adapters.storage.local import LocalStorageAdapter
 from domain.agent import AgentEvent, StageResult
-from domain.models import (
-    MessageKind,
-    MessageRecipientKind,
-    MessageSenderKind,
-    Project,
-    Run,
-    RunStage,
-    WorkItem,
-    WorkItemKind,
-    WorkItemStatus,
-)
+from domain.messages import MessageKind, MessageRecipientKind, MessageSenderKind
+from domain.projects import Project, WorkItem, WorkItemKind, WorkItemStatus
+from domain.runs import Run, RunStage
 
 
 def _factory():
@@ -68,7 +60,7 @@ def test_persist_messages_writes_rows():
 def test_persist_messages_is_idempotent_on_id():
     factory = _factory()
     acts = _acts(factory)
-    from domain.models import Message
+    from domain.messages import Message
     m = Message(**_msg_dict())
     acts.persist_messages({"owner_id": "dev-user", "messages": [m.model_dump(mode="json")]})
     acts.persist_messages({"owner_id": "dev-user", "messages": [m.model_dump(mode="json")]})
@@ -302,7 +294,8 @@ def _agent_step(acts, team_id, role="backend"):
 
 
 def test_agent_step_populates_manifest_from_team(tmp_path):
-    from domain.models import AgentDefinition, Skill, Team
+    from domain.agent.capability_grants import Skill
+    from domain.agent.models import AgentDefinition, Team
 
     factory = _factory()
     _seed_run(factory)
@@ -325,7 +318,8 @@ def test_agent_step_populates_manifest_from_team(tmp_path):
 def test_agent_step_injects_secret_env_without_leaking(tmp_path):
     from cryptography.fernet import Fernet
 
-    from domain.models import AgentDefinition, Secret, Team
+    from domain.agent.capability_grants import Secret
+    from domain.agent.models import AgentDefinition, Team
     from interactors.temporal.activities import RunActivities
     from lib.secrets import FernetCipher
 
@@ -355,7 +349,8 @@ def test_agent_step_injects_secret_env_without_leaking(tmp_path):
 def test_agent_step_records_capability_audit_without_secret_values(tmp_path):
     from cryptography.fernet import Fernet
 
-    from domain.models import AgentDefinition, Secret, Team
+    from domain.agent.capability_grants import Secret
+    from domain.agent.models import AgentDefinition, Team
     from interactors.temporal.activities import RunActivities
     from lib.secrets import FernetCipher
 
@@ -386,7 +381,7 @@ def test_agent_step_records_capability_audit_without_secret_values(tmp_path):
 
 
 def test_agent_step_ingests_tool_audit_jsonl(tmp_path):
-    from domain.models import AgentDefinition, Team
+    from domain.agent.models import AgentDefinition, Team
     from interactors.temporal.activities import RunActivities
 
     factory = _factory()
@@ -468,7 +463,8 @@ def test_agent_step_uses_custom_workspace_key(tmp_path):
 def test_agent_step_injects_role_digest_project_default_and_all(tmp_path):
     from adapters.database.uow import SqlUnitOfWork
     from adapters.storage.local import LocalStorageAdapter
-    from domain.models import AgentRole, RoleMemoryEntry
+    from domain.agent.memory import RoleMemoryEntry
+    from domain.agent.models import AgentRole
     factory = _factory()
     _seed_run(factory)
     uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
@@ -557,7 +553,7 @@ def test_curate_memory_runs_learn_agent_in_main_workspace(tmp_path):
     acts = _acts(factory, runtime=spy, storage=LocalStorageAdapter(base_dir=str(tmp_path)))
     acts.curate_memory({"run_id": "r1", "owner_id": "dev-user", "task_title": "Add OAuth",
                         "acceptance_criteria": ["login works"], "body": ""})
-    from domain.models import RunStage
+    from domain.runs import RunStage
     assert spy.ctx.stage == RunStage.LEARN
     assert spy.ctx.workspace_path.endswith("runs/r1")
     assert "project memory" in spy.ctx.instructions.lower()

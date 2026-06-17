@@ -1,4 +1,5 @@
-from domain.models import AutonomyLevel, RunStage
+from domain.projects import AutonomyLevel
+from domain.runs import RunStage
 
 
 def gates_for(autonomy: AutonomyLevel) -> set[RunStage]:

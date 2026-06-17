@@ -8,7 +8,7 @@ from domain.agent import (
     SkillRef,
     build_invocation,
 )
-from domain.models import RunStage
+from domain.runs import RunStage
 
 
 def _ctx(stage=RunStage.IMPLEMENT, **kw):
@@ -122,7 +122,7 @@ def test_model_id_is_used_verbatim():
 
 def test_run_context_accepts_instructions():
     from domain.agent import RunContext
-    from domain.models import RunStage
+    from domain.runs import RunStage
 
     ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="t",
                      workspace_path="/tmp/x", instructions="do exactly this")
@@ -131,7 +131,7 @@ def test_run_context_accepts_instructions():
 
 def test_build_invocation_uses_instructions_when_present():
     from domain.agent import RunContext, build_invocation
-    from domain.models import RunStage
+    from domain.runs import RunStage
 
     ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="t",
                      acceptance_criteria=["c"], workspace_path="/tmp/x",
@@ -143,7 +143,7 @@ def test_build_invocation_uses_instructions_when_present():
 
 def test_build_invocation_falls_back_to_stage_prompt():
     from domain.agent import RunContext, build_invocation
-    from domain.models import RunStage
+    from domain.runs import RunStage
 
     ctx = RunContext(run_id="r1", stage=RunStage.IMPLEMENT, task_title="Add login",
                      acceptance_criteria=["works"], workspace_path="/tmp/x")

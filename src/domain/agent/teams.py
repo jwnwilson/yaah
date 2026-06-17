@@ -1,4 +1,4 @@
-from domain.models import AgentDefinition, AgentRole, Team
+from domain.agent.models import AgentDefinition, AgentRole, Team
 
 # role, name, model alias (tier), purpose, system prompt, allowed tools
 _DEFAULT_AGENTS: list[tuple[AgentRole, str, str, str, str, list[str]]] = [

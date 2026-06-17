@@ -1,4 +1,4 @@
-from domain.models import RunStatus as R
+from domain.runs import RunStatus as R
 from domain.transitions.work_items import InvalidTransition
 
 _ALLOWED: dict[R, set[R]] = {

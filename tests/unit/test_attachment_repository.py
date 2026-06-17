@@ -4,8 +4,8 @@ import pytest
 from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
+from domain.attachments import WorkItemAttachment
 from domain.errors import RecordNotFound
-from domain.models import WorkItemAttachment
 
 
 def _uow(owner: str) -> SqlUnitOfWork:

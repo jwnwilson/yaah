@@ -1,14 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from domain.models import (
-    AgentRole,
-    AutonomyLevel,
-    Project,
-    WorkItem,
-    WorkItemKind,
-    WorkItemStatus,
-)
+from domain.agent.models import AgentRole
+from domain.projects import AutonomyLevel, Project, WorkItem, WorkItemKind, WorkItemStatus
 
 
 def test_project_gets_id_and_defaults():
@@ -56,7 +50,8 @@ def test_roles_enum_has_core_roles():
 
 
 def test_capability_models_and_agent_grants():
-    from domain.models import AgentDefinition, McpServer, Secret, Skill
+    from domain.agent.capability_grants import McpServer, Secret, Skill
+    from domain.agent.models import AgentDefinition
 
     s = Skill(owner_id="u", name="pytest", source="git@x/skills.git")
     m = McpServer(owner_id="u", name="fs", transport="stdio", command_or_url="npx mcp-fs",
@@ -73,7 +68,8 @@ def test_capability_models_and_agent_grants():
 
 
 def test_audit_event_model():
-    from domain.models import AuditAction, AuditEvent, RunStage
+    from domain.audit import AuditAction, AuditEvent
+    from domain.runs import RunStage
     ev = AuditEvent(run_id="r1", owner_id="u", stage=RunStage.IMPLEMENT, actor="backend",
                     action=AuditAction.CAPABILITY_GRANTED,
                     detail={"tools": ["Read"], "model_alias": "engineer-model"})
@@ -83,13 +79,13 @@ def test_audit_event_model():
 
 
 def test_audit_action_tool_values():
-    from domain.models import AuditAction
+    from domain.audit import AuditAction
     assert AuditAction.TOOL_ALLOWED == "tool_allowed"
     assert AuditAction.TOOL_DENIED == "tool_denied"
 
 
 def test_run_stage_and_event_types_exist():
-    from domain.models import RunEvent, RunEventType, RunStage
+    from domain.runs import RunEvent, RunEventType, RunStage
 
     assert RunStage.PLAN == "plan"
     assert [s for s in RunStage] == [
@@ -103,14 +99,14 @@ def test_run_stage_and_event_types_exist():
 
 
 def test_chat_models():
-    from domain.models import ChatMessage, ChatRole, ChatSession
+    from domain.refinement import ChatMessage, ChatRole, ChatSession
     s = ChatSession(owner_id="u", project_id="p")
     m = ChatMessage(owner_id="u", session_id=s.id, role=ChatRole.USER, content="hi")
     assert s.id and m.role == "user" and m.content == "hi" and s.epic_id is None
 
 
 def test_orchestration_run_event_types_exist():
-    from domain.models import RunEventType
+    from domain.runs import RunEventType
 
     assert RunEventType.AGENT_DISPATCHED == "agent_dispatched"
     assert RunEventType.AGENT_REPORTED == "agent_reported"
@@ -120,7 +116,8 @@ def test_orchestration_run_event_types_exist():
 
 
 def test_role_memory_entry_defaults_and_role():
-    from domain.models import AgentRole, RoleMemoryEntry
+    from domain.agent.memory import RoleMemoryEntry
+    from domain.agent.models import AgentRole
     e = RoleMemoryEntry(owner_id="u1", role=AgentRole.BACKEND, content="prefer small PRs",
                         run_id="r1", project_id="p1")
     assert len(e.id) == 32 and e.role == AgentRole.BACKEND

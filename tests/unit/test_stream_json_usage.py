@@ -1,7 +1,7 @@
 import json
 
 from adapters.agent.runtime import stream_json
-from domain.models import RunStage
+from domain.runs import RunStage
 
 
 def _result_line(**result_obj):

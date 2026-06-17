@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
-from domain.models import Notification, utc_now
+from domain.base import utc_now
+from domain.notifications import Notification
 from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
 

@@ -4,7 +4,7 @@ import json
 from typing import Iterable
 
 from domain.agent import AgentEvent, StageResult
-from domain.models import RunStage
+from domain.runs import RunStage
 from domain.usage import TokenUsage
 
 

@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from adapters.database.uow import SqlUnitOfWork
-from domain.models import Run, RunStatus
+from domain.runs import Run, RunStatus
 from interactors.api.app import create_app
 from interactors.api.deps import temporal_client
 from interactors.api.settings import Settings
@@ -234,7 +234,8 @@ def test_list_run_audit():
     c, _fake = _client_with_fake_temporal()
     run_id = _seed_awaiting_run(c)
     from adapters.database.uow import SqlUnitOfWork
-    from domain.models import AuditAction, AuditEvent, RunStage
+    from domain.audit import AuditAction, AuditEvent
+    from domain.runs import RunStage
     uow = SqlUnitOfWork(c.app.state.session_factory, required_filters={"owner_id": "dev-user"})
     with uow.transaction():
         uow.audit_events.create(AuditEvent(run_id=run_id, owner_id="dev-user", stage=RunStage.PLAN,

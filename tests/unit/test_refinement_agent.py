@@ -3,8 +3,7 @@ import httpx
 from adapters.agent.model.fake import FakeModelProvider
 from adapters.agent.refinement.anthropic import AnthropicRefinementAgent
 from adapters.agent.refinement.fake import FakeRefinementAgent
-from domain.models import ChatMessage, ChatRole
-from domain.refinement import RefinementContext
+from domain.refinement import ChatMessage, ChatRole, RefinementContext
 
 
 def _ctx():
@@ -67,8 +66,7 @@ def test_anthropic_agent_parses_tool_use(monkeypatch):
 
 def test_fake_agent_proposes_feature_and_epic_update_when_epic_scoped():
     from adapters.agent.refinement.fake import FakeRefinementAgent
-    from domain.models import ChatMessage, ChatRole
-    from domain.refinement import RefinementContext
+    from domain.refinement import ChatMessage, ChatRole, RefinementContext
 
     ctx = RefinementContext(
         project_name="p",

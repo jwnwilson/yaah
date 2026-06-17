@@ -1,6 +1,6 @@
 import pytest
 
-from domain.models import WorkItemStatus as S
+from domain.projects import WorkItemStatus as S
 from domain.transitions import InvalidTransition, validate_transition
 
 

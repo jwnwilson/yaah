@@ -13,13 +13,16 @@
 ```
 ui/              # React/Vite/Tailwind SPA (features/ + ui/ primitives + lib/api)
 src/
-  domain/        # pure business logic, no I/O
-    models.py        # Pydantic DTOs (Project, WorkItem, Team, AgentDefinition, Run, ...)
+  domain/        # pure business logic, no I/O — each entity model lives with its logic
+    base.py          # shared id/timestamp factories (new_id, utc_now)
+    projects/        # task-management domain: projects, work_items, epics (re-exported via __init__)
+    runs.py · messages.py · audit.py · attachments.py · notifications.py
+    usage.py · refinement.py · errors.py · permissions.py · scm.py
     transitions/     # work-item + run state machines, run-stage pipeline
     orchestration/   # lead-driven orchestration DTOs/guards + orchestrator prompt contract
-    agent/           # agent-execution policy: capabilities, invocation, prompts, runtime
-    errors.py · memory.py · notifications.py · permissions.py · refinement.py · scm.py
-    usage.py · teams.py
+    agent/           # agent domain: models.py (AgentRole/Team/AgentDefinition), teams.py (default
+                     #   team factory), memory.py (role memory + proposals), capability_grants.py
+                     #   (Skill/McpServer/Secret) + execution policy: capabilities, invocation, prompts, runtime
   adapters/
     database/    # ports.py (Repository/UnitOfWork protocols), orm, repository, uow, engine
     storage/     # StoragePort + LocalStorageAdapter (run workspaces / blobs)
@@ -253,7 +256,7 @@ run/stage/attempt/model and by source file) so Temporal replay/resume never doub
 
 ## Adding a new entity (checklist)
 
-1. Domain DTO in `domain/models.py` (immutable updates via `model_copy`).
+1. Domain DTO in the owning `domain/<concept>.py` module — co-located with that concept's logic, importing `new_id`/`utc_now` from `domain/base.py` (immutable updates via `model_copy`).
 2. ORM row class in `adapters/database/orm.py` (`id`, `owner_id` if owned, timestamps).
 3. Repository subclass in `adapters/database/repositories.py` (set `orm_model`, `dto`).
 4. Property on `SqlUnitOfWork` exposing it.

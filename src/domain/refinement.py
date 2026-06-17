@@ -1,10 +1,36 @@
-"""Pure refinement policy: proposal shapes, validation, system prompt. No I/O."""
+"""Chat-session entities + pure refinement policy: proposal shapes, validation,
+system prompt. No I/O."""
 
+from datetime import datetime
+from enum import StrEnum
 from typing import Callable
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from domain.models import ChatMessage, WorkItem, WorkItemKind
+from domain.base import new_id, utc_now
+from domain.projects import WorkItem, WorkItemKind
+
+
+class ChatRole(StrEnum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
+class ChatSession(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    project_id: str
+    epic_id: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class ChatMessage(BaseModel):
+    id: str = Field(default_factory=new_id)
+    owner_id: str
+    session_id: str
+    role: ChatRole
+    content: str
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class WorkItemProposal(BaseModel):

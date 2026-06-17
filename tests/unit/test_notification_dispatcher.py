@@ -1,6 +1,6 @@
 from adapters.agent.notify.inapp import FakeChannel, InAppChannel
 from adapters.agent.notify.ports import NotificationDispatcher
-from domain.models import Notification, NotificationCategory, NotificationSource
+from domain.notifications import Notification, NotificationCategory, NotificationSource
 
 
 def _n():

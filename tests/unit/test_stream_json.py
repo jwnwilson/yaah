@@ -1,7 +1,7 @@
 import json
 
 from adapters.agent.runtime.stream_json import parse
-from domain.models import RunStage
+from domain.runs import RunStage
 
 
 def _lines(*objs):

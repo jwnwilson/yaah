@@ -1,6 +1,6 @@
 """Pure per-stage prompt + tool policy for the coding agent. No I/O."""
 
-from domain.models import RunStage
+from domain.runs import RunStage
 
 _EDIT_TOOLS = ["Read", "Edit", "Write", "Bash"]
 _READ_TOOLS = ["Read", "Bash"]

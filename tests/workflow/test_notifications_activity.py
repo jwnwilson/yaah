@@ -6,15 +6,9 @@ from adapters.agent.notify.inapp import FakeChannel
 from adapters.agent.notify.ports import NotificationDispatcher
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
-from domain.models import (
-    NotificationCategory,
-    Project,
-    Run,
-    RunEventType,
-    WorkItem,
-    WorkItemKind,
-    WorkItemStatus,
-)
+from domain.notifications import NotificationCategory
+from domain.projects import Project, WorkItem, WorkItemKind, WorkItemStatus
+from domain.runs import Run, RunEventType
 from interactors.temporal.activities import RunActivities
 
 

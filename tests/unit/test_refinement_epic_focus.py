@@ -1,5 +1,5 @@
 """Unit tests for epic-focused refinement contract additions."""
-from domain.models import WorkItem, WorkItemKind
+from domain.projects import WorkItem, WorkItemKind
 from domain.refinement import (
     EpicSpecEdit,
     RefinementContext,

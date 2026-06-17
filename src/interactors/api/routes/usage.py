@@ -3,8 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from adapters.database.ports import UnitOfWork
-from domain.models import UsageRecord
-from domain.usage import TokenUsage, group_by, rollup
+from domain.usage import TokenUsage, UsageRecord, group_by, rollup
 from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
 

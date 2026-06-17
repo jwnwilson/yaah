@@ -1,11 +1,7 @@
 import pytest
 
-from domain.models import (
-    AgentRole,
-    MessageKind,
-    MessageRecipientKind,
-    MessageSenderKind,
-)
+from domain.agent.models import AgentRole
+from domain.messages import MessageKind, MessageRecipientKind, MessageSenderKind
 from domain.orchestration import (
     AgentOutcome,
     AgentReport,

@@ -1,4 +1,4 @@
-from domain.models import Notification
+from domain.notifications import Notification
 
 
 class InAppChannel:

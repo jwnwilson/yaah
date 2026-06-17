@@ -1,7 +1,8 @@
 from adapters.database.engine import make_engine, make_session_factory
 from adapters.database.orm import Base
 from adapters.database.uow import SqlUnitOfWork
-from domain.models import AgentRole, RoleMemoryEntry
+from domain.agent.memory import RoleMemoryEntry
+from domain.agent.models import AgentRole
 
 
 def _factory():

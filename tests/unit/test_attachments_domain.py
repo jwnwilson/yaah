@@ -1,12 +1,12 @@
 """Unit tests for pure attachment policy."""
 from domain.attachments import (
     ALLOWED_ATTACHMENT_TYPES,
+    WorkItemAttachment,
     attachment_storage_key,
     canonical_extension,
     is_inline_image,
     sanitize_filename,
 )
-from domain.models import WorkItemAttachment
 
 
 def test_canonical_extension_accepts_allowlisted():

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from adapters.database.orm import Base, ProjectRow
 from adapters.database.repository import SqlRepository
 from domain.errors import InvalidFilter, RecordNotFound
-from domain.models import Project
+from domain.projects import Project
 
 
 class ProjectRepo(SqlRepository[Project]):

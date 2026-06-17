@@ -1,5 +1,5 @@
 from domain.agent import AgentEvent
-from domain.models import RunStage
+from domain.runs import RunStage
 
 
 def test_agent_event_accepts_notification_type():

@@ -40,13 +40,24 @@ ui/src/          # React + Vite frontend (pnpm)
   components/ui/    # design-system primitives (Button, Dialog, Card, …) + shared composed components
   lib/api/         # typed envelope API client + per-domain modules + React Query key factories
 src/
-  domain/        # pure business logic, no I/O
-    models.py    # Project, WorkItem (epic/feature/task), Team, AgentDefinition, Run
+  domain/        # pure business logic, no I/O — entity models live with the logic that owns them
+    base.py         # shared id/timestamp factories (new_id, utc_now)
+    projects/       # task-management domain: projects.py (Project + AutonomyLevel), work_items.py
+                    #   (WorkItem + kind/status enums), epics.py (epic-board read-model); re-exported via __init__
+    runs.py         # Run + RunStage/RunStatus/RunEvent
+    messages.py     # Message + inter-agent mailbox enums
+    audit.py        # AuditEvent + AuditAction
+    attachments.py  # WorkItemAttachment + attachment policy
+    notifications.py # Notification model + event→notification policy
+    usage.py        # UsageRecord + TokenUsage rollups
+    refinement.py   # ChatSession/ChatMessage + refinement proposal policy
+    errors.py       # typed persistence errors (RecordNotFound, IntegrityConflict, InvalidFilter)
     transitions/    # state-progression rules (work-item + run state machines, run-stage pipeline)
     orchestration/  # lead-driven orchestration DTOs, guards, mappings + orchestrator prompt/parse contract
-    agent/          # agent-execution policy (runtime protocol/DTOs, capability manifest, per-stage prompts, CLI invocation)
-    teams.py     # default team factory (lead + engineer + QA)
-    errors.py    # typed persistence errors (RecordNotFound, IntegrityConflict, InvalidFilter)
+    agent/          # agent domain: models.py (AgentRole, Team, AgentDefinition), teams.py (default team
+                    #   factory), memory.py (RoleMemoryEntry, MemoryProposal + project-memory helpers),
+                    #   capability_grants.py (Skill, McpServer, Secret), + execution policy (runtime DTOs,
+                    #   capability manifest assembly, prompts, CLI invocation)
   adapters/      # concrete port implementations
     database/    # ports.py (Repository/UnitOfWork protocols + PaginatedResult), orm.py, repository.py, repositories.py, uow.py, engine.py
   interactors/   # entry points: wiring only, no business logic
@@ -57,7 +68,7 @@ tests/
   integration/   # API via TestClient
 ```
 
-> Placement rules: persistence ports (Repository/UnitOfWork protocols) live with their impl in `adapters/database/ports.py`; business logic in `domain/` (no argparse, no I/O, no adapter imports); port implementations in `adapters/`; reusable app-agnostic modules in `lib/`; wiring/startup in `interactors/`. No `scripts/` folder.
+> Placement rules: persistence ports (Repository/UnitOfWork protocols) live with their impl in `adapters/database/ports.py`; business logic in `domain/` (no argparse, no I/O, no adapter imports), with each entity model co-located in the domain module that owns it (no central `models.py`); port implementations in `adapters/`; reusable app-agnostic modules in `lib/`; wiring/startup in `interactors/`. No `scripts/` folder.
 
 ## Key conventions
 

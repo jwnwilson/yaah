@@ -1,7 +1,8 @@
 from fastapi.testclient import TestClient
 
 from adapters.database.uow import SqlUnitOfWork
-from domain.models import MemoryProposal, Run
+from domain.agent.memory import MemoryProposal
+from domain.runs import Run
 from interactors.api.app import create_app
 from interactors.api.settings import Settings
 
@@ -56,7 +57,7 @@ def test_get_run_memory_404_for_unknown_run():
 
 
 def _seed_project(c: TestClient) -> None:
-    from domain.models import Project
+    from domain.projects import Project
     uow = SqlUnitOfWork(c.app.state.session_factory, required_filters={"owner_id": "dev-user"})
     with uow.transaction():
         uow.projects.create(Project(id="p1", owner_id="dev-user", name="P", local_path="/x"))

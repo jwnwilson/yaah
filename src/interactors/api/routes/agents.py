@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
-from domain.models import AgentDefinition, AgentRole
+from domain.agent.models import AgentDefinition, AgentRole
 from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
 

@@ -1,6 +1,5 @@
 """Unit tests for the pure epic-board read-model."""
-from domain.epics import build_epic_board
-from domain.models import WorkItem, WorkItemKind, WorkItemStatus
+from domain.projects import WorkItem, WorkItemKind, WorkItemStatus, build_epic_board
 
 
 def _epic() -> WorkItem:

@@ -3,7 +3,8 @@ from sqlalchemy.orm import sessionmaker
 
 from adapters.database.orm import Base
 from adapters.database.repositories import AgentDefinitionRepository, WorkItemRepository
-from domain.models import AgentDefinition, AgentRole, WorkItem, WorkItemKind
+from domain.agent.models import AgentDefinition, AgentRole
+from domain.projects import WorkItem, WorkItemKind
 
 
 def _session():
@@ -36,7 +37,8 @@ def test_capability_repos_owner_scoped_and_agent_grants():
     from adapters.database.engine import make_engine, make_session_factory
     from adapters.database.orm import Base
     from adapters.database.uow import SqlUnitOfWork
-    from domain.models import AgentDefinition, Skill, Team
+    from domain.agent.capability_grants import Skill
+    from domain.agent.models import AgentDefinition, Team
 
     engine = make_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -60,7 +62,8 @@ def test_audit_events_owner_scoped():
     from adapters.database.engine import make_engine, make_session_factory
     from adapters.database.orm import Base
     from adapters.database.uow import SqlUnitOfWork
-    from domain.models import AuditAction, AuditEvent, RunStage
+    from domain.audit import AuditAction, AuditEvent
+    from domain.runs import RunStage
 
     engine = make_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -81,7 +84,7 @@ def test_secret_roundtrips_encrypted_value():
     from adapters.database.engine import make_engine, make_session_factory
     from adapters.database.orm import Base
     from adapters.database.uow import SqlUnitOfWork
-    from domain.models import Secret
+    from domain.agent.capability_grants import Secret
 
     engine = make_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -97,7 +100,7 @@ def test_chat_repos_owner_scoped():
     from adapters.database.engine import make_engine, make_session_factory
     from adapters.database.orm import Base
     from adapters.database.uow import SqlUnitOfWork
-    from domain.models import ChatMessage, ChatRole, ChatSession
+    from domain.refinement import ChatMessage, ChatRole, ChatSession
 
     engine = make_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)

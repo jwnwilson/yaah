@@ -1,6 +1,6 @@
 from domain.agent import prompts
 from domain.agent.prompts import for_stage
-from domain.models import RunStage
+from domain.runs import RunStage
 
 
 def test_implement_prompt_has_edit_tools_and_criteria():
@@ -52,7 +52,7 @@ def test_learn_prompt_requests_additions_and_deletions():
 
 def test_for_stage_learn_includes_task_context():
     from domain.agent.prompts import for_stage
-    from domain.models import RunStage
+    from domain.runs import RunStage
     prompt, tools = for_stage(RunStage.LEARN, "Add OAuth login",
                               ["users can log in with Google"], body="see ticket")
     assert "project memory" in prompt.lower()
@@ -62,8 +62,8 @@ def test_for_stage_learn_includes_task_context():
 
 
 def test_memory_pointer_with_and_without_role():
+    from domain.agent.models import AgentRole
     from domain.agent.prompts import memory_pointer
-    from domain.models import AgentRole
     p = memory_pointer(AgentRole.BACKEND, role_digest="- prefer small PRs")
     assert "CLAUDE.md" in p and "docs/adr" in p
     assert "backend" in p and "prefer small PRs" in p

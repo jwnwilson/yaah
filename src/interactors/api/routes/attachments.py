@@ -5,13 +5,13 @@ from adapters.database.ports import UnitOfWork
 from adapters.storage.ports import StoragePort
 from domain.attachments import (
     ALLOWED_ATTACHMENT_TYPES,
+    WorkItemAttachment,
     attachment_storage_key,
     canonical_extension,
     is_inline_image,
     sanitize_filename,
 )
 from domain.errors import RecordNotFound
-from domain.models import WorkItemAttachment
 from interactors.api.deps import get_uow, storage
 from interactors.api.envelope import ok
 

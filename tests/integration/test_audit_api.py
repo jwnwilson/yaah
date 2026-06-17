@@ -14,7 +14,7 @@ def _client():
 def _seed(client):
     app = client.app
     from adapters.database.uow import SqlUnitOfWork
-    from domain.models import AuditAction, AuditEvent
+    from domain.audit import AuditAction, AuditEvent
     uow = SqlUnitOfWork(app.state.session_factory, required_filters={"owner_id": "dev-user"})
     with uow.transaction():
         uow.audit_events.create(AuditEvent(owner_id="dev-user", run_id="r1", actor="lead",
@@ -76,7 +76,7 @@ def test_audit_excludes_other_owner_events():
     _seed(client)
     app = client.app
     from adapters.database.uow import SqlUnitOfWork
-    from domain.models import AuditAction, AuditEvent
+    from domain.audit import AuditAction, AuditEvent
     other = SqlUnitOfWork(app.state.session_factory, required_filters={"owner_id": "other-user"})
     with other.transaction():
         other.audit_events.create(AuditEvent(owner_id="other-user", run_id="ro", actor="lead",

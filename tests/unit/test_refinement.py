@@ -1,6 +1,6 @@
 import pytest
 
-from domain.models import WorkItemKind
+from domain.projects import WorkItemKind
 from domain.refinement import (
     RefinementOutput,
     WorkItemProposal,

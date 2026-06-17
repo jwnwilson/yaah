@@ -1,5 +1,6 @@
-from domain.models import AgentRole, Run, RunStatus, Team
-from domain.teams import default_team
+from domain.agent.models import AgentRole, Team
+from domain.agent.teams import default_team
+from domain.runs import Run, RunStatus
 
 
 def test_default_team_has_all_six_roles_in_order():

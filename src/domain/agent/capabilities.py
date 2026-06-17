@@ -2,7 +2,9 @@
 
 from pydantic import BaseModel
 
-from domain.models import AgentDefinition, AgentRole, McpServer, RunStage, Skill
+from domain.agent.capability_grants import McpServer, Skill
+from domain.agent.models import AgentDefinition, AgentRole
+from domain.runs import RunStage
 
 _STAGE_ROLE: dict[RunStage, AgentRole] = {
     RunStage.PLAN: AgentRole.LEAD,

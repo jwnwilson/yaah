@@ -2,13 +2,8 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
-from domain.models import (
-    Message,
-    MessageKind,
-    MessageRecipientKind,
-    MessageSenderKind,
-    utc_now,
-)
+from domain.base import utc_now
+from domain.messages import Message, MessageKind, MessageRecipientKind, MessageSenderKind
 from interactors.api.auth import current_user_id
 from interactors.api.deps import get_uow
 from interactors.api.envelope import ok
