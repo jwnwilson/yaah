@@ -145,7 +145,7 @@ Built on the orchestrator cutover; each line is merged.
 First end-to-end **real Claude** runs through the orchestrator (worker on the host `claude` CLI,
 `YAAH_AGENT_RUNTIME=claude_code`, no API key). Confirmed: the orchestrator drives plan → implement
 → verify → PR, and the **revived curator is dispatched and runs**, producing sensible memory
-content. Two real fixes shipped from the exercise, plus one filed follow-up:
+content. Several fixes/enablers shipped from the exercise:
 
 - **Absolute storage base** (#131) — the worker hardcoded a cwd-relative `data/workspaces`, so a
   host worker run from the repo nested agent workspaces *inside* the repo and a capable agent walked
@@ -154,13 +154,18 @@ content. Two real fixes shipped from the exercise, plus one filed follow-up:
 - **`open_pr` robustness** (#133) — `commit_all` no longer aborts the run when an agent leaves an
   unstageable path (a nested no-commit repo, an explicitly-ignored path); it stages what it can
   (`git add --ignore-errors`, non-raising) and commits that.
+- **Run status on failure** (#136, closed #134) — an unhandled activity failure now persists a
+  terminal `RunStatus.FAILED` (+ `ERROR` event) instead of leaving the run row stuck in `running`;
+  `run` wraps the body (`_drive`) in a try/except that re-raises so Temporal still records the failure.
+- **PAT GitHub forge** (#137 + compose #138) — a Personal Access Token alternative to the GitHub App
+  for the remote profile: `GitHubTokenForge` (push basic-auth + PR REST call), selected by
+  `YAAH_GITHUB_TOKEN`; the worker container forwards `YAAH_GITHUB_TOKEN`/`YAAH_GITHUB_REPO`. Lowers
+  the bar to a real-PR remote run to one token.
 - **Known limitation (not a feature bug):** on an **unsandboxed host**, a capable agent recognises
   it's a yaah agent and navigates the host filesystem to the real repo, so the run workspace stays
   empty → no `MemoryProposal`. This is by design solved by the **Docker worker** (`read_only`, mounts
-  only its workspace volume) — which needs `ANTHROPIC_API_KEY` in the container. A clean
-  host-captured-proposal demo is therefore environment-blocked, not feature-blocked.
-- **Filed:** issue **#134** — an unhandled activity failure leaves the run row stuck in `running`
-  (no terminal `FAILED` persisted; only handled branches persist it).
+  only its workspace volume) — which needs `ANTHROPIC_API_KEY` in the container. The sandboxed Docker
+  path (local or remote/PAT) is now wired but **not yet exercised end-to-end**.
 
 ## Architecture snapshot (current)
 
@@ -186,25 +191,25 @@ content. Two real fixes shipped from the exercise, plus one filed follow-up:
 
 Ordered roughly by leverage.
 
-1. **Sandboxed real runs** — real Claude runs are validated on the **host**, but a host worker is
-   unsandboxed: a capable agent navigates the host filesystem to the real repo (see Phase B
-   real-run validation). Production real runs must use the **Docker worker** (`read_only`, workspace
-   volume only), which needs `ANTHROPIC_API_KEY` in the container; that path isn't exercised yet.
-2. **Run status on failure** — issue **#134**: an unhandled activity failure leaves the run row
-   stuck in `running` (no terminal `FAILED` persisted). Small, well-scoped fix.
-3. **Deployment unproven** — TODO.md's top three: validate locally, ship CI/CD, validate
+1. **Sandboxed real runs not yet exercised** — real Claude runs are validated on the **host**, but a
+   host worker is unsandboxed: a capable agent navigates the host filesystem to the real repo (see
+   Phase B real-run validation). The **Docker worker** (`read_only`, workspace-volume only) is the
+   fix and is now fully wired for both local and remote/PAT runs (#137/#138) — but needs
+   `ANTHROPIC_API_KEY` in the container and **hasn't gone through an end-to-end run yet**.
+2. **Deployment unproven** — TODO.md's top three: validate locally, ship CI/CD, validate
    remotely. The deployment spec (K8s/Terraform/GitHub Actions) is written but nothing is
    shipped. Auth0 wiring deferred; single dev-user only.
-4. **Budget enforcement** — usage is tracked but never gates a run; no caps, no pause-on-
+3. **Budget enforcement** — usage is tracked but never gates a run; no caps, no pause-on-
    breach. A5e has the alert seam but it's inert until a threshold is configurable (Phase C).
-5. **Project-management UX** — epic→feature breakdown (#121) and ticket attachments (#126) shipped;
+4. **Project-management UX** — epic→feature breakdown (#121) and ticket attachments (#126) shipped;
    still missing an epic detail view and richer artifact handling (TODO.md).
-6. **Phase C remainder** — run inspector (transcripts/costs), autonomy-dial UI, model
-   registry / validated alias picker, LiteLLM gateway config UI, budget limits UI.
-7. **Phase B remainder** — live concurrent quiescence + inter-agent messaging at scale, pgvector
+5. **Phase C remainder** — **run inspector (transcripts/costs)** — spec in
+   `docs/specs/2026-06-17-run-inspector-design.md` — autonomy-dial UI, model registry / validated
+   alias picker, LiteLLM gateway config UI, budget limits UI.
+6. **Phase B remainder** — live concurrent quiescence + inter-agent messaging at scale, pgvector
    RAG capability, a second runtime adapter (OpenHands/CrewAI), multi-user RBAC. (Parallel same-role
    engineers, role memory, and the full 6-role roster are now shipped.)
-8. **Smaller deferrals** — memory-branch GC, conflict-resolution UI, message threading/replies,
+7. **Smaller deferrals** — memory-branch GC, conflict-resolution UI, message threading/replies,
    realtime sockets (polling only today), secret rotation/versioning, response/log redaction
    of agent-echoed secrets (the descoped C3c egress-broker work).
 
