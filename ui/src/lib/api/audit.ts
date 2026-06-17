@@ -1,17 +1,8 @@
 import { apiGetPage } from "./client";
 import type { PageMeta } from "./client";
+import type { AuditAction, AuditEvent } from "./types";
 
-export type AuditAction = "capability_granted" | "tool_allowed" | "tool_denied";
-
-export interface AuditEvent {
-  id: string;
-  run_id: string;
-  stage: string | null;
-  actor: string;
-  action: AuditAction;
-  detail: Record<string, unknown>;
-  created_at: string;
-}
+export type { AuditAction, AuditEvent } from "./types";
 
 export interface AuditParams {
   run_id?: string;

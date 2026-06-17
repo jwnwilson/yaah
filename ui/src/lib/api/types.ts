@@ -98,7 +98,7 @@ export type AuditAction = "capability_granted" | "tool_allowed" | "tool_denied";
 export interface AuditEvent {
   id: string;
   run_id: string;
-  stage: RunStage | null;
+  stage: RunStage | string | null;
   actor: string;
   action: AuditAction;
   detail: Record<string, unknown>;
