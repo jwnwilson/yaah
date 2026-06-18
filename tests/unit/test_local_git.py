@@ -23,29 +23,78 @@ def _bare_repo_with_commit() -> str:
     return bare
 
 
+def test_remote_caches_clone_then_worktrees_per_run():
+    # Remote profile: clone the repo ONCE into a local cache, then `git worktree add`
+    # per run off that cache (one network clone; every run is worktree-based).
+    with tempfile.TemporaryDirectory() as cache_root:
+        bare = _bare_repo_with_commit()
+        g = LocalGit(cache_root=cache_root)
+        ws1 = tempfile.mkdtemp()
+        g.prepare(repo_ref=bare, workspace_path=ws1, branch="agent/t1",
+                  mode="clone", base="main")
+        # ws1 is a worktree: its .git is a FILE pointing back at the cache.
+        gitfile = Path(ws1) / ".git"
+        assert gitfile.is_file()
+        # exactly one cache dir under cache_root
+        cache_dirs = [p for p in Path(cache_root).iterdir() if p.is_dir()]
+        assert len(cache_dirs) == 1
+        cache = cache_dirs[0]
+        assert str(cache) in gitfile.read_text()
+        # the seeded file from the bare repo is present in the worktree
+        assert (Path(ws1) / "README.md").exists()
+        # sentinel inside the cache proves a second run reuses (not re-clones) it
+        (cache / "SENTINEL").write_text("x")
+        ws2 = tempfile.mkdtemp()
+        g.prepare(repo_ref=bare, workspace_path=ws2, branch="agent/t2",
+                  mode="clone", base="main")
+        assert (Path(ws2) / ".git").is_file()
+        assert (cache / "SENTINEL").exists()  # cache reused/fetched, not re-cloned
+        cache_dirs_after = [p for p in Path(cache_root).iterdir() if p.is_dir()]
+        assert len(cache_dirs_after) == 1
+
+
+def test_remote_worktree_commit_push_roundtrip():
+    with tempfile.TemporaryDirectory() as cache_root:
+        bare = _bare_repo_with_commit()
+        g = LocalGit(cache_root=cache_root)
+        ws = tempfile.mkdtemp()
+        g.prepare(repo_ref=bare, workspace_path=ws, branch="agent/t1",
+                  mode="clone", base="main")
+        assert g.current_branch(ws) == "agent/t1"
+        (Path(ws) / "new.txt").write_text("work")
+        assert g.commit_all(ws, "add new") is True
+        g.push(ws, "agent/t1")
+        out = subprocess.run(
+            ["git", "-C", bare, "branch", "--list", "agent/t1"],
+            capture_output=True, text=True, check=True,
+        )
+        assert "agent/t1" in out.stdout
+
+
 def test_clone_commit_push_roundtrip():
     bare = _bare_repo_with_commit()
     ws = tempfile.mkdtemp()
-    g = LocalGit()
-    g.prepare(repo_ref=bare, workspace_path=ws, branch="agent/t1", mode="clone")
-    assert g.current_branch(ws) == "agent/t1"
-    (Path(ws) / "new.txt").write_text("work")
-    assert g.commit_all(ws, "add new") is True
-    g.push(ws, "agent/t1")
-    # branch now exists on the bare remote
-    out = subprocess.run(
-        ["git", "-C", bare, "branch", "--list", "agent/t1"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    assert "agent/t1" in out.stdout
+    with tempfile.TemporaryDirectory() as cache_root:
+        g = LocalGit(cache_root=cache_root)
+        g.prepare(repo_ref=bare, workspace_path=ws, branch="agent/t1", mode="clone")
+        assert g.current_branch(ws) == "agent/t1"
+        (Path(ws) / "new.txt").write_text("work")
+        assert g.commit_all(ws, "add new") is True
+        g.push(ws, "agent/t1")
+        # branch now exists on the bare remote
+        out = subprocess.run(
+            ["git", "-C", bare, "branch", "--list", "agent/t1"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert "agent/t1" in out.stdout
 
 
 def test_commit_all_false_when_no_changes():
     bare = _bare_repo_with_commit()
     ws = tempfile.mkdtemp()
-    g = LocalGit()
+    g = LocalGit(cache_root=tempfile.mkdtemp())
     g.prepare(repo_ref=bare, workspace_path=ws, branch="agent/t2", mode="clone")
     assert g.commit_all(ws, "noop") is False
 
@@ -53,7 +102,7 @@ def test_commit_all_false_when_no_changes():
 def test_commit_all_excludes_scratch_dirs():
     bare = _bare_repo_with_commit()
     ws = tempfile.mkdtemp()
-    g = LocalGit()
+    g = LocalGit(cache_root=tempfile.mkdtemp())
     g.prepare(repo_ref=bare, workspace_path=ws, branch="agent/t3", mode="clone")
     (Path(ws) / "WELCOME.md").write_text("hi")  # real work
     (Path(ws) / ".orchestration").mkdir()
@@ -71,7 +120,7 @@ def test_commit_all_excludes_scratch_dirs():
 def test_commit_all_false_when_only_scratch_changes():
     bare = _bare_repo_with_commit()
     ws = tempfile.mkdtemp()
-    g = LocalGit()
+    g = LocalGit(cache_root=tempfile.mkdtemp())
     g.prepare(repo_ref=bare, workspace_path=ws, branch="agent/t4", mode="clone")
     (Path(ws) / ".orchestration").mkdir()
     (Path(ws) / ".orchestration" / "decision.json").write_text("{}")
@@ -159,7 +208,7 @@ def test_merge_into_base_noop_when_branch_equals_base():
 
 def test_prepare_worktree_branches_off_base():
     bare = _bare_repo_with_commit()
-    g = LocalGit()
+    g = LocalGit(cache_root=tempfile.mkdtemp())
     base_ws = tempfile.mkdtemp()
     g.prepare(repo_ref=bare, workspace_path=base_ws, branch="agent/t1", mode="clone")
     (Path(base_ws) / "base.txt").write_text("on task branch")
@@ -179,7 +228,7 @@ def _commit_file(g, ws, name, content, msg):
 
 def test_merge_branch_fast_forward_and_ahead():
     bare = _bare_repo_with_commit()
-    g = LocalGit()
+    g = LocalGit(cache_root=tempfile.mkdtemp())
     main_ws = tempfile.mkdtemp()
     g.prepare(repo_ref=bare, workspace_path=main_ws, branch="agent/t1", mode="clone")
     assert g.has_commits_ahead(main_ws, "main") is False
@@ -195,7 +244,7 @@ def test_merge_branch_fast_forward_and_ahead():
 
 def test_merge_branch_conflict_aborts_clean():
     bare = _bare_repo_with_commit()
-    g = LocalGit()
+    g = LocalGit(cache_root=tempfile.mkdtemp())
     main_ws = tempfile.mkdtemp()
     g.prepare(repo_ref=bare, workspace_path=main_ws, branch="agent/t1", mode="clone")
     eng_ws = tempfile.mkdtemp()
@@ -214,7 +263,7 @@ def test_merge_branch_conflict_aborts_clean():
 
 def test_merge_branch_nonexistent_branch_raises():
     bare = _bare_repo_with_commit()
-    g = LocalGit()
+    g = LocalGit(cache_root=tempfile.mkdtemp())
     main_ws = tempfile.mkdtemp()
     g.prepare(repo_ref=bare, workspace_path=main_ws, branch="agent/t1", mode="clone")
     # No merge ever starts (branch does not exist), so the real cause must surface
@@ -234,7 +283,7 @@ def test_commit_all_excludes_nested_engineer_worktree():
     from domain.scm import WORKSPACE_SCRATCH
 
     bare = _bare_repo_with_commit()
-    g = LocalGit()
+    g = LocalGit(cache_root=tempfile.mkdtemp())
     main_ws = tempfile.mkdtemp()
     g.prepare(repo_ref=bare, workspace_path=main_ws, branch="agent/t1", mode="clone")
     eng_ws = str(Path(main_ws) / ".yaah-eng" / "backend-1-0")

@@ -34,7 +34,9 @@ scope** — they only become exercisable when a real agent executes inside the c
 - **Pure `domain/scm.py`**: branch-name policy (`agent/<task-id>`) + PR-body assembly.
 - **Real PROVISION**: provision a per-run workspace (storage prefix `runs/{run_id}/`), and
   populate it per profile — `LocalWorktreeWorkspace` (git worktree off the project's local repo)
-  or `GitCloneWorkspace` (fresh clone using a GitHub App token).
+  or, for remote, clone once into a local cache (`~/.yaah/cache/<repo>`) using a GitHub App
+  token, then `git worktree add` per run off that cache (one network clone; worktree-based
+  like local).
 - **Real PR stage**: commit the workspace diff to `agent/<task-id>`; local → finalize the
   branch + record it; remote → push + open PR + record `pr_url`.
 - **FakeAgentRuntime change**: IMPLEMENT writes a real deterministic file into the workspace via
@@ -93,7 +95,8 @@ src/
 class GitPort(Protocol):
     def prepare(self, *, repo_ref: str, workspace_path: str, branch: str) -> None: ...
         # local profile: `git worktree add` off repo_ref onto a new branch at workspace_path
-        # remote profile: `git clone` repo_ref into workspace_path, checkout new branch
+        # remote profile: clone repo_ref once into a local cache, then `git worktree add`
+        #   per run off that cache onto a new branch at workspace_path
     def commit_all(self, workspace_path: str, message: str) -> bool: ...   # returns False if no diff
     def push(self, workspace_path: str, branch: str, *, token: str | None = None) -> None: ...
     def current_branch(self, workspace_path: str) -> str: ...
@@ -107,8 +110,10 @@ class GitForgePort(Protocol):
 ### Profile wiring (worker)
 - **local**: `LocalGit` with `prepare` = `git worktree add` off `project.local_path`; PR stage
   commits + records the branch (no push, no forge). `GitForgePort` = a no-op/Fake.
-- **remote**: `LocalGit` with `prepare` = clone `project.repo_url` using a token from
-  `GitHubApp.installation_token()`; PR stage pushes + `GitHubApp.open_pull_request(...)`.
+- **remote**: `LocalGit` with `prepare` = clone `project.repo_url` once into a local cache
+  (`~/.yaah/cache/<repo>`) using a token from `GitHubApp.installation_token()`, then
+  `git worktree add` per run off that cache (one network clone; worktree-based like local);
+  PR stage pushes + `GitHubApp.open_pull_request(...)`.
 
 ## 5. Pipeline integration (Temporal activities)
 
