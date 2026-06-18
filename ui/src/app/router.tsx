@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, type RouteObject } from "react-router-dom";
+import BacklogPage from "@/modules/backlog/BacklogPage";
 import BoardPage from "@/modules/board/BoardPage";
 import { InboxPage } from "@/modules/inbox/InboxPage";
 import { AgentsPage } from "@/modules/manage/AgentsPage";
@@ -22,6 +23,7 @@ export const routes: RouteObject[] = [
     children: [
       { path: "/", element: <ProjectsPage /> },
       { path: "/projects/:projectId", element: <BoardPage /> },
+      { path: "/projects/:projectId/backlog", element: <BacklogPage /> },
       { path: "/runs", element: <RunsPage /> },
       { path: "/runs/:runId", element: <RunInspectorPage /> },
       { path: "/team", element: <TeamPage /> },

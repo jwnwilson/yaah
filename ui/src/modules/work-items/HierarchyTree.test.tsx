@@ -23,7 +23,7 @@ function renderTree(onSelectFeature = () => {}) {
 
 test("lists epics and features and creates an epic", async () => {
   const items: WorkItem[] = [
-    { id: "e1", project_id: "p1", owner_id: "u", kind: "epic", parent_id: null, title: "Epic One", body: "", acceptance_criteria: [], status: "draft", assignee_agent_id: null, created_at: "x", updated_at: "x" },
+    { id: "e1", project_id: "p1", owner_id: "u", kind: "epic", parent_id: null, title: "Epic One", body: "", acceptance_criteria: [], status: "draft", assignee_agent_id: null, active: false, created_at: "x", updated_at: "x" },
   ];
   server.use(
     http.get("/api/projects/p1/work-items", ({ request }) => {
@@ -34,7 +34,7 @@ test("lists epics and features and creates an epic", async () => {
     }),
     http.post("/api/projects/p1/work-items", async ({ request }) => {
       const body = (await request.json()) as { title: string; kind: WorkItemKind };
-      const created: WorkItem = { id: "e2", project_id: "p1", owner_id: "u", kind: body.kind, parent_id: null, title: body.title, body: "", acceptance_criteria: [], status: "draft", assignee_agent_id: null, created_at: "x", updated_at: "x" };
+      const created: WorkItem = { id: "e2", project_id: "p1", owner_id: "u", kind: body.kind, parent_id: null, title: body.title, body: "", acceptance_criteria: [], status: "draft", assignee_agent_id: null, active: false, created_at: "x", updated_at: "x" };
       items.push(created);
       return HttpResponse.json({ success: true, data: created, error: null }, { status: 201 });
     }),

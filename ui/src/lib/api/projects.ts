@@ -1,4 +1,4 @@
-import { apiGetPage, apiPost } from "./client";
+import { apiGetPage, apiPatch, apiPost } from "./client";
 import type { Project } from "./types";
 
 export const projectKeys = {
@@ -18,4 +18,11 @@ export async function listProjects(): Promise<Project[]> {
 
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   return apiPost<Project>("/projects", input);
+}
+
+export async function updateProject(
+  projectId: string,
+  input: { max_concurrent_runs?: number; team_id?: string; name?: string },
+): Promise<Project> {
+  return apiPatch<Project>(`/projects/${projectId}`, input);
 }
