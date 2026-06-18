@@ -96,3 +96,21 @@ def test_delete_and_delete_many(session):
         repo.get(p.id)
     assert repo.delete_many({"name": "b"}) == 1
     assert repo.list().total == 0
+
+
+def test_get_for_update_returns_row():
+    # SQLite ignores FOR UPDATE, but the code path must be exercised and still return the row.
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from adapters.database.orm import Base
+    from adapters.database.repositories import ProjectRepository
+    from domain.projects import Project
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    repo = ProjectRepository(session, required_filters={"owner_id": "o"})
+    created = repo.create(Project(owner_id="o", name="p", repo_url="r"))
+    locked = repo.get(created.id, for_update=True)
+    assert locked.id == created.id
