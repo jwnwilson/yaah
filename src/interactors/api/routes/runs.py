@@ -5,6 +5,7 @@ from adapters.database.ports import UnitOfWork
 from adapters.git.ports import ForgeError, GitError
 from domain.agent.memory import MemoryProposalStatus
 from domain.base import utc_now
+from domain.errors import RecordNotFound
 from domain.projects import WorkItemKind, WorkItemStatus
 from domain.runs import Run, RunStatus
 from domain.transitions import validate_transition
@@ -75,6 +76,24 @@ def list_runs(task_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
     return ok(
         [r.model_dump(mode="json") for r in page.results],
         meta={"total": page.total, "page_size": page.page_size, "page_number": page.page_number},
+    )
+
+
+@router.get("/runs")
+def list_all_runs(uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        page = uow.runs.list(order_by="-created_at", page_size=100)
+        titles: dict[str, str | None] = {}
+        for tid in {r.task_id for r in page.results}:
+            try:
+                titles[tid] = uow.work_items.get(tid).title
+            except RecordNotFound:
+                titles[tid] = None
+    return ok(
+        [{**r.model_dump(mode="json"), "task_title": titles.get(r.task_id)}
+         for r in page.results],
+        meta={"total": page.total, "page_size": page.page_size,
+              "page_number": page.page_number},
     )
 
 

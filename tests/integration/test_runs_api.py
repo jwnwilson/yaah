@@ -252,6 +252,35 @@ def test_audit_unknown_run_404():
     assert c.get("/runs/deadbeef/audit").status_code == 404
 
 
+# --- runs-tab: GET /runs (owner-scoped list of all runs) ---
+
+def test_list_all_runs_returns_run_with_task_title():
+    c, _fake = _client_with_fake_temporal()
+    task_id, team_id, _pid = _ready_task(c)
+    uow = SqlUnitOfWork(c.app.state.session_factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        run = uow.runs.create(Run(owner_id="dev-user", task_id=task_id, team_id=team_id))
+    body = c.get("/runs").json()
+    assert body["success"] is True
+    ids = [r["id"] for r in body["data"]]
+    assert run.id in ids
+    row = next(r for r in body["data"] if r["id"] == run.id)
+    assert row["task_title"] == "T"
+    assert body["meta"]["total"] >= 1
+    assert "page_size" in body["meta"] and "page_number" in body["meta"]
+
+
+def test_list_all_runs_excludes_other_owner_runs():
+    c, _fake = _client_with_fake_temporal()
+    task_id, team_id, _pid = _ready_task(c)
+    other = SqlUnitOfWork(c.app.state.session_factory, required_filters={"owner_id": "other-user"})
+    with other.transaction():
+        hidden = other.runs.create(
+            Run(owner_id="other-user", task_id=task_id, team_id=team_id))
+    ids = [r["id"] for r in c.get("/runs").json()["data"]]
+    assert hidden.id not in ids
+
+
 def test_start_run_uses_orchestrator_workflow():
     c, fake = _client_with_fake_temporal()
     task_id, _team_id, _pid = _ready_task(c)

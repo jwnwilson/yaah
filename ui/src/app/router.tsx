@@ -11,6 +11,7 @@ import { SecretsPage } from "@/modules/manage/SecretsPage";
 import { SkillsPage } from "@/modules/manage/SkillsPage";
 import ProjectsPage from "@/modules/projects/ProjectsPage";
 import { RunInspectorPage } from "@/modules/runs/RunInspectorPage";
+import { RunsPage } from "@/modules/runs/RunsPage";
 import { AgentDetailPage } from "@/modules/team/AgentDetailPage";
 import { TeamPage } from "@/modules/team/TeamPage";
 import { AppLayout } from "./AppLayout";
@@ -21,6 +22,7 @@ export const routes: RouteObject[] = [
     children: [
       { path: "/", element: <ProjectsPage /> },
       { path: "/projects/:projectId", element: <BoardPage /> },
+      { path: "/runs", element: <RunsPage /> },
       { path: "/runs/:runId", element: <RunInspectorPage /> },
       { path: "/team", element: <TeamPage /> },
       { path: "/team/:agentId", element: <AgentDetailPage /> },

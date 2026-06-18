@@ -1,13 +1,19 @@
 import { apiGet, apiGetPage, apiPatch, apiPost } from "./client";
-import type { AuditEvent, Run, RunEvent, RunUsage } from "./types";
+import type { AuditEvent, Run, RunEvent, RunListItem, RunUsage } from "./types";
 
 export const runKeys = {
+  all: () => ["runs", "all"] as const,
   forTask: (taskId: string) => ["runs", taskId] as const,
   detail: (runId: string) => ["runs", "detail", runId] as const,
   events: (runId: string) => ["runs", "events", runId] as const,
   usage: (runId: string) => ["runs", "usage", runId] as const,
   audit: (runId: string) => ["runs", "audit", runId] as const,
 };
+
+export async function listAllRuns(): Promise<RunListItem[]> {
+  const { data } = await apiGetPage<RunListItem[]>("/runs?page_size=100");
+  return data;
+}
 
 export async function listRuns(taskId: string): Promise<Run[]> {
   const { data } = await apiGetPage<Run[]>(`/work-items/${taskId}/runs?page_size=100`);
