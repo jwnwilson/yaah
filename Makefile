@@ -1,4 +1,4 @@
-.PHONY: install dev test coverage lint up down infra migrate migration ui ui-build ui-test ui-lint \
+.PHONY: install dev test coverage lint up down stop infra migrate migration ui ui-build ui-test ui-lint \
 	temporal worker worker-local litellm start start-all test-all lint-all e2e e2e-fake e2e-real e2e-run \
 	db-reset seed
 
@@ -14,6 +14,18 @@ infra:
 
 down:
 	docker compose down
+
+# Stop EVERYTHING running locally: host dev processes (API :8000, UI :5173, Temporal
+# worker) plus the Docker Compose stack (postgres, temporal, worker, litellm).
+# Best-effort and idempotent — safe to run even if nothing is up.
+stop:
+	@echo ">> stopping host processes (API :8000, UI :5173, Temporal worker)…"
+	@PIDS=$$(lsof -ti tcp:8000 -sTCP:LISTEN 2>/dev/null); [ -n "$$PIDS" ] && kill $$PIDS 2>/dev/null || true
+	@PIDS=$$(lsof -ti tcp:5173 -sTCP:LISTEN 2>/dev/null); [ -n "$$PIDS" ] && kill $$PIDS 2>/dev/null || true
+	@pkill -f "interactors.temporal.worker" 2>/dev/null || true
+	@echo ">> stopping Docker Compose services…"
+	@docker compose down --remove-orphans 2>/dev/null || true
+	@echo ">> all yaah services stopped."
 
 # Apply Alembic migrations to Postgres (waits for the DB to be healthy first).
 migrate:
