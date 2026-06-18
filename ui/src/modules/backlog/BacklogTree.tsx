@@ -2,7 +2,6 @@ import { useState } from "react";
 import { IconButton } from "@/components/ui/IconButton";
 import type { BacklogEpic, BacklogFeature, BacklogView } from "@/lib/api/backlog";
 import type { WorkItem } from "@/lib/api/types";
-import { EditableTitle } from "./EditableTitle";
 import { InlineAdd } from "./InlineAdd";
 import { type DragHandle, SortableList } from "./SortableList";
 import { StatusPill } from "./StatusPill";
@@ -64,16 +63,12 @@ function TaskRow({
 }) {
   return (
     <div
-      className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-surface-hover"
+      className="group flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-surface-hover"
       onClick={() => onOpen(task.id)}
     >
       <Grip handle={handle} />
       <span className="text-subtle">○</span>
-      <EditableTitle
-        value={task.title}
-        onSave={(title) => actions.rename.mutate({ id: task.id, title })}
-        className="flex-1 text-sm text-fg"
-      />
+      <span className="flex-1 truncate text-sm text-fg">{task.title}</span>
       <StatusPill
         status={task.status}
         onChange={(status) => actions.setStatus.mutate({ id: task.id, status })}
@@ -127,14 +122,12 @@ function FeatureNode({
   handle,
   actions,
   onOpen,
-  onOpenFeature,
   onDelete,
 }: {
   bf: BacklogFeature;
   handle: DragHandle;
   actions: BacklogActions;
   onOpen: (id: string) => void;
-  onOpenFeature: (feature: WorkItem) => void;
   onDelete: (t: DeleteTarget) => void;
 }) {
   const [open, setOpen] = useState(true);
@@ -144,7 +137,7 @@ function FeatureNode({
     <div className="ml-5">
       <div
         className="group flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-surface-hover"
-        onClick={() => onOpenFeature(feature)}
+        onClick={() => onOpen(feature.id)}
       >
         <Grip handle={handle} />
         <Disclosure open={open} onToggle={() => setOpen((v) => !v)} />
@@ -191,14 +184,12 @@ function EpicNode({
   handle,
   actions,
   onOpen,
-  onOpenFeature,
   onDelete,
 }: {
   be: BacklogEpic;
   handle: DragHandle;
   actions: BacklogActions;
   onOpen: (id: string) => void;
-  onOpenFeature: (feature: WorkItem) => void;
   onDelete: (t: DeleteTarget) => void;
 }) {
   const [open, setOpen] = useState(be.active);
@@ -267,7 +258,6 @@ function EpicNode({
                 handle={h}
                 actions={actions}
                 onOpen={onOpen}
-                onOpenFeature={onOpenFeature}
                 onDelete={onDelete}
               />
             )}
@@ -305,13 +295,11 @@ export function BacklogTree({
   view,
   actions,
   onOpen,
-  onOpenFeature,
   onDelete,
 }: {
   view: BacklogView;
   actions: BacklogActions;
   onOpen: (id: string) => void;
-  onOpenFeature: (feature: WorkItem) => void;
   onDelete: (t: DeleteTarget) => void;
 }) {
   return (
@@ -325,7 +313,6 @@ export function BacklogTree({
             handle={handle}
             actions={actions}
             onOpen={onOpen}
-            onOpenFeature={onOpenFeature}
             onDelete={onDelete}
           />
         )}

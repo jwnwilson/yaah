@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -11,7 +11,6 @@ import { useBacklog } from "./useBacklog";
 
 export default function BacklogPage() {
   const { projectId = "" } = useParams();
-  const navigate = useNavigate();
   const actions = useBacklog(projectId);
   const { query, create, remove, setCap } = actions;
   const data = query.data;
@@ -58,18 +57,7 @@ export default function BacklogPage() {
             description="Add your first epic to start planning."
           />
         ) : (
-          <BacklogTree
-            view={data}
-            actions={actions}
-            onOpen={setOpenId}
-            onOpenFeature={(feature) =>
-              navigate(
-                `/projects/${projectId}?epic=${feature.parent_id ?? ""}` +
-                  `&feature=${feature.id}&item=${feature.id}`,
-              )
-            }
-            onDelete={setTarget}
-          />
+          <BacklogTree view={data} actions={actions} onOpen={setOpenId} onDelete={setTarget} />
         )}
 
         <div className="mt-3">

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as backlog from "@/lib/api/backlog";
 import type { WorkItem } from "@/lib/api/types";
@@ -90,12 +90,7 @@ describe("BacklogPage", () => {
   });
 });
 
-function LocationProbe() {
-  const loc = useLocation();
-  return <div data-testid="loc">{loc.pathname + loc.search}</div>;
-}
-
-describe("BacklogPage feature navigation", () => {
+describe("BacklogPage feature details", () => {
   beforeEach(() => {
     vi.mocked(backlog.getBacklog).mockResolvedValue({
       max_concurrent_runs: 2,
@@ -118,25 +113,12 @@ describe("BacklogPage feature navigation", () => {
     });
   });
 
-  it("clicking a feature navigates to the board with feature + item open", async () => {
-    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
-      <QueryClientProvider client={qc}>
-        <MemoryRouter initialEntries={["/projects/p1/backlog"]}>
-          <Routes>
-            <Route path="/projects/:projectId/backlog" element={<BacklogPage />} />
-            <Route path="/projects/:projectId" element={<LocationProbe />} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
+  it("clicking a feature opens the details panel in the backlog", async () => {
+    renderPage();
     await screen.findByText("Auth");
     await userEvent.click(screen.getByRole("button", { name: "expand" }));
     await userEvent.click(screen.getByText("Login flow"));
-    const loc = await screen.findByTestId("loc");
-    expect(loc.textContent).toContain("/projects/p1");
-    expect(loc.textContent).toContain("epic=e1");
-    expect(loc.textContent).toContain("feature=f1");
-    expect(loc.textContent).toContain("item=f1");
+    // the DetailPeek side panel mounts (its close control appears)
+    expect(await screen.findByRole("button", { name: "close" })).toBeInTheDocument();
   });
 });
