@@ -20,8 +20,9 @@ def test_build_activities_returns_all_registered():
     acts = build_activities("sqlite:///:memory:", profile="local")
     # 8 run activities + curate_memory + 4 orchestration activities
     # (persist_messages, invoke_lead, agent_step, run_monitor) + 3 parallel-engineer
-    # activities (provision_engineer_workspace, integrate_branches, commit_engineer_branch).
-    assert len(acts) == 16
+    # activities (provision_engineer_workspace, integrate_branches, commit_engineer_branch)
+    # + reconcile_project_runs.
+    assert len(acts) == 17
     assert all(callable(a) for a in acts)
 
 

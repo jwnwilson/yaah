@@ -182,15 +182,24 @@ class OrchestratorWorkflow:
     async def run(self, inp: dict) -> str:
         # Persist a terminal FAILED status if the run fails unhandled, so the run row never gets
         # stuck in `running` when an activity raises (issue #134). Re-raise so Temporal still
-        # records the workflow failure.
+        # records the workflow failure. Reconcile the project either way to fill the freed slot.
         run_id, owner_id = inp["run_id"], inp["owner_id"]
         try:
-            return await self._drive(inp)
+            status = await self._drive(inp)
         except Exception as exc:  # noqa: BLE001 - surface terminal failure to the run row
             await self._persist(run_id, owner_id, status=RunStatus.FAILED)
             await self._event(run_id, owner_id, "implement", RunEventType.ERROR,
                               f"run failed: {exc}")
+            await self._reconcile(inp)
             raise
+        await self._reconcile(inp)
+        return status
+
+    async def _reconcile(self, inp: dict) -> None:
+        await workflow.execute_activity(
+            "reconcile_project_runs",
+            {"owner_id": inp["owner_id"], "project_id": inp["project_id"]},
+            start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
 
     async def _drive(self, inp: dict) -> str:
         run_id, owner_id = inp["run_id"], inp["owner_id"]

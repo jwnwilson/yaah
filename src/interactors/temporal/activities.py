@@ -18,6 +18,7 @@ from domain.notifications import (
 from domain.runs import RunEvent, RunEventType, RunStage, RunStatus
 from domain.scm import WORKSPACE_SCRATCH
 from domain.usage import TokenUsage, UsageRecord
+from interactors.scheduling import reconcile_project
 
 _MAX_LEAD_RETRIES = 2  # bounded re-prompts when the lead emits an invalid decision
 
@@ -35,7 +36,8 @@ class RunActivities:
 
     def __init__(self, session_factory, runtime: AgentRuntime, storage: StoragePort,
                  git, forge, *, cipher=None,
-                 notifier: NotificationDispatcher | None = None) -> None:
+                 notifier: NotificationDispatcher | None = None,
+                 settings=None, run_client=None) -> None:
         self._session_factory = session_factory
         self._runtime = runtime
         self._storage = storage
@@ -43,6 +45,8 @@ class RunActivities:
         self._forge = forge
         self._cipher = cipher
         self._notifier = notifier or NotificationDispatcher([])
+        self._settings = settings
+        self._run_client = run_client
 
     def _uow(self, owner_id: str) -> SqlUnitOfWork:
         return SqlUnitOfWork(self._session_factory, required_filters={"owner_id": owner_id})
@@ -522,6 +526,18 @@ class RunActivities:
     @activity.defn(name="cleanup_workspace")
     def cleanup_workspace(self, payload: dict) -> None:
         self._storage.delete_directory(f"runs/{payload['run_id']}/")
+
+    @activity.defn(name="reconcile_project_runs")
+    def reconcile_project_runs(self, payload: dict) -> None:
+        """Fill freed concurrency slots after a run ends. Best-effort: never raises."""
+        try:
+            uow = self._uow(payload["owner_id"])
+            with uow.transaction():
+                run_inputs = reconcile_project(uow, self._settings, payload["project_id"])
+            for ri in run_inputs:
+                self._run_client.start_run_workflow(ri, "OrchestratorWorkflow")
+        except Exception:  # noqa: BLE001 - scheduling must never fail run completion
+            pass
 
     @activity.defn(name="provision_workspace")
     def provision_workspace(self, payload: dict) -> dict:
