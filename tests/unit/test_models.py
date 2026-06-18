@@ -137,6 +137,7 @@ def test_epic_can_be_active_and_defaults_false():
 
 def test_non_epic_cannot_be_active():
     import pytest
+
     from domain.projects import WorkItem, WorkItemKind
 
     with pytest.raises(ValueError, match="only epics can be active"):
@@ -148,6 +149,7 @@ def test_non_epic_cannot_be_active():
 
 def test_project_max_concurrent_runs_default_and_floor():
     import pytest
+
     from domain.projects import Project
 
     p = Project(owner_id="o", name="p", repo_url="r")
