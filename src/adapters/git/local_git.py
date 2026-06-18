@@ -1,4 +1,6 @@
 import base64
+import hashlib
+import re
 import subprocess
 from pathlib import Path
 from typing import Literal
@@ -10,8 +12,35 @@ _AUTHOR = ["-c", "user.email=agent@yaah.local", "-c", "user.name=yaah-agent"]
 
 
 class LocalGit:
-    """GitPort via the system `git` binary. `mode='worktree'` adds a worktree off a
-    local repo (local profile); `mode='clone'` clones a remote (remote profile)."""
+    """GitPort via the system `git` binary.
+
+    `mode='worktree'` adds a worktree off a local repo (local profile).
+    `mode='clone'` (remote profile) clones the repo ONCE into a local cache
+    (`~/.yaah/cache/<repo>`) and then `git worktree add`s per run off that cache —
+    one network clone, with every run worktree-based like the local profile.
+    """
+
+    def __init__(self, *, cache_root: str | Path | None = None) -> None:
+        # Absolute, outside any repo. Remote repos are cloned ONCE here, then
+        # worktreed per run.
+        self._cache_root = (
+            Path(cache_root).resolve() if cache_root
+            else Path.home() / ".yaah" / "cache"
+        )
+
+    def _cache_dir(self, repo_ref: str) -> Path:
+        safe = re.sub(r"[^A-Za-z0-9]+", "-", repo_ref).strip("-")[:60]
+        digest = hashlib.sha1(repo_ref.encode()).hexdigest()[:8]
+        return self._cache_root / f"{safe}-{digest}"
+
+    def _ensure_cache(self, repo_ref: str, token: str | None) -> str:
+        cache = self._cache_dir(repo_ref)
+        if (cache / ".git").exists():
+            self._run([*self._auth_args(token), "fetch", "origin"], cwd=str(cache))
+        else:
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            self._run([*self._auth_args(token), "clone", repo_ref, str(cache)])
+        return str(cache)
 
     def _run(self, args: list[str], cwd: str | None = None, *, check: bool = True) -> str:
         proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
@@ -41,9 +70,11 @@ class LocalGit:
             if base is not None:
                 args.append(base)
             self._run(args, cwd=repo_ref)
-        else:  # clone
-            self._run([*self._auth_args(token), "clone", repo_ref, workspace_path])
-            self._run([*_AUTHOR, "checkout", "-b", branch], cwd=workspace_path)
+        else:  # remote: clone once into a local cache, worktree per run off it
+            cache = self._ensure_cache(repo_ref, token)
+            baseref = f"origin/{base}" if base else "origin/HEAD"
+            self._run([*_AUTHOR, "worktree", "add", "-b", branch, workspace_path, baseref],
+                      cwd=cache)
 
     def commit_all(
         self, workspace_path: str, message: str, *, exclude: tuple[str, ...] = ()
