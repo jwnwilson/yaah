@@ -100,3 +100,51 @@ def test_unscoped_chat_has_no_proposed_epic_update():
     pid = _project(c)
     data = c.post(f"/projects/{pid}/chat", json={"message": "build login"}).json()["data"]
     assert data["proposed_epic_update"] is None
+
+
+def test_chat_proposes_edit_to_existing_item_without_applying():
+    from domain.refinement import RefinementOutput, WorkItemEdit
+    from interactors.api.deps import refinement_agent
+
+    class _Editor:
+        def respond(self, ctx):
+            target = ctx.hierarchy[0]
+            return RefinementOutput(
+                reply="proposing edit",
+                updates=[WorkItemEdit(id=target.id, body="NEW BODY", title="Renamed")],
+            )
+
+    app = create_app(Settings(_env_file=None, database_url="sqlite:///:memory:"))
+    app.dependency_overrides[refinement_agent] = lambda: _Editor()
+    c = TestClient(app)
+    pid = c.post("/projects", json={"name": "Alpha", "repo_url": "r"}).json()["data"]["id"]
+    epic_id = c.post(
+        f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}
+    ).json()["data"]["id"]
+
+    data = c.post(f"/projects/{pid}/chat", json={"message": "edit it"}).json()["data"]
+    assert len(data["proposed_updates"]) == 1
+    pu = data["proposed_updates"][0]
+    assert pu["id"] == epic_id
+    assert pu["body"] == "NEW BODY" and pu["title"] == "Renamed"
+    assert pu["current_title"] == "E" and pu["kind"] == "epic"
+    # proposed only — the item is unchanged until approved
+    assert c.get(f"/work-items/{epic_id}").json()["data"]["body"] == ""
+    assert c.get(f"/work-items/{epic_id}").json()["data"]["title"] == "E"
+
+
+def test_chat_skips_edit_to_unknown_item():
+    from domain.refinement import RefinementOutput, WorkItemEdit
+    from interactors.api.deps import refinement_agent
+
+    class _Editor:
+        def respond(self, ctx):
+            return RefinementOutput(reply="x", updates=[WorkItemEdit(id="nope", body="b")])
+
+    app = create_app(Settings(_env_file=None, database_url="sqlite:///:memory:"))
+    app.dependency_overrides[refinement_agent] = lambda: _Editor()
+    c = TestClient(app)
+    pid = c.post("/projects", json={"name": "A", "repo_url": "r"}).json()["data"]["id"]
+    data = c.post(f"/projects/{pid}/chat", json={"message": "hi"}).json()["data"]
+    assert data["proposed_updates"] == []
+    assert "unknown item nope" in data["reply"]

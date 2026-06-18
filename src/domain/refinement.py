@@ -46,6 +46,16 @@ class EpicSpecEdit(BaseModel):
     acceptance_criteria: list[str] | None = None
 
 
+class WorkItemEdit(BaseModel):
+    """A proposed content edit to an EXISTING work item (any kind), addressed by id.
+    Content only — never status. Applied only after human approval."""
+
+    id: str
+    title: str | None = None
+    body: str | None = None
+    acceptance_criteria: list[str] | None = None
+
+
 class RefinementContext(BaseModel):
     """Input contract for a refinement turn: the project, conversation so far, current
     board hierarchy, and the lead system prompt."""
@@ -61,6 +71,7 @@ class RefinementOutput(BaseModel):
     reply: str = ""
     proposals: list[WorkItemProposal] = []
     epic_update: EpicSpecEdit | None = None
+    updates: list[WorkItemEdit] = []
 
 
 def validate_proposal(p: WorkItemProposal, *, parent_exists: Callable[[str], bool]) -> None:
@@ -79,7 +90,11 @@ def system_prompt(project_name: str, lead_system_prompt: str = "") -> str:
     return (f"{base}You are the team lead refining work for project '{project_name}'. "
             "Converse with the user and propose epics, features, and tasks to draft onto the "
             "board. Features and tasks must reference an existing parent id. Everything you "
-            "propose is created as a Draft for human review — never mark anything ready.")
+            "propose is created as a Draft for human review — never mark anything ready. "
+            "You may also propose edits to EXISTING items (epics, features, or tasks) by "
+            "returning `updates`, each with the item's id and any of title/body/"
+            "acceptance_criteria — content only, never status. Proposed edits are shown to the "
+            "human for approval before they apply.")
 
 
 def epic_focus_prompt(epic: WorkItem) -> str:
