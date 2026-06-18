@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Field";
 import { RunSection } from "@/modules/runs/RunSection";
+import { useRuns } from "@/modules/runs/useRuns";
 import { AcceptanceCriteria } from "./AcceptanceCriteria";
 import { Attachments } from "./Attachments";
 import { useUpdateWorkItem } from "./useUpdateWorkItem";
@@ -17,6 +19,8 @@ export function TicketPanel({
   onClose: () => void;
 }) {
   const { data, isLoading, isError, error } = useWorkItem(itemId);
+  const { data: runs } = useRuns(itemId);
+  const latestRun = runs?.[0];
   const update = useUpdateWorkItem(projectId, itemId);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -32,9 +36,19 @@ export function TicketPanel({
 
   return (
     <aside className="fixed right-0 top-0 h-screen w-[28rem] overflow-y-auto border-l border-line bg-surface p-4 shadow-xl">
-      <div className="mb-3 flex justify-between">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="font-semibold text-fg">Ticket</h2>
-        <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
+        <div className="flex items-center gap-2">
+          {latestRun && (
+            <Link
+              to={`/runs/${latestRun.id}`}
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+            >
+              View run →
+            </Link>
+          )}
+          <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
+        </div>
       </div>
       {isLoading && <p className="text-sm text-subtle">Loading…</p>}
       {isError && <p className="text-sm text-danger">{(error as Error).message}</p>}
