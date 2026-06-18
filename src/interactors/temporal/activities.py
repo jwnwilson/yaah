@@ -545,8 +545,10 @@ class RunActivities:
         workspace = self._storage.local_path(f"runs/{run_id}")
         token = self._forge.installation_token() if payload["profile"] == "remote" else None
         mode = "clone" if payload["profile"] == "remote" else "worktree"
+        # Remote: worktree off origin/<base> in the cache. Local: base stays HEAD.
+        base = payload.get("base") if mode == "clone" else None
         self._git.prepare(repo_ref=payload["repo_ref"], workspace_path=workspace,
-                          branch=payload["branch"], mode=mode, token=token)
+                          branch=payload["branch"], mode=mode, base=base, token=token)
         self.record_event({"run_id": run_id, "owner_id": payload["owner_id"],
                            "stage": "provision", "type": "stage_completed",
                            "message": f"workspace ready on {payload['branch']}"})

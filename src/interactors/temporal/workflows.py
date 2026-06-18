@@ -216,7 +216,8 @@ class OrchestratorWorkflow:
         await workflow.execute_activity(
             "provision_workspace",
             {"run_id": run_id, "owner_id": owner_id, "profile": inp["profile"],
-             "repo_ref": inp["repo_ref"], "branch": branch},
+             "repo_ref": inp["repo_ref"], "branch": branch,
+             "base": inp.get("base", "main")},
             start_to_close_timeout=_STAGE_TIMEOUT, retry_policy=_RETRY)
 
         wave = 0
