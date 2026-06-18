@@ -104,3 +104,20 @@ def test_raising_cap_pulls_more_work():
     assert len(fake.started) == 1
     c.patch(f"/projects/{pid}", json={"max_concurrent_runs": 3})
     assert len(fake.started) == 3
+
+
+def test_backlog_endpoint_reports_readiness_and_summary():
+    c, _fake = _client()
+    pid = _project_with_team(c)
+    c.patch(f"/projects/{pid}", json={"max_concurrent_runs": 2})
+    epic_id = _epic_with_ready_tasks(c, pid, 2)
+
+    body = c.get(f"/projects/{pid}/backlog").json()
+    assert body["success"] is True
+    data = body["data"]
+    assert data["max_concurrent_runs"] == 2
+    assert data["queued"] == 0
+    epic = next(e for e in data["epics"] if e["epic"]["id"] == epic_id)
+    assert epic["ready_count"] == 2
+    assert epic["total_tasks"] == 2
+    assert epic["active"] is False
