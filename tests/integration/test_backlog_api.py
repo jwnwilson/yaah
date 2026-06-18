@@ -93,3 +93,14 @@ def test_ready_task_under_inactive_epic_does_not_start():
                   json={"kind": "task", "title": "T", "parent_id": epic["id"]}).json()["data"]
     c.post(f"/work-items/{task['id']}/status", json={"status": "ready"})
     assert fake.started == []
+
+
+def test_raising_cap_pulls_more_work():
+    c, fake = _client()
+    pid = _project_with_team(c)
+    c.patch(f"/projects/{pid}", json={"max_concurrent_runs": 1})
+    epic_id = _epic_with_ready_tasks(c, pid, 3)
+    c.post(f"/projects/{pid}/epics/{epic_id}/activate")
+    assert len(fake.started) == 1
+    c.patch(f"/projects/{pid}", json={"max_concurrent_runs": 3})
+    assert len(fake.started) == 3
