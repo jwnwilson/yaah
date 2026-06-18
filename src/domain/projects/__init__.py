@@ -3,7 +3,7 @@
 Re-exports the project, work-item, and epic-board entities so callers import from
 ``domain.projects``. The package only depends on ``domain.base`` — no cycles.
 """
-from domain.projects.backlog import BacklogEpic, BacklogView, build_backlog
+from domain.projects.backlog import BacklogEpic, BacklogFeature, BacklogView, build_backlog
 from domain.projects.epics import EpicBoard, FeatureProgress, build_epic_board
 from domain.projects.projects import AutonomyLevel, Project
 from domain.projects.work_items import WorkItem, WorkItemKind, WorkItemStatus
@@ -11,6 +11,7 @@ from domain.projects.work_items import WorkItem, WorkItemKind, WorkItemStatus
 __all__ = [
     "AutonomyLevel",
     "BacklogEpic",
+    "BacklogFeature",
     "BacklogView",
     "EpicBoard",
     "FeatureProgress",

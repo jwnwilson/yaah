@@ -3,7 +3,7 @@ against its concurrency cap. The DB is the source of truth; callers launch the r
 run-inputs after the transaction commits."""
 from domain.base import utc_now
 from domain.projects import WorkItemKind, WorkItemStatus
-from domain.projects.scheduling import plan_starts
+from domain.projects.scheduling import order_ready_tasks, plan_starts
 from domain.runs import Run, RunStatus
 
 _NON_TERMINAL = [
@@ -79,11 +79,12 @@ def reconcile_project(uow, settings, project_id: str) -> list[dict]:
             "project_id": project_id, "kind": WorkItemKind.TASK,
             "status": WorkItemStatus.READY, "parent_id__in": parent_ids,
         },
-        page_size=500, order_by="created_at",
+        page_size=500,
     ).results
     if not ready_tasks:
         return []
     in_flight = _in_flight_count(uow, project_id)
-    to_start = plan_starts([t.id for t in ready_tasks], in_flight, project.max_concurrent_runs)
+    ordered_ids = order_ready_tasks(ready_tasks, epics, features)
+    to_start = plan_starts(ordered_ids, in_flight, project.max_concurrent_runs)
     by_id = {t.id: t for t in ready_tasks}
     return [build_run_and_input(uow, settings, by_id[tid], project)[1] for tid in to_start]
