@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Float, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -18,6 +18,7 @@ class ProjectRow(Base):
     local_path: Mapped[str | None] = mapped_column(String(500))
     team_id: Mapped[str | None] = mapped_column(String(32))
     autonomy: Mapped[str] = mapped_column(String(20), nullable=False)
+    max_concurrent_runs: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -34,6 +35,7 @@ class WorkItemRow(Base):
     acceptance_criteria: Mapped[list] = mapped_column(JSON, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     assignee_agent_id: Mapped[str | None] = mapped_column(String(32), index=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
