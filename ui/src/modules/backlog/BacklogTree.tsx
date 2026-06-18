@@ -127,12 +127,14 @@ function FeatureNode({
   handle,
   actions,
   onOpen,
+  onOpenFeature,
   onDelete,
 }: {
   bf: BacklogFeature;
   handle: DragHandle;
   actions: BacklogActions;
   onOpen: (id: string) => void;
+  onOpenFeature: (feature: WorkItem) => void;
   onDelete: (t: DeleteTarget) => void;
 }) {
   const [open, setOpen] = useState(true);
@@ -142,16 +144,12 @@ function FeatureNode({
     <div className="ml-5">
       <div
         className="group flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-surface-hover"
-        onClick={() => onOpen(feature.id)}
+        onClick={() => onOpenFeature(feature)}
       >
         <Grip handle={handle} />
         <Disclosure open={open} onToggle={() => setOpen((v) => !v)} />
         <span className="text-subtle">✦</span>
-        <EditableTitle
-          value={feature.title}
-          onSave={(title) => actions.rename.mutate({ id: feature.id, title })}
-          className="flex-1 text-sm font-medium text-fg"
-        />
+        <span className="flex-1 truncate text-sm font-medium text-fg">{feature.title}</span>
         <span className="text-xs text-subtle">
           {done}/{tasks.length}
         </span>
@@ -193,12 +191,14 @@ function EpicNode({
   handle,
   actions,
   onOpen,
+  onOpenFeature,
   onDelete,
 }: {
   be: BacklogEpic;
   handle: DragHandle;
   actions: BacklogActions;
   onOpen: (id: string) => void;
+  onOpenFeature: (feature: WorkItem) => void;
   onDelete: (t: DeleteTarget) => void;
 }) {
   const [open, setOpen] = useState(be.active);
@@ -212,11 +212,7 @@ function EpicNode({
         <Grip handle={handle} />
         <Disclosure open={open} onToggle={() => setOpen((v) => !v)} />
         <span className="text-accent">◆</span>
-        <EditableTitle
-          value={epic.title}
-          onSave={(title) => actions.rename.mutate({ id: epic.id, title })}
-          className="flex-1 font-semibold text-fg"
-        />
+        <span className="flex-1 truncate font-semibold text-fg">{epic.title}</span>
         <span className="text-xs text-subtle">
           {be.ready_count} ready / {be.total_tasks} · {be.done} done
           {be.in_flight_count > 0 && <> · {be.in_flight_count} running</>}
@@ -271,6 +267,7 @@ function EpicNode({
                 handle={h}
                 actions={actions}
                 onOpen={onOpen}
+                onOpenFeature={onOpenFeature}
                 onDelete={onDelete}
               />
             )}
@@ -308,11 +305,13 @@ export function BacklogTree({
   view,
   actions,
   onOpen,
+  onOpenFeature,
   onDelete,
 }: {
   view: BacklogView;
   actions: BacklogActions;
   onOpen: (id: string) => void;
+  onOpenFeature: (feature: WorkItem) => void;
   onDelete: (t: DeleteTarget) => void;
 }) {
   return (
@@ -326,6 +325,7 @@ export function BacklogTree({
             handle={handle}
             actions={actions}
             onOpen={onOpen}
+            onOpenFeature={onOpenFeature}
             onDelete={onDelete}
           />
         )}
