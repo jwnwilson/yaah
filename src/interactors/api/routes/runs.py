@@ -7,12 +7,12 @@ from domain.agent.memory import MemoryProposalStatus
 from domain.base import utc_now
 from domain.errors import RecordNotFound
 from domain.projects import WorkItemKind, WorkItemStatus
-from domain.runs import Run, RunStatus
-from domain.transitions import validate_transition
+from domain.runs import RunStatus
 from interactors.api.deps import get_uow, memory_applier, temporal_client
 from interactors.api.deps import settings as get_settings
 from interactors.api.envelope import ok
 from interactors.cli.memory_apply import MemoryApplier
+from interactors.scheduling import build_run_and_input
 from interactors.temporal.client import TemporalRunClient
 
 router = APIRouter(tags=["runs"])
@@ -31,40 +31,11 @@ def start_run(
             raise HTTPException(status_code=404, detail="task not found")
         if task.status != WorkItemStatus.READY:
             raise HTTPException(status_code=409, detail=f"task is {task.status}, must be ready")
-        validate_transition(task.status, WorkItemStatus.IN_PROGRESS)
         project = uow.projects.get(task.project_id)
         if not project.team_id:
             raise HTTPException(status_code=409, detail="project has no team assigned")
-        team_agents = uow.agents.list(
-            filters={"team_id": project.team_id}, page_size=100
-        ).results
-        available_roles = sorted({a.role.value for a in team_agents})
-        role_to_agent_id = {a.role.value: a.id for a in team_agents}
-        run = uow.runs.create(
-            Run(owner_id=project.owner_id, task_id=task_id, team_id=project.team_id)
-        )
-        uow.work_items.update(
-            task_id,
-            task.model_copy(update={"status": WorkItemStatus.IN_PROGRESS, "updated_at": utc_now()}),
-        )
-        repo_ref = project.local_path if settings.profile == "local" else project.repo_url
-        run_input = {
-            "run_id": run.id,
-            "owner_id": run.owner_id,
-            "task_id": task_id,
-            "project_id": project.id,
-            "autonomy": project.autonomy,
-            "task_title": task.title,
-            "acceptance_criteria": task.acceptance_criteria,
-            "body": task.body,
-            "profile": settings.profile,
-            "repo_ref": repo_ref,
-            "base": settings.github_base_branch,
-            "team_id": run.team_id,
-            "available_roles": available_roles,
-            "role_to_agent_id": role_to_agent_id,
-        }
-    temporal.start_run_workflow(run_input, "OrchestratorWorkflow")  # after commit: run row exists
+        run, run_input = build_run_and_input(uow, settings, task, project)
+    temporal.start_run_workflow(run_input, "OrchestratorWorkflow")  # after commit
     return ok(run.model_dump(mode="json"))
 
 
