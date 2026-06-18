@@ -124,3 +124,33 @@ def test_role_memory_entry_defaults_and_role():
     assert e.content == "prefer small PRs" and e.created_at is not None
     e2 = RoleMemoryEntry(owner_id="u1", role="qa", content="run the full suite")
     assert e2.role == AgentRole.QA and e2.run_id is None and e2.project_id is None
+
+
+def test_epic_can_be_active_and_defaults_false():
+    from domain.projects import WorkItem, WorkItemKind
+
+    epic = WorkItem(owner_id="o", project_id="p", kind=WorkItemKind.EPIC, title="E")
+    assert epic.active is False
+    active = epic.model_copy(update={"active": True})
+    assert active.active is True
+
+
+def test_non_epic_cannot_be_active():
+    import pytest
+    from domain.projects import WorkItem, WorkItemKind
+
+    with pytest.raises(ValueError, match="only epics can be active"):
+        WorkItem(
+            owner_id="o", project_id="p", kind=WorkItemKind.TASK,
+            parent_id="f", title="T", active=True,
+        )
+
+
+def test_project_max_concurrent_runs_default_and_floor():
+    import pytest
+    from domain.projects import Project
+
+    p = Project(owner_id="o", name="p", repo_url="r")
+    assert p.max_concurrent_runs == 2
+    with pytest.raises(ValueError):
+        Project(owner_id="o", name="p", repo_url="r", max_concurrent_runs=0)
