@@ -13,6 +13,7 @@ export function AppLayout() {
         <nav className="flex gap-4">
           <NavLink to="/" end className={linkClass}>Projects</NavLink>
           <NavLink to="/team" className={linkClass}>Team</NavLink>
+          <NavLink to="/runs" className={linkClass}>Runs</NavLink>
           <NavLink to="/inbox" className={linkClass}>Inbox</NavLink>
           <NavLink to="/manage" className={linkClass}>Manage</NavLink>
         </nav>

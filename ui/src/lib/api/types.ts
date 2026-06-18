@@ -65,6 +65,9 @@ export interface Run {
   created_at: string;
 }
 
+/** A run row from GET /runs, enriched with the owning task's title. */
+export type RunListItem = Run & { task_title: string | null };
+
 export type RunStage = "plan" | "provision" | "implement" | "verify" | "pr" | "learn";
 
 export type RunEventType =
