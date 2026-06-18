@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
+import { DetailPeek } from "@/modules/backlog/DetailPeek";
 import { ChatRail } from "@/modules/chat/ChatRail";
 import { HierarchyTree } from "@/modules/work-items/HierarchyTree";
-import { TicketPanel } from "@/modules/work-items/TicketPanel";
 import { Board } from "./Board";
 import { EpicContextBand } from "./EpicContextBand";
 import { useEpicBoard } from "./useEpicBoard";
@@ -68,7 +68,7 @@ export default function BoardPage() {
               epicId={selectedEpic}
               selectedFeature={selectedFeature}
               onSelectFeature={selectFeature}
-              onEditEpic={openItem}
+              onEditItem={openItem}
             />
           )}
           <div className="flex-1 overflow-auto">
@@ -78,7 +78,7 @@ export default function BoardPage() {
         {showChat && <ChatRail projectId={projectId} epicId={selectedEpic} />}
       </div>
       {params.get("item") && (
-        <TicketPanel
+        <DetailPeek
           projectId={projectId}
           itemId={params.get("item")!}
           onClose={() => { params.delete("item"); setParams(params); }}

@@ -140,7 +140,10 @@ function FeatureNode({
   const done = tasks.filter((t) => t.status === "done").length;
   return (
     <div className="ml-5">
-      <div className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-surface-hover">
+      <div
+        className="group flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-surface-hover"
+        onClick={() => onOpen(feature.id)}
+      >
         <Grip handle={handle} />
         <Disclosure open={open} onToggle={() => setOpen((v) => !v)} />
         <span className="text-subtle">✦</span>
@@ -155,9 +158,10 @@ function FeatureNode({
         <IconButton
           label="delete feature"
           className="opacity-0 group-hover:opacity-100"
-          onClick={() =>
-            onDelete({ id: feature.id, title: feature.title, kind: "feature", count: tasks.length })
-          }
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete({ id: feature.id, title: feature.title, kind: "feature", count: tasks.length });
+          }}
         >
           ✕
         </IconButton>
@@ -201,7 +205,10 @@ function EpicNode({
   const { epic } = be;
   return (
     <div className="rounded-md border border-line">
-      <div className="group flex items-center gap-2 px-2 py-2">
+      <div
+        className="group flex cursor-pointer items-center gap-2 px-2 py-2"
+        onClick={() => onOpen(epic.id)}
+      >
         <Grip handle={handle} />
         <Disclosure open={open} onToggle={() => setOpen((v) => !v)} />
         <span className="text-accent">◆</span>
@@ -218,7 +225,10 @@ function EpicNode({
           <button
             type="button"
             className="rounded-full bg-accent-subtle px-2 py-0.5 text-xs font-medium text-accent"
-            onClick={() => actions.deactivate.mutate(epic.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              actions.deactivate.mutate(epic.id);
+            }}
           >
             active
           </button>
@@ -226,7 +236,10 @@ function EpicNode({
           <button
             type="button"
             className="rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-muted hover:text-fg"
-            onClick={() => actions.activate.mutate(epic.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              actions.activate.mutate(epic.id);
+            }}
           >
             activate
           </button>
@@ -234,14 +247,15 @@ function EpicNode({
         <IconButton
           label="delete epic"
           className="opacity-0 group-hover:opacity-100"
-          onClick={() =>
+          onClick={(e) => {
+            e.stopPropagation();
             onDelete({
               id: epic.id,
               title: epic.title,
               kind: "epic",
               count: epicDescendantCount(be),
-            })
-          }
+            });
+          }}
         >
           ✕
         </IconButton>

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
+import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ChatRail } from "@/modules/chat/ChatRail";
 import { BacklogTree, type DeleteTarget } from "./BacklogTree";
 import { DetailPeek } from "./DetailPeek";
 import { InlineAdd } from "./InlineAdd";
@@ -14,6 +16,7 @@ export default function BacklogPage() {
   const data = query.data;
   const [openId, setOpenId] = useState<string | null>(null);
   const [target, setTarget] = useState<DeleteTarget | null>(null);
+  const [showChat, setShowChat] = useState(false);
 
   if (query.isLoading) return <p className="p-6 text-sm text-subtle">Loading…</p>;
   if (query.isError)
@@ -29,6 +32,9 @@ export default function BacklogPage() {
             <span className="text-xs text-subtle">
               running {data.in_flight} / {data.max_concurrent_runs} · queued {data.queued}
             </span>
+            <Button size="sm" variant="secondary" onClick={() => setShowChat((v) => !v)}>
+              {showChat ? "Hide chat" : "Team lead"}
+            </Button>
             <label className="flex items-center gap-2 text-sm text-muted">
               Max runs
               <input
@@ -62,6 +68,8 @@ export default function BacklogPage() {
           />
         </div>
       </div>
+
+      {showChat && <ChatRail projectId={projectId} />}
 
       {openId && (
         <DetailPeek projectId={projectId} itemId={openId} onClose={() => setOpenId(null)} />

@@ -9,10 +9,16 @@ interface ChatRailProps {
 }
 
 export function ChatRail({ projectId, epicId }: ChatRailProps) {
-  const { turns, send, proposedEpicUpdate, acceptEpicUpdate, dismissEpicUpdate } = useChat(
-    projectId,
-    epicId,
-  );
+  const {
+    turns,
+    send,
+    proposedEpicUpdate,
+    acceptEpicUpdate,
+    dismissEpicUpdate,
+    proposedUpdates,
+    applyUpdate,
+    dismissUpdate,
+  } = useChat(projectId, epicId);
   const [text, setText] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -63,6 +69,34 @@ export function ChatRail({ projectId, epicId }: ChatRailProps) {
             </div>
           </div>
         )}
+        {proposedUpdates.map((u) => (
+          <div key={u.id} className="rounded-md border border-line bg-surface p-2">
+            <p className="mb-1 text-xs font-semibold text-fg">
+              Edit {u.kind}: {u.current_title}
+            </p>
+            {u.title && <p className="text-xs text-muted">Title → {u.title}</p>}
+            {u.body && <p className="mb-1 text-xs text-muted">{u.body}</p>}
+            {u.acceptance_criteria?.length ? (
+              <ul className="mb-2 list-disc pl-4 text-xs text-muted">
+                {u.acceptance_criteria.map((ac, i) => (
+                  <li key={i}>{ac}</li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                loading={applyUpdate.isPending}
+                onClick={() => applyUpdate.mutate(u)}
+              >
+                Apply
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => dismissUpdate(u.id)}>
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        ))}
       </div>
       <form className="flex gap-1 border-t border-line p-2" onSubmit={handleSubmit}>
         <Input

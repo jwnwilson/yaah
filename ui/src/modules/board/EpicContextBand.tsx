@@ -5,7 +5,7 @@ interface EpicContextBandProps {
   epicId: string;
   selectedFeature: string | undefined;
   onSelectFeature: (featureId: string | undefined) => void;
-  onEditEpic: (epicId: string) => void;
+  onEditItem: (itemId: string) => void;
 }
 
 export function EpicContextBand({
@@ -13,7 +13,7 @@ export function EpicContextBand({
   epicId,
   selectedFeature,
   onSelectFeature,
-  onEditEpic,
+  onEditItem,
 }: EpicContextBandProps) {
   const { data } = useEpicBoard(projectId, epicId);
   if (!data) return null;
@@ -27,7 +27,7 @@ export function EpicContextBand({
       <div className="flex items-center gap-2">
         <button
           className="font-semibold text-fg hover:underline"
-          onClick={() => onEditEpic(epic.id)}
+          onClick={() => onEditItem(epic.id)}
         >
           {epic.title}
         </button>
@@ -52,13 +52,21 @@ export function EpicContextBand({
           </span>
         )}
         {features.map((fp) => (
-          <button
-            key={fp.feature.id}
-            className={chip(selectedFeature === fp.feature.id)}
-            onClick={() => onSelectFeature(fp.feature.id)}
-          >
-            {fp.feature.title} {fp.done}/{fp.total}
-          </button>
+          <span key={fp.feature.id} className="inline-flex items-center">
+            <button
+              className={chip(selectedFeature === fp.feature.id)}
+              onClick={() => onSelectFeature(fp.feature.id)}
+            >
+              {fp.feature.title} {fp.done}/{fp.total}
+            </button>
+            <button
+              className="ml-0.5 text-xs text-muted hover:text-fg"
+              aria-label={`edit ${fp.feature.title}`}
+              onClick={() => onEditItem(fp.feature.id)}
+            >
+              ✎
+            </button>
+          </span>
         ))}
       </div>
     </div>
