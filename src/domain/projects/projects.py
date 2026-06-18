@@ -21,6 +21,7 @@ class Project(BaseModel):
     local_path: str | None = None
     team_id: str | None = None
     autonomy: AutonomyLevel = AutonomyLevel.GATED_ALL
+    max_concurrent_runs: int = Field(default=2, ge=1)
     created_at: datetime = Field(default_factory=utc_now)
 
     @model_validator(mode="after")
