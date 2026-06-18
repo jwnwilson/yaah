@@ -30,6 +30,7 @@ export interface Project {
   local_path: string | null;
   team_id: string | null;
   autonomy: AutonomyLevel;
+  max_concurrent_runs: number;
   created_at: string;
 }
 
@@ -44,6 +45,7 @@ export interface WorkItem {
   acceptance_criteria: string[];
   status: WorkItemStatus;
   assignee_agent_id: string | null;
+  active: boolean;
   created_at: string;
   updated_at: string;
 }

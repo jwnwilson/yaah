@@ -45,3 +45,29 @@ def test_capability_rows_roundtrip():
     s.commit()
     assert s.get(SkillRow, "s1").name == "pytest"
     assert s.get(AgentDefinitionRow, "a1").skill_ids == ["s1"]
+
+
+def test_workitem_and_project_backlog_columns_roundtrip():
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+
+    from adapters.database.orm import Base, ProjectRow, WorkItemRow
+    from domain.base import new_id, utc_now
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(ProjectRow(
+            id=new_id(), owner_id="o", name="p", repo_url="r", local_path=None,
+            team_id=None, autonomy="gated_all", max_concurrent_runs=3, created_at=utc_now(),
+        ))
+        session.add(WorkItemRow(
+            id=new_id(), owner_id="o", project_id="p", kind="epic", parent_id=None,
+            title="E", body="", acceptance_criteria=[], status="draft",
+            assignee_agent_id=None, active=True, created_at=utc_now(), updated_at=utc_now(),
+        ))
+        session.commit()
+        proj = session.execute(select(ProjectRow)).scalar_one()
+        item = session.execute(select(WorkItemRow)).scalar_one()
+        assert proj.max_concurrent_runs == 3
+        assert item.active is True

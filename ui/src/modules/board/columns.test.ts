@@ -5,7 +5,7 @@ import { BOARD_COLUMNS, columnForStatus, groupByColumn, ATTENTION } from "./colu
 function task(id: string, status: WorkItem["status"]): WorkItem {
   return {
     id, project_id: "p", owner_id: "u", kind: "task", parent_id: "f",
-    title: id, body: "", acceptance_criteria: [], status, assignee_agent_id: null,
+    title: id, body: "", acceptance_criteria: [], status, assignee_agent_id: null, active: false,
     created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
   };
 }

@@ -18,7 +18,7 @@ function item(over: Partial<WorkItem> = {}): WorkItem {
   return {
     id: "t1", project_id: "p1", owner_id: "u", kind: "task", parent_id: "f1",
     title: "Build it", body: "", acceptance_criteria: [], status: "ready",
-    assignee_agent_id: null, created_at: "x", updated_at: "x", ...over,
+    assignee_agent_id: null, active: false, created_at: "x", updated_at: "x", ...over,
   };
 }
 

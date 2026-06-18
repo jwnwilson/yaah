@@ -5,8 +5,11 @@ from adapters.database.ports import UnitOfWork
 from domain.base import utc_now
 from domain.projects import WorkItem, WorkItemKind, WorkItemStatus
 from domain.transitions import validate_transition
-from interactors.api.deps import get_uow
+from interactors.api.deps import get_uow, temporal_client
+from interactors.api.deps import settings as get_settings
 from interactors.api.envelope import ok
+from interactors.scheduling import reconcile_project
+from interactors.temporal.client import TemporalRunClient
 
 router = APIRouter(tags=["work-items"])
 
@@ -89,12 +92,22 @@ def patch(item_id: str, body: UpdateWorkItem, uow: UnitOfWork = Depends(get_uow)
 
 
 @router.post("/work-items/{item_id}/status")
-def set_status(item_id: str, body: SetStatus, uow: UnitOfWork = Depends(get_uow)) -> dict:
+def set_status(
+    item_id: str, body: SetStatus,
+    uow: UnitOfWork = Depends(get_uow),
+    temporal: TemporalRunClient = Depends(temporal_client),
+    settings=Depends(get_settings),
+) -> dict:
+    run_inputs: list[dict] = []
     with uow.transaction():
         item = uow.work_items.get(item_id)
         validate_transition(item.status, body.status)  # InvalidTransition -> 409
         updated = item.model_copy(update={"status": body.status, "updated_at": utc_now()})
         result = uow.work_items.update(item_id, updated)
+        if body.status == WorkItemStatus.READY and item.kind == WorkItemKind.TASK:
+            run_inputs = reconcile_project(uow, settings, item.project_id)
+    for ri in run_inputs:
+        temporal.start_run_workflow(ri, "OrchestratorWorkflow")
     return ok(result.model_dump(mode="json"))
 
 

@@ -3,8 +3,11 @@ from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
 from domain.projects import AutonomyLevel, Project
-from interactors.api.deps import get_uow
+from interactors.api.deps import get_uow, temporal_client
+from interactors.api.deps import settings as get_settings
 from interactors.api.envelope import ok
+from interactors.scheduling import reconcile_project
+from interactors.temporal.client import TemporalRunClient
 from lib.crud_router import CrudRouter
 
 
@@ -19,6 +22,7 @@ class UpdateProject(BaseModel):
     name: str | None = None
     team_id: str | None = None
     autonomy: AutonomyLevel | None = None
+    max_concurrent_runs: int | None = None
 
 
 router = CrudRouter(
@@ -42,3 +46,24 @@ def delete_project(entity_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
         uow.work_items.delete_many({"project_id": entity_id})
         uow.projects.delete(entity_id)
     return ok({"deleted": entity_id})
+
+
+@router.patch("/{entity_id}")
+def update_project(
+    entity_id: str, body: UpdateProject,
+    uow: UnitOfWork = Depends(get_uow),
+    temporal: TemporalRunClient = Depends(temporal_client),
+    settings=Depends(get_settings),
+) -> dict:
+    """Override: persist fields and, when the concurrency cap changes, reconcile to pull work."""
+    run_inputs: list[dict] = []
+    with uow.transaction():
+        project = uow.projects.get(entity_id)  # 404 if absent/not owned
+        updated = uow.projects.update(
+            entity_id, project.model_copy(update=body.model_dump(exclude_none=True))
+        )
+        if body.max_concurrent_runs is not None:
+            run_inputs = reconcile_project(uow, settings, entity_id)
+    for ri in run_inputs:
+        temporal.start_run_workflow(ri, "OrchestratorWorkflow")
+    return ok(updated.model_dump(mode="json"))

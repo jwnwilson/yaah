@@ -107,7 +107,7 @@ def _worker(env, factory, lead=_default_lead, monitor=None, worker_outcome="ok",
                     acts.record_event, acts.record_usage, acts.open_pr,
                     acts.capture_memory, acts.curate_memory, acts.cleanup_workspace,
                     acts.provision_engineer_workspace, acts.integrate_branches,
-                    acts.commit_engineer_branch],
+                    acts.commit_engineer_branch, acts.reconcile_project_runs],
         activity_executor=ThreadPoolExecutor(max_workers=4))
 
 

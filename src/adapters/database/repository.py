@@ -64,10 +64,11 @@ class SqlRepository(Generic[DTO]):
         direction = desc if order_by.startswith("-") else asc
         return query.order_by(direction(self._column(order_by.lstrip("-"))))
 
-    def _row(self, entity_id: str) -> Any:
-        row = self._session.execute(
-            self._scoped().where(self.orm_model.id == entity_id)
-        ).scalar_one_or_none()
+    def _row(self, entity_id: str, for_update: bool = False) -> Any:
+        query = self._scoped().where(self.orm_model.id == entity_id)
+        if for_update:
+            query = query.with_for_update()
+        row = self._session.execute(query).scalar_one_or_none()
         if row is None:
             raise RecordNotFound(f"{self.dto.__name__} {entity_id} not found")
         return row
@@ -84,8 +85,8 @@ class SqlRepository(Generic[DTO]):
             raise IntegrityConflict(str(err.orig)) from err
         return self._to_dto(row)
 
-    def get(self, entity_id: str) -> DTO:
-        return self._to_dto(self._row(entity_id))
+    def get(self, entity_id: str, for_update: bool = False) -> DTO:
+        return self._to_dto(self._row(entity_id, for_update=for_update))
 
     def list(
         self,

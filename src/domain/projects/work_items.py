@@ -36,6 +36,7 @@ class WorkItem(BaseModel):
     acceptance_criteria: list[str] = Field(default_factory=list)
     status: WorkItemStatus = WorkItemStatus.DRAFT
     assignee_agent_id: str | None = None
+    active: bool = False
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 
@@ -45,4 +46,6 @@ class WorkItem(BaseModel):
             raise ValueError("epics cannot have a parent")
         if self.kind in (WorkItemKind.FEATURE, WorkItemKind.TASK) and not self.parent_id:
             raise ValueError(f"{self.kind} requires parent_id")
+        if self.active and self.kind != WorkItemKind.EPIC:
+            raise ValueError("only epics can be active")
         return self

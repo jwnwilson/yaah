@@ -44,6 +44,9 @@ export default function BoardPage() {
       <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3">
         <Link to="/" className="text-sm text-accent hover:underline">← Projects</Link>
         <h1 className="font-semibold text-fg">Board</h1>
+        <Link to={`/projects/${projectId}/backlog`} className="text-sm text-muted hover:text-fg">
+          Backlog
+        </Link>
         <div className="ml-auto flex items-center gap-2">
           <Button size="sm" variant="secondary" onClick={() => setShowChat((v) => !v)}>
             {showChat ? "Hide chat" : "Team lead"}
