@@ -1,11 +1,51 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from adapters.database.ports import UnitOfWork
+from domain.base import utc_now
 from domain.projects import WorkItemKind, build_epic_board
-from interactors.api.deps import get_uow
+from interactors.api.deps import get_uow, temporal_client
+from interactors.api.deps import settings as get_settings
 from interactors.api.envelope import ok
+from interactors.scheduling import reconcile_project
+from interactors.temporal.client import TemporalRunClient
 
 router = APIRouter(tags=["epics"])
+
+
+def _load_epic(uow, project_id, epic_id):
+    uow.projects.get(project_id)  # RecordNotFound -> 404
+    epic = uow.work_items.get(epic_id)  # owner-scoped
+    if epic.kind != WorkItemKind.EPIC or epic.project_id != project_id:
+        raise HTTPException(status_code=404, detail="epic not found")
+    return epic
+
+
+@router.post("/projects/{project_id}/epics/{epic_id}/activate")
+def activate_epic(
+    project_id: str, epic_id: str,
+    uow: UnitOfWork = Depends(get_uow),
+    temporal: TemporalRunClient = Depends(temporal_client),
+    settings=Depends(get_settings),
+) -> dict:
+    with uow.transaction():
+        epic = _load_epic(uow, project_id, epic_id)
+        epic = uow.work_items.update(
+            epic_id, epic.model_copy(update={"active": True, "updated_at": utc_now()})
+        )
+        run_inputs = reconcile_project(uow, settings, project_id)
+    for ri in run_inputs:
+        temporal.start_run_workflow(ri, "OrchestratorWorkflow")
+    return ok(epic.model_dump(mode="json"))
+
+
+@router.post("/projects/{project_id}/epics/{epic_id}/deactivate")
+def deactivate_epic(project_id: str, epic_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    with uow.transaction():
+        epic = _load_epic(uow, project_id, epic_id)
+        epic = uow.work_items.update(
+            epic_id, epic.model_copy(update={"active": False, "updated_at": utc_now()})
+        )
+    return ok(epic.model_dump(mode="json"))
 
 
 @router.get("/projects/{project_id}/epics/{epic_id}/board")
