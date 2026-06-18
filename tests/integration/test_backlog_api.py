@@ -70,3 +70,26 @@ def test_activate_non_epic_404():
     feat = c.post(f"/projects/{pid}/work-items",
                   json={"kind": "feature", "title": "F", "parent_id": epic["id"]}).json()["data"]
     assert c.post(f"/projects/{pid}/epics/{feat['id']}/activate").status_code == 404
+
+
+def test_ready_task_under_active_epic_autostarts():
+    c, fake = _client()
+    pid = _project_with_team(c)
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+    c.post(f"/projects/{pid}/epics/{epic['id']}/activate")
+    assert fake.started == []
+    task = c.post(f"/projects/{pid}/work-items",
+                  json={"kind": "task", "title": "T", "parent_id": epic["id"]}).json()["data"]
+    c.post(f"/work-items/{task['id']}/status", json={"status": "ready"})
+    assert len(fake.started) == 1
+    assert fake.started[0][1]["task_id"] == task["id"]
+
+
+def test_ready_task_under_inactive_epic_does_not_start():
+    c, fake = _client()
+    pid = _project_with_team(c)
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+    task = c.post(f"/projects/{pid}/work-items",
+                  json={"kind": "task", "title": "T", "parent_id": epic["id"]}).json()["data"]
+    c.post(f"/work-items/{task['id']}/status", json={"status": "ready"})
+    assert fake.started == []
