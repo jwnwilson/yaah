@@ -36,6 +36,7 @@ class WorkItem(BaseModel):
     acceptance_criteria: list[str] = Field(default_factory=list)
     status: WorkItemStatus = WorkItemStatus.DRAFT
     assignee_agent_id: str | None = None
+    chat_session_id: str | None = None
     active: bool = False
     position: int = 0
     created_at: datetime = Field(default_factory=utc_now)
