@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as backlog from "@/lib/api/backlog";
 import type { WorkItem } from "@/lib/api/types";
 import * as workItems from "@/lib/api/workItems";
+import { ChatLauncherProvider } from "@/modules/chat/ChatLauncherContext";
 import BacklogPage from "./BacklogPage";
 
 vi.mock("@/lib/api/backlog");
@@ -25,11 +26,13 @@ function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={["/projects/p1/backlog"]}>
-        <Routes>
-          <Route path="/projects/:projectId/backlog" element={<BacklogPage />} />
-        </Routes>
-      </MemoryRouter>
+      <ChatLauncherProvider>
+        <MemoryRouter initialEntries={["/projects/p1/backlog"]}>
+          <Routes>
+            <Route path="/projects/:projectId/backlog" element={<BacklogPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ChatLauncherProvider>
     </QueryClientProvider>,
   );
 }

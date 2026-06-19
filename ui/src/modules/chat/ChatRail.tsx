@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { IconButton } from "@/components/ui/IconButton";
@@ -8,9 +8,11 @@ import { useSpeechDictation } from "./useSpeechDictation";
 interface ChatRailProps {
   projectId: string;
   epicId?: string;
+  autoDictate?: boolean;
+  onDictateConsumed?: () => void;
 }
 
-export function ChatRail({ projectId, epicId }: ChatRailProps) {
+export function ChatRail({ projectId, epicId, autoDictate, onDictateConsumed }: ChatRailProps) {
   const {
     turns,
     send,
@@ -25,6 +27,14 @@ export function ChatRail({ projectId, epicId }: ChatRailProps) {
   const dictation = useSpeechDictation({
     onTranscript: (t) => setText((prev) => (prev ? prev + " " : "") + t),
   });
+
+  useEffect(() => {
+    if (autoDictate && dictation.supported && !dictation.listening) {
+      dictation.start();
+      onDictateConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoDictate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
