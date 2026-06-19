@@ -64,3 +64,13 @@ test("useChatLauncher throws outside a provider", () => {
     /must be used within ChatLauncherProvider/,
   );
 });
+
+test("setListening updates the listening flag", () => {
+  const { result } = renderHook(() => useChatLauncher(), { wrapper });
+
+  act(() => result.current.setListening(true));
+  expect(result.current.listening).toBe(true);
+
+  act(() => result.current.setListening(false));
+  expect(result.current.listening).toBe(false);
+});

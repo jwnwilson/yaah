@@ -17,7 +17,7 @@ import { deriveBoard } from "./boardData";
 export default function BoardPage() {
   const { projectId } = useParams();
   const [params, setParams] = useSearchParams();
-  const { open, toggle, dictate, consumeDictate } = useChatLauncher();
+  const { open, toggle, dictate, consumeDictate, setListening } = useChatLauncher();
   const [epicFilter, setEpicFilter] = useState("");
   const [featureFilter, setFeatureFilter] = useState("");
   const [agentFilter, setAgentFilter] = useState("");
@@ -121,7 +121,12 @@ export default function BoardPage() {
           )}
         </div>
         {open && (
-          <ChatRail projectId={projectId} autoDictate={dictate} onDictateConsumed={consumeDictate} />
+          <ChatRail
+            projectId={projectId}
+            autoDictate={dictate}
+            onDictateConsumed={consumeDictate}
+            onListeningChange={setListening}
+          />
         )}
       </div>
       {params.get("item") && (
