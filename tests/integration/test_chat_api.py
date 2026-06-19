@@ -239,3 +239,33 @@ def test_commit_with_nothing_to_start_is_noop():
     assert r.status_code == 200
     assert r.json()["data"]["started_runs"] == []
     assert fake.started == []
+
+
+def test_commit_turn_does_not_start_same_turn_proposals():
+    app = create_app(Settings(_env_file=None, database_url="sqlite:///:memory:"))
+    fake = _FakeTemporal()
+    app.dependency_overrides[temporal_client] = lambda: fake
+    c = TestClient(app)
+
+    pid = c.post("/projects", json={"name": "p", "repo_url": "r"}).json()["data"]["id"]
+    team_id = c.post("/teams/default").json()["data"]["team"]["id"]
+    c.patch(f"/projects/{pid}", json={"team_id": team_id})
+    epic = c.post(f"/projects/{pid}/work-items",
+                  json={"kind": "epic", "title": "E"}).json()["data"]
+
+    class _ProposeAndCommit:
+        def respond(self, ctx):
+            return RefinementOutput(
+                reply="here and starting",
+                proposals=[WorkItemProposal(kind=WorkItemKind.TASK,
+                                            parent_id=epic["id"], title="T")],
+                action=RefinementAction.COMMIT,
+            )
+
+    app.dependency_overrides[refinement_agent] = lambda: _ProposeAndCommit()
+    data = c.post(f"/projects/{pid}/chat", json={"message": "go"}).json()["data"]
+
+    # The task was drafted this turn, so it must NOT be promoted/started.
+    assert data["started_runs"] == []
+    assert fake.started == []
+    assert data["created_items"][0]["status"] == "draft"

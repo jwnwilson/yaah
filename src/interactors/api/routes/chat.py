@@ -31,16 +31,22 @@ _MAX_SESSION_ITEMS = 500  # a single chat session won't draft more items than th
 
 
 def _commit_session(
-    uow, settings, project_id: str, session_id: str
+    uow, settings, project_id: str, session_id: str, exclude_ids: set[str] = frozenset()
 ) -> tuple[list[str], list[dict]]:
     """Promote the session's DRAFT tasks to READY, activate their parents, and reconcile the
-    project. Returns (skipped_notes, run_inputs); the caller launches the runs after commit.
-    select_committable returns only DRAFT tasks, so DRAFT->READY is always a valid transition."""
+    project. Items created in the current turn (exclude_ids) are skipped so a commit only
+    starts drafts the user has already seen — the confirmation step is enforced in code, not
+    just via the system prompt. Returns (skipped_notes, run_inputs); caller launches runs
+    after commit. select_committable returns only DRAFT tasks, so DRAFT->READY is always valid."""
     notes: list[str] = []
-    session_items = uow.work_items.list(
-        filters={"project_id": project_id, "chat_session_id": session_id},
-        page_size=_MAX_SESSION_ITEMS,
-    ).results
+    session_items = [
+        i
+        for i in uow.work_items.list(
+            filters={"project_id": project_id, "chat_session_id": session_id},
+            page_size=_MAX_SESSION_ITEMS,
+        ).results
+        if i.id not in exclude_ids
+    ]
     plan = select_committable(session_items)
     by_session_id = {i.id: i for i in session_items}
     for tid in plan.task_ids:
@@ -51,6 +57,7 @@ def _commit_session(
             task.model_copy(update={"status": WorkItemStatus.READY, "updated_at": utc_now()}),
         )
     if plan.parent_ids:
+        # owner-scoped by the uow: parent ids from another owner return nothing and are skipped
         parents = uow.work_items.list(
             filters={"id__in": plan.parent_ids}, page_size=len(plan.parent_ids) + 1
         ).results
@@ -220,7 +227,8 @@ def post_message(
         run_inputs: list[dict] = []
         if out.action == RefinementAction.COMMIT:
             commit_notes, run_inputs = _commit_session(
-                uow, settings, project_id, session.id
+                uow, settings, project_id, session.id,
+                exclude_ids={c.id for c in created},
             )
             notes.extend(commit_notes)
 

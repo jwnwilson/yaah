@@ -16,7 +16,7 @@ class FakeRefinementAgent:
 
     def respond(self, ctx: RefinementContext) -> RefinementOutput:
         last = next((m.content for m in reversed(ctx.history) if m.role == "user"), "work")
-        if last.strip().lower().startswith(_APPROVALS):
+        if last.strip().lower() in _APPROVALS:
             return RefinementOutput(
                 reply="Starting the committed work.",
                 action=RefinementAction.COMMIT,
