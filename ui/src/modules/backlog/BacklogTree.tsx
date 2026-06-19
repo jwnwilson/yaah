@@ -146,6 +146,29 @@ function FeatureNode({
         <span className="text-xs text-subtle">
           {done}/{tasks.length}
         </span>
+        {feature.active ? (
+          <button
+            type="button"
+            className="rounded-full bg-accent-subtle px-2 py-0.5 text-xs font-medium text-accent"
+            onClick={(e) => {
+              e.stopPropagation();
+              actions.deactivate.mutate(feature.id);
+            }}
+          >
+            active
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-muted hover:text-fg"
+            onClick={(e) => {
+              e.stopPropagation();
+              actions.activate.mutate(feature.id);
+            }}
+          >
+            activate
+          </button>
+        )}
         <IconButton
           label="delete feature"
           className="opacity-0 group-hover:opacity-100"

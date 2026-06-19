@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { backlogKeys } from "@/lib/api/backlog";
 import type { WorkItem, WorkItemStatus } from "@/lib/api/types";
 import { setWorkItemStatus, workItemKeys } from "@/lib/api/workItems";
 
@@ -23,6 +24,9 @@ export function useSetStatus(projectId: string) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(key, ctx.previous);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: backlogKeys.view(projectId) });
+    },
   });
 }

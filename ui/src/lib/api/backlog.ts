@@ -32,12 +32,14 @@ export async function getBacklog(projectId: string): Promise<BacklogView> {
   return apiGet<BacklogView>(`/projects/${projectId}/backlog`);
 }
 
-export async function activateEpic(projectId: string, epicId: string): Promise<WorkItem> {
-  return apiPost<WorkItem>(`/projects/${projectId}/epics/${epicId}/activate`);
+/** Activate an epic or feature (move it onto the board; auto-starts its ready tasks). */
+export async function activateItem(projectId: string, itemId: string): Promise<WorkItem> {
+  return apiPost<WorkItem>(`/projects/${projectId}/work-items/${itemId}/activate`);
 }
 
-export async function deactivateEpic(projectId: string, epicId: string): Promise<WorkItem> {
-  return apiPost<WorkItem>(`/projects/${projectId}/epics/${epicId}/deactivate`);
+/** Deactivate an epic or feature (move it back to the backlog). */
+export async function deactivateItem(projectId: string, itemId: string): Promise<WorkItem> {
+  return apiPost<WorkItem>(`/projects/${projectId}/work-items/${itemId}/deactivate`);
 }
 
 export async function reorderWorkItems(
