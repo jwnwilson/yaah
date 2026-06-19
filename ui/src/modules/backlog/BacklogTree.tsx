@@ -195,9 +195,9 @@ function EpicNode({
   const [open, setOpen] = useState(be.active);
   const { epic } = be;
   return (
-    <div className="rounded-md border border-line">
+    <div className="bg-surface">
       <div
-        className="group flex cursor-pointer items-center gap-2 px-2 py-2"
+        className="group flex cursor-pointer items-center gap-2 px-3 py-2.5"
         onClick={() => onOpen(epic.id)}
       >
         <Grip handle={handle} />
@@ -303,7 +303,7 @@ export function BacklogTree({
   onDelete: (t: DeleteTarget) => void;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="divide-y divide-line rounded-md border border-line">
       <SortableList
         items={view.epics.map((e) => ({ id: e.epic.id, be: e }))}
         onReorder={(orderedIds) => actions.reorder.mutate({ parentId: null, orderedIds })}

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { DetailPeek } from "@/modules/backlog/DetailPeek";
 import { ChatRail } from "@/modules/chat/ChatRail";
-import { ProjectHeader } from "@/modules/projects/ProjectHeader";
 import { HierarchyTree } from "@/modules/work-items/HierarchyTree";
 import { Board } from "./Board";
 import { EpicContextBand } from "./EpicContextBand";
@@ -41,10 +42,13 @@ export default function BoardPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ProjectHeader
-        projectId={projectId}
-        showChat={showChat}
-        onToggleChat={() => setShowChat((v) => !v)}
+      <PageHeader
+        title="Board"
+        actions={
+          <Button size="sm" variant="secondary" onClick={() => setShowChat((v) => !v)}>
+            {showChat ? "Hide chat" : "Team lead"}
+          </Button>
+        }
       />
       <div className="flex flex-1 overflow-hidden">
         <HierarchyTree
