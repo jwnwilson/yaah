@@ -1,35 +1,61 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { IconButton } from "@/components/ui/IconButton";
-import type { Notification } from "@/lib/api/notifications";
-import { useNotifications, useUnreadCount } from "./useNotifications";
+import type { Message } from "@/lib/api/messages";
+import { relativeTime } from "@/modules/runs/RunEventRow";
+import { useUserNotices, useUserUnreadCount } from "./useNotifications";
 
-function NotificationItem({ notification }: { notification: Notification }) {
-  const { category, title, action } = notification;
-  const label = (
-    <div className="flex flex-col">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-subtle">{category}</span>
-      <span className="text-sm text-fg">{title}</span>
+function SeverityChip({ severity }: { severity: Message["severity"] }) {
+  if (severity === "info") return null;
+  const className =
+    severity === "critical"
+      ? "text-danger"
+      : "text-warning";
+  const label = severity === "critical" ? "Critical" : "Attention";
+  return (
+    <span className={`text-[10px] font-semibold uppercase tracking-wide ${className}`}>{label}</span>
+  );
+}
+
+function NoticeBody({ notice }: { notice: Message }) {
+  const isGate = notice.kind === "gate";
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-fg">{notice.subject}</span>
+        <SeverityChip severity={notice.severity} />
+      </div>
+      {isGate && (
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-warning">
+          Approval needed
+        </span>
+      )}
+      <span className="text-[10px] text-subtle">{relativeTime(notice.created_at)}</span>
     </div>
   );
+}
 
-  if (action?.kind === "gate_approval") {
+function NoticeItem({ notice }: { notice: Message }) {
+  if (notice.run_id) {
     return (
       <li>
-        <Link to={`/runs/${action.run_id}`} className="block px-3 py-2 hover:bg-surface-hover">
-          {label}
+        <Link to={`/runs/${notice.run_id}`} className="block px-3 py-2 hover:bg-surface-hover">
+          <NoticeBody notice={notice} />
         </Link>
       </li>
     );
   }
-
-  return <li className="px-3 py-2">{label}</li>;
+  return (
+    <li className="px-3 py-2">
+      <NoticeBody notice={notice} />
+    </li>
+  );
 }
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const { data: count = 0 } = useUnreadCount();
-  const { data: notifications = [], isLoading } = useNotifications(open);
+  const { data: count = 0 } = useUserUnreadCount();
+  const { data: notices = [], isLoading } = useUserNotices(open);
 
   return (
     <div className="relative">
@@ -52,12 +78,12 @@ export function NotificationBell() {
             Notifications
           </div>
           {isLoading && <p className="px-3 py-2 text-sm text-subtle">Loading…</p>}
-          {!isLoading && notifications.length === 0 && (
+          {!isLoading && notices.length === 0 && (
             <p className="px-3 py-2 text-sm text-subtle">No notifications.</p>
           )}
           <ul className="max-h-80 divide-y divide-line overflow-auto">
-            {notifications.map((n) => (
-              <NotificationItem key={n.id} notification={n} />
+            {notices.map((n) => (
+              <NoticeItem key={n.id} notice={n} />
             ))}
           </ul>
         </div>

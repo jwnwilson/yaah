@@ -47,8 +47,8 @@ export function InboxPage() {
       <aside className="w-56 shrink-0 overflow-auto border-r border-line p-3">
         <h1 className="mb-2 text-sm font-semibold text-fg">Inbox</h1>
         <button className={mailboxBtn(box === "me")} onClick={() => setBox("me")}>
-          <Avatar color="#64748b" text="Me" />
-          <span>Me</span>
+          <Avatar color="#64748b" text="You" />
+          <span>Notices</span>
         </button>
         {agentList.map((a) => (
           <button key={a.id} className={mailboxBtn(box === a.id)} onClick={() => setBox(a.id)}>

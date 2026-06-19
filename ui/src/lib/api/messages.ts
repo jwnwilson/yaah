@@ -1,6 +1,8 @@
 import { apiGet, apiGetPage, apiPatch, apiPost } from "./client";
 
-export type MessageKind = "dispatch" | "report" | "chat" | "status";
+export type MessageKind = "dispatch" | "report" | "chat" | "status" | "notice" | "gate";
+
+export type MessageSeverity = "info" | "attention" | "critical";
 
 export interface Message {
   id: string;
@@ -9,6 +11,7 @@ export interface Message {
   recipient_kind: "agent" | "user";
   recipient_agent_id: string | null;
   kind: MessageKind;
+  severity: MessageSeverity;
   subject: string;
   body: string;
   run_id: string | null;
