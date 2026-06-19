@@ -1,3 +1,4 @@
+import type { ThreadMessage, ThreadParticipant } from "@/components/ui/chat/types";
 import { apiGetPage, apiPost } from "./client";
 
 export interface EpicSpecEdit {
@@ -50,4 +51,31 @@ export async function listMessages(sessionId: string): Promise<ChatMessage[]> {
     `/chat/${sessionId}/messages?page_size=200`,
   );
   return data;
+}
+
+export interface ChatSession {
+  id: string;
+  project_id: string;
+  epic_id?: string | null;
+  created_at: string;
+}
+
+export async function listSessions(projectId: string): Promise<ChatSession[]> {
+  const { data } = await apiGetPage<ChatSession[]>(`/projects/${projectId}/chat`);
+  return data;
+}
+
+const YOU: ThreadParticipant = { kind: "user", name: "You" };
+
+export function toThreadMessages(
+  messages: ChatMessage[],
+  agent: ThreadParticipant,
+): ThreadMessage[] {
+  return messages.map((m) => ({
+    id: m.id,
+    sender: m.role === "user" ? YOU : agent,
+    kind: "chat",
+    body: m.content,
+    createdAt: "",
+  }));
 }
