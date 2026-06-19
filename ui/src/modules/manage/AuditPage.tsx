@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { AuditAction } from "@/lib/api/audit";
 import { useAudit } from "./useAudit";
 
@@ -22,9 +23,10 @@ export function AuditPage() {
   const pageSize = data?.meta?.page_size ?? 50;
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-fg">Audit log</h1>
+    <div className="flex h-full flex-col">
+      <PageHeader title="Audit log" />
+      <div className="flex-1 overflow-auto p-6">
+      <div className="mb-4 flex items-center justify-end">
         <label className="text-sm">
           Action{" "}
           <select
@@ -89,6 +91,7 @@ export function AuditPage() {
         <Button size="sm" variant="secondary" disabled={page * pageSize >= total} onClick={() => setPage((p) => p + 1)}>
           Next
         </Button>
+      </div>
       </div>
     </div>
   );

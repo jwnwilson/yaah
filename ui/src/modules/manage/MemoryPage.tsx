@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { MemoryProposalStatus } from "@/lib/api/memory";
 import { MemoryDiff } from "@/modules/runs/MemoryDiff";
 import { useMemoryProposals } from "./useMemoryProposals";
@@ -18,22 +19,25 @@ export function MemoryPage() {
   const rows = data?.data ?? [];
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-fg">Memory proposals</h1>
-        <label className="text-sm">
-          Status{" "}
-          <select className="rounded-md border border-line bg-surface px-2 py-1 text-sm text-fg" value={status}
-            onChange={(e) => setStatus(e.target.value as MemoryProposalStatus | "")}>
-            <option value="">All</option>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s.charAt(0).toUpperCase() + s.slice(1)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+    <div className="flex h-full flex-col">
+      <PageHeader
+        title="Memory proposals"
+        actions={
+          <label className="text-sm">
+            Status{" "}
+            <select className="rounded-md border border-line bg-surface px-2 py-1 text-sm text-fg" value={status}
+              onChange={(e) => setStatus(e.target.value as MemoryProposalStatus | "")}>
+              <option value="">All</option>
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </option>
+              ))}
+            </select>
+          </label>
+        }
+      />
+      <div className="flex-1 overflow-auto p-6">
       {isLoading && <p className="text-sm text-subtle">Loading…</p>}
       {isError && <p className="text-sm text-danger">{(error as Error).message}</p>}
       {!isLoading && rows.length === 0 && <p className="text-sm text-subtle">No memory proposals.</p>}
@@ -54,6 +58,7 @@ export function MemoryPage() {
           </li>
         ))}
       </ul>
+      </div>
     </div>
   );
 }

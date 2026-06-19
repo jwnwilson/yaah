@@ -25,7 +25,7 @@ export function ManageLayout() {
           ))}
         </nav>
       </aside>
-      <section className="flex-1 overflow-auto p-6">
+      <section className="flex min-w-0 flex-1 flex-col">
         <Outlet />
       </section>
     </div>

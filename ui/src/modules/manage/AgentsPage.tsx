@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Input } from "@/components/ui/Field";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { ResourceTable } from "@/components/ui/ResourceTable";
 import type { Agent } from "@/lib/api/agents";
 import { useAgents, useTeams, useUpdateAgent } from "./useAgents";
@@ -39,19 +40,22 @@ export function AgentsPage() {
   }
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-fg">Agents</h1>
-        {teams.data && teams.data.length > 0 && (
-          <label className="text-sm">
-            Team{" "}
-            <select className="rounded-md border border-line bg-surface px-2 py-1 text-sm text-fg" value={teamId ?? ""}
-              onChange={(e) => setTeamId(e.target.value)}>
-              {teams.data.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </label>
-        )}
-      </div>
+    <div className="flex h-full flex-col">
+      <PageHeader
+        title="Agents"
+        actions={
+          teams.data && teams.data.length > 0 ? (
+            <label className="text-sm">
+              Team{" "}
+              <select className="rounded-md border border-line bg-surface px-2 py-1 text-sm text-fg" value={teamId ?? ""}
+                onChange={(e) => setTeamId(e.target.value)}>
+                {teams.data.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </label>
+          ) : undefined
+        }
+      />
+      <div className="flex-1 overflow-auto p-6">
       {agents.isLoading && <p className="text-sm text-subtle">Loading…</p>}
       {agents.isError && <p className="text-sm text-danger">{(agents.error as Error).message}</p>}
       <ResourceTable
@@ -88,6 +92,7 @@ export function AgentsPage() {
           </form>
         </Dialog>
       )}
+      </div>
     </div>
   );
 }
