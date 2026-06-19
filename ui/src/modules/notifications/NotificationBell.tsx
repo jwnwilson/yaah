@@ -47,7 +47,7 @@ export function NotificationBell() {
         )}
       </IconButton>
       {open && (
-        <div className="absolute right-0 z-10 mt-2 w-72 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
+        <div className="absolute left-0 z-20 mt-2 w-72 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
           <div className="border-b border-line px-3 py-2 text-xs font-semibold uppercase tracking-wide text-subtle">
             Notifications
           </div>
