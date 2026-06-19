@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
+import { IconButton } from "@/components/ui/IconButton";
 import { useChat } from "./useChat";
+import { useSpeechDictation } from "./useSpeechDictation";
 
 interface ChatRailProps {
   projectId: string;
@@ -20,6 +22,9 @@ export function ChatRail({ projectId, epicId }: ChatRailProps) {
     dismissUpdate,
   } = useChat(projectId, epicId);
   const [text, setText] = useState("");
+  const dictation = useSpeechDictation({
+    onTranscript: (t) => setText((prev) => (prev ? prev + " " : "") + t),
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,6 +109,17 @@ export function ChatRail({ projectId, epicId }: ChatRailProps) {
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
+        {dictation.supported && (
+          <IconButton
+            label={dictation.listening ? "Stop dictation" : "Dictate to the team lead"}
+            title="Voice input"
+            aria-pressed={dictation.listening}
+            onClick={dictation.toggle}
+            className={dictation.listening ? "text-danger animate-pulse" : undefined}
+          >
+            <span aria-hidden="true">🎤</span>
+          </IconButton>
+        )}
         <Button type="submit" size="sm" loading={send.isPending}>Send</Button>
       </form>
     </aside>
