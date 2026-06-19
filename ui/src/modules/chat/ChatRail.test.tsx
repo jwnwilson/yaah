@@ -7,11 +7,15 @@ import { server } from "@/test/server";
 import { ChatRail } from "./ChatRail";
 
 let dictationSupported = true;
+const startSpy = vi.fn();
 vi.mock("@/modules/chat/useSpeechDictation", () => ({
   useSpeechDictation: ({ onTranscript }: { onTranscript: (t: string) => void }) => ({
     supported: dictationSupported,
     listening: false,
-    start: () => onTranscript("voice text"),
+    start: () => {
+      startSpy();
+      onTranscript("voice text");
+    },
     stop: vi.fn(),
     toggle: () => onTranscript("voice text"),
   }),
@@ -19,6 +23,7 @@ vi.mock("@/modules/chat/useSpeechDictation", () => ({
 
 beforeEach(() => {
   dictationSupported = true;
+  startSpy.mockClear();
 });
 
 function renderRail() {
@@ -102,6 +107,41 @@ test("dictation fills the message input", async () => {
   renderRail();
   await userEvent.click(screen.getByLabelText(/dictate|voice/i));
   expect(screen.getByPlaceholderText(/message the team lead/i)).toHaveValue("voice text");
+});
+
+test("autoDictate starts dictation once and notifies the launcher", async () => {
+  server.use(
+    http.get("/api/projects/p1/chat", () =>
+      HttpResponse.json({ success: true, data: [], error: null, meta: { total: 0, page_size: 50, page_number: 1 } })),
+  );
+  const onConsumed = vi.fn();
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={qc}>
+      <ChatRail projectId="p1" autoDictate onDictateConsumed={onConsumed} />
+    </QueryClientProvider>,
+  );
+  await waitFor(() => expect(startSpy).toHaveBeenCalledTimes(1));
+  expect(onConsumed).toHaveBeenCalledTimes(1);
+});
+
+test("does not auto-start dictation when autoDictate is false", async () => {
+  server.use(
+    http.get("/api/projects/p1/chat", () =>
+      HttpResponse.json({ success: true, data: [], error: null, meta: { total: 0, page_size: 50, page_number: 1 } })),
+  );
+  const onConsumed = vi.fn();
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={qc}>
+      <ChatRail projectId="p1" autoDictate={false} onDictateConsumed={onConsumed} />
+    </QueryClientProvider>,
+  );
+  await waitFor(() =>
+    expect(screen.getByPlaceholderText(/message the team lead/i)).toBeInTheDocument(),
+  );
+  expect(startSpy).not.toHaveBeenCalled();
+  expect(onConsumed).not.toHaveBeenCalled();
 });
 
 test("mic button is absent when speech recognition is unsupported", async () => {
