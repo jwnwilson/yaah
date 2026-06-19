@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import { NotificationBell } from "@/modules/notifications/NotificationBell";
 import { Sidebar } from "./Sidebar";
 
 export function AppLayout() {
@@ -8,6 +9,9 @@ export function AppLayout() {
       <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <Outlet />
       </main>
+      <div className="fixed right-4 top-3 z-30">
+        <NotificationBell />
+      </div>
     </div>
   );
 }

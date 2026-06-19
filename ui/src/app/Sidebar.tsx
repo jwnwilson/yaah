@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/components/ui/cn";
-import { NotificationBell } from "@/modules/notifications/NotificationBell";
 import { CreateProjectDialog } from "@/modules/projects/CreateProjectDialog";
 import { useCurrentProjectId } from "@/modules/projects/useCurrentProject";
 import { useProjects } from "@/modules/projects/useProjects";
@@ -100,10 +99,7 @@ export function Sidebar() {
         <NavLink to="/" className="text-sm font-bold tracking-tight text-fg">
           yaah
         </NavLink>
-        <div className="flex items-center gap-1">
-          <ThemeToggle />
-          <NotificationBell />
-        </div>
+        <ThemeToggle />
       </div>
 
       <div className="px-3">
