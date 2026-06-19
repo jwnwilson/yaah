@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { agentKeys, listAgents } from "@/lib/api/agents";
 import { DetailPeek } from "@/modules/backlog/DetailPeek";
 import { useBacklog } from "@/modules/backlog/useBacklog";
+import { useChatLauncher } from "@/modules/chat/ChatLauncherContext";
 import { ChatRail } from "@/modules/chat/ChatRail";
 import { useProjects } from "@/modules/projects/useProjects";
 import { ActivePopover } from "./ActivePopover";
@@ -16,7 +17,7 @@ import { deriveBoard } from "./boardData";
 export default function BoardPage() {
   const { projectId } = useParams();
   const [params, setParams] = useSearchParams();
-  const [showChat, setShowChat] = useState(false);
+  const { open, toggle, dictate, consumeDictate } = useChatLauncher();
   const [epicFilter, setEpicFilter] = useState("");
   const [featureFilter, setFeatureFilter] = useState("");
   const [agentFilter, setAgentFilter] = useState("");
@@ -55,8 +56,8 @@ export default function BoardPage() {
       <PageHeader
         title="Board"
         actions={
-          <Button size="sm" variant="secondary" onClick={() => setShowChat((v) => !v)}>
-            {showChat ? "Hide chat" : "Team lead"}
+          <Button size="sm" variant="secondary" onClick={toggle}>
+            {open ? "Hide chat" : "Team lead"}
           </Button>
         }
       />
@@ -119,7 +120,9 @@ export default function BoardPage() {
             <Board projectId={projectId} items={tasks} onOpen={openItem} />
           )}
         </div>
-        {showChat && <ChatRail projectId={projectId} />}
+        {open && (
+          <ChatRail projectId={projectId} autoDictate={dictate} onDictateConsumed={consumeDictate} />
+        )}
       </div>
       {params.get("item") && (
         <DetailPeek

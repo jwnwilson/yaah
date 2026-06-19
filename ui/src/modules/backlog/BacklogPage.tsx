@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useChatLauncher } from "@/modules/chat/ChatLauncherContext";
 import { ChatRail } from "@/modules/chat/ChatRail";
 import { BacklogTree, type DeleteTarget } from "./BacklogTree";
 import { DetailPeek } from "./DetailPeek";
@@ -17,7 +18,7 @@ export default function BacklogPage() {
   const data = query.data;
   const [openId, setOpenId] = useState<string | null>(null);
   const [target, setTarget] = useState<DeleteTarget | null>(null);
-  const [showChat, setShowChat] = useState(false);
+  const { open, toggle, dictate, consumeDictate } = useChatLauncher();
 
   const headerExtra = data ? (
     <>
@@ -47,8 +48,8 @@ export default function BacklogPage() {
         actions={
           <>
             {headerExtra}
-            <Button size="sm" variant="secondary" onClick={() => setShowChat((v) => !v)}>
-              {showChat ? "Hide chat" : "Team lead"}
+            <Button size="sm" variant="secondary" onClick={toggle}>
+              {open ? "Hide chat" : "Team lead"}
             </Button>
           </>
         }
@@ -77,7 +78,9 @@ export default function BacklogPage() {
             )}
           </div>
         </div>
-        {showChat && <ChatRail projectId={projectId} />}
+        {open && (
+          <ChatRail projectId={projectId} autoDictate={dictate} onDictateConsumed={consumeDictate} />
+        )}
       </div>
 
       {openId && (
