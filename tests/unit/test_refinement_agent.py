@@ -84,7 +84,10 @@ def test_fake_agent_proposes_feature_and_epic_update_when_epic_scoped():
 def test_fake_agent_commits_on_approval_token():
     from adapters.agent.refinement.fake import FakeRefinementAgent
     from domain.refinement import (
-        ChatMessage, ChatRole, RefinementAction, RefinementContext,
+        ChatMessage,
+        ChatRole,
+        RefinementAction,
+        RefinementContext,
     )
 
     ctx = RefinementContext(
@@ -100,7 +103,10 @@ def test_fake_agent_commits_on_approval_token():
 def test_fake_agent_discusses_by_default():
     from adapters.agent.refinement.fake import FakeRefinementAgent
     from domain.refinement import (
-        ChatMessage, ChatRole, RefinementAction, RefinementContext,
+        ChatMessage,
+        ChatRole,
+        RefinementAction,
+        RefinementContext,
     )
 
     ctx = RefinementContext(
