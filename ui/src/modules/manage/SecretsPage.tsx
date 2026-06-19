@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Input } from "@/components/ui/Field";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { ResourceTable } from "@/components/ui/ResourceTable";
 import type { Secret } from "@/lib/api/types";
 import { SetSecretValueDialog } from "./SetSecretValueDialog";
@@ -26,11 +27,12 @@ export function SecretsPage() {
   }
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-fg">Secrets</h1>
-        <Button size="sm" onClick={() => setCreating(true)}>New secret</Button>
-      </div>
+    <div className="flex h-full flex-col">
+      <PageHeader
+        title="Secrets"
+        actions={<Button size="sm" onClick={() => setCreating(true)}>New secret</Button>}
+      />
+      <div className="flex-1 overflow-auto p-6">
       {isLoading && <p className="text-sm text-subtle">Loading…</p>}
       {isError && <p className="text-sm text-danger">{(error as Error).message}</p>}
       <ResourceTable
@@ -76,6 +78,7 @@ export function SecretsPage() {
           onClose={() => setDeleting(null)}
         />
       )}
+      </div>
     </div>
   );
 }

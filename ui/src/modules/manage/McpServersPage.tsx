@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Input, Select } from "@/components/ui/Field";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { ResourceTable } from "@/components/ui/ResourceTable";
 import type { McpServer, McpTransport } from "@/lib/api/types";
 import { useCreateMcpServer, useDeleteMcpServer, useMcpServers, useUpdateMcpServer } from "./useMcpServers";
@@ -46,11 +47,12 @@ export function McpServersPage() {
   const mutError = (create.error || update.error) as Error | null;
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-fg">MCP servers</h1>
-        <Button size="sm" onClick={openNew}>New MCP server</Button>
-      </div>
+    <div className="flex h-full flex-col">
+      <PageHeader
+        title="MCP servers"
+        actions={<Button size="sm" onClick={openNew}>New MCP server</Button>}
+      />
+      <div className="flex-1 overflow-auto p-6">
       {isLoading && <p className="text-sm text-subtle">Loading…</p>}
       {isError && <p className="text-sm text-danger">{(error as Error).message}</p>}
       <ResourceTable
@@ -114,6 +116,7 @@ export function McpServersPage() {
           onClose={() => setDeleting(null)}
         />
       )}
+      </div>
     </div>
   );
 }

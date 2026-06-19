@@ -43,6 +43,7 @@ test("renders the team roster with role and model", async () => {
 
   renderPage();
   expect(await screen.findByText("Engineer")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Team" })).toBeInTheDocument();
   expect(screen.getByText("Lead")).toBeInTheDocument();
   expect(screen.getByText(/engineer-model/)).toBeInTheDocument();
 });

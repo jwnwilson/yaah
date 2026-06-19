@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { TokenUsage, UsageGroupBy } from "@/lib/api/usage";
 import { useUsage } from "./useUsage";
 
@@ -36,8 +37,9 @@ export function BudgetPage() {
   const { data, isLoading, isError, error } = useUsage(group ? { group_by: group } : {});
 
   return (
-    <div>
-      <h1 className="mb-4 text-xl font-semibold text-fg">Budget</h1>
+    <div className="flex h-full flex-col">
+      <PageHeader title="Budget" />
+      <div className="flex-1 overflow-auto p-6">
       <div className="mb-4 flex gap-2">
         <Button size="sm" variant={group === null ? "primary" : "secondary"} onClick={() => setGroup(null)}>
           Total
@@ -80,6 +82,7 @@ export function BudgetPage() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

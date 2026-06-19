@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { initials, roleVisual } from "@/modules/team/roleVisual";
 import { useTeamRoster } from "@/modules/team/useTeamRoster";
 import { useMarkRead, useMessages, useSendMessage } from "./useInbox";
@@ -43,9 +44,10 @@ export function InboxPage() {
     }`;
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col">
+      <PageHeader title="Inbox" />
+      <div className="flex min-h-0 flex-1">
       <aside className="w-56 shrink-0 overflow-auto border-r border-line p-3">
-        <h1 className="mb-2 text-sm font-semibold text-fg">Inbox</h1>
         <button className={mailboxBtn(box === "me")} onClick={() => setBox("me")}>
           <Avatar color="#64748b" text="You" />
           <span>Notices</span>
@@ -105,6 +107,7 @@ export function InboxPage() {
           </form>
         )}
       </section>
+      </div>
     </div>
   );
 }

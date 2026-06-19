@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { relativeTime } from "./RunEventRow";
 import { RunStatusBadge } from "./RunStatusBadge";
@@ -10,8 +11,9 @@ export function RunsPage() {
   const rows = data ?? [];
 
   return (
-    <div className="p-4">
-      <h1 className="mb-4 text-xl font-semibold text-fg">Runs</h1>
+    <div className="flex h-full flex-col">
+      <PageHeader title="Runs" />
+      <div className="flex-1 overflow-auto p-4">
       {isLoading && (
         <div className="flex justify-center py-12 text-muted">
           <Spinner />
@@ -50,6 +52,7 @@ export function RunsPage() {
           </tbody>
         </table>
       )}
+      </div>
     </div>
   );
 }
