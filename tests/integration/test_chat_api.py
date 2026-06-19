@@ -1,7 +1,10 @@
 """Integration tests for the synchronous refinement chat API (T5)."""
 from fastapi.testclient import TestClient
 
+from domain.projects import WorkItemKind
+from domain.refinement import RefinementAction, RefinementOutput, WorkItemProposal
 from interactors.api.app import create_app
+from interactors.api.deps import refinement_agent, temporal_client
 from interactors.api.settings import Settings
 
 
@@ -148,3 +151,88 @@ def test_chat_skips_edit_to_unknown_item():
     data = c.post(f"/projects/{pid}/chat", json={"message": "hi"}).json()["data"]
     assert data["proposed_updates"] == []
     assert "unknown item nope" in data["reply"]
+
+
+class _FakeTemporal:
+    def __init__(self):
+        self.started = []
+
+    def start_run_workflow(self, run_input, workflow_name="OrchestratorWorkflow"):
+        self.started.append((workflow_name, run_input))
+
+    def signal(self, run_id, name):  # pragma: no cover - unused
+        pass
+
+
+class _ScriptedAgent:
+    """Turn 1: draft a task under the given parent. Turn 2+: commit."""
+
+    def __init__(self, parent_id):
+        self.parent_id = parent_id
+        self.calls = 0
+
+    def respond(self, ctx):
+        self.calls += 1
+        if self.calls == 1:
+            return RefinementOutput(
+                reply="drafted a task — confirm to start",
+                proposals=[WorkItemProposal(kind=WorkItemKind.TASK,
+                                            parent_id=self.parent_id, title="T")],
+            )
+        return RefinementOutput(reply="starting", action=RefinementAction.COMMIT)
+
+
+def test_commit_starts_a_run_for_session_drafted_task():
+    # One app/client throughout so the in-memory SQLite DB is shared across requests.
+    # Build the app first so we can create the epic, THEN wire the scripted agent to it.
+    app = create_app(Settings(_env_file=None, database_url="sqlite:///:memory:"))
+    fake = _FakeTemporal()
+    app.dependency_overrides[temporal_client] = lambda: fake
+    c = TestClient(app)
+
+    pid = c.post("/projects", json={"name": "p", "repo_url": "r"}).json()["data"]["id"]
+    team_id = c.post("/teams/default").json()["data"]["team"]["id"]
+    c.patch(f"/projects/{pid}", json={"team_id": team_id})
+    epic = c.post(f"/projects/{pid}/work-items",
+                  json={"kind": "epic", "title": "E"}).json()["data"]
+
+    # One shared instance so `calls` increments across the two turns (turn 1 drafts,
+    # turn 2 commits) — FastAPI does not memoize overrides across requests.
+    scripted = _ScriptedAgent(epic["id"])
+    app.dependency_overrides[refinement_agent] = lambda: scripted
+
+    # Turn 1: draft a task (DRAFT, tagged with the session). No runs yet.
+    r1 = c.post(f"/projects/{pid}/chat", json={"message": "break it down"}).json()["data"]
+    sid = r1["session_id"]
+    assert len(r1["created_items"]) == 1
+    assert r1["created_items"][0]["status"] == "draft"
+    assert fake.started == []
+
+    # Turn 2: approve → commit. Task promoted to READY, epic activated, run started.
+    r2 = c.post(f"/projects/{pid}/chat",
+                json={"message": "go", "session_id": sid}).json()["data"]
+    assert len(fake.started) == 1
+    workflow_name, run_input = fake.started[0]
+    assert workflow_name == "OrchestratorWorkflow"
+    assert run_input["task_id"] == r1["created_items"][0]["id"]
+    assert run_input["task_title"] == "T"
+    assert r2["started_runs"] == [run_input["run_id"]]
+
+
+def test_commit_with_nothing_to_start_is_noop():
+    app = create_app(Settings(_env_file=None, database_url="sqlite:///:memory:"))
+    fake = _FakeTemporal()
+    app.dependency_overrides[temporal_client] = lambda: fake
+
+    class _CommitOnly:
+        def respond(self, ctx):
+            return RefinementOutput(reply="ok", action=RefinementAction.COMMIT)
+
+    app.dependency_overrides[refinement_agent] = lambda: _CommitOnly()
+    c = TestClient(app)
+    pid = c.post("/projects", json={"name": "p", "repo_url": "r"}).json()["data"]["id"]
+
+    r = c.post(f"/projects/{pid}/chat", json={"message": "go"})
+    assert r.status_code == 200
+    assert r.json()["data"]["started_runs"] == []
+    assert fake.started == []

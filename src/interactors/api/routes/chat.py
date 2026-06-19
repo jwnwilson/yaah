@@ -5,18 +5,25 @@ from pydantic import BaseModel
 
 from adapters.agent.refinement.ports import RefinementAgent
 from adapters.database.ports import UnitOfWork
+from domain.base import utc_now
 from domain.projects import WorkItem, WorkItemKind, WorkItemStatus
 from domain.refinement import (
     ChatMessage,
     ChatRole,
     ChatSession,
+    RefinementAction,
     RefinementContext,
     epic_focus_prompt,
+    select_committable,
     system_prompt,
     validate_proposal,
 )
-from interactors.api.deps import get_uow, refinement_agent
+from domain.transitions import InvalidTransition, validate_transition
+from interactors.api.deps import get_uow, refinement_agent, temporal_client
+from interactors.api.deps import settings as get_settings
 from interactors.api.envelope import ok
+from interactors.scheduling import reconcile_project
+from interactors.temporal.client import TemporalRunClient
 
 router = APIRouter(tags=["chat"])
 
@@ -33,6 +40,8 @@ def post_message(
     body: PostMessage,
     uow: UnitOfWork = Depends(get_uow),
     agent: RefinementAgent = Depends(refinement_agent),
+    temporal: TemporalRunClient = Depends(temporal_client),
+    settings=Depends(get_settings),
 ) -> dict:
     with uow.transaction():
         project = uow.projects.get(project_id)  # RecordNotFound -> 404
@@ -138,6 +147,7 @@ def post_message(
                     body=proposal.body,
                     acceptance_criteria=proposal.acceptance_criteria,
                     status=WorkItemStatus.DRAFT,  # NEVER ready
+                    chat_session_id=session.id,
                 )
             )
             created.append(item)
@@ -166,7 +176,40 @@ def post_message(
                 "acceptance_criteria": upd.acceptance_criteria,
             })
 
+        run_inputs: list[dict] = []
+        if out.action == RefinementAction.COMMIT:
+            session_items = uow.work_items.list(
+                filters={"project_id": project_id, "chat_session_id": session.id},
+                page_size=500,
+            ).results
+            plan = select_committable(session_items)
+            by_session_id = {i.id: i for i in session_items}
+            for tid in plan.task_ids:
+                task = by_session_id[tid]
+                try:
+                    validate_transition(task.status, WorkItemStatus.READY)
+                except InvalidTransition as exc:
+                    notes.append(str(exc))
+                    continue
+                uow.work_items.update(
+                    tid,
+                    task.model_copy(
+                        update={"status": WorkItemStatus.READY, "updated_at": utc_now()}
+                    ),
+                )
+            for pid in plan.parent_ids:
+                parent = uow.work_items.get(pid)
+                if parent.kind in (WorkItemKind.EPIC, WorkItemKind.FEATURE) and not parent.active:
+                    uow.work_items.update(
+                        pid,
+                        parent.model_copy(update={"active": True, "updated_at": utc_now()}),
+                    )
+            run_inputs = reconcile_project(uow, settings, project_id)
+
         reply = out.reply + (("\n\nSkipped: " + "; ".join(notes)) if notes else "")
+
+    for ri in run_inputs:
+        temporal.start_run_workflow(ri, "OrchestratorWorkflow")
 
     return ok(
         {
@@ -175,6 +218,7 @@ def post_message(
             "created_items": [c.model_dump(mode="json") for c in created],
             "proposed_epic_update": proposed_epic_update,
             "proposed_updates": proposed_updates,
+            "started_runs": [ri["run_id"] for ri in run_inputs],
         }
     )
 
