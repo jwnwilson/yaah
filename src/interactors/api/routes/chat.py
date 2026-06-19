@@ -5,20 +5,75 @@ from pydantic import BaseModel
 
 from adapters.agent.refinement.ports import RefinementAgent
 from adapters.database.ports import UnitOfWork
+from domain.base import utc_now
 from domain.projects import WorkItem, WorkItemKind, WorkItemStatus
 from domain.refinement import (
     ChatMessage,
     ChatRole,
     ChatSession,
+    RefinementAction,
     RefinementContext,
     epic_focus_prompt,
+    select_committable,
     system_prompt,
     validate_proposal,
 )
-from interactors.api.deps import get_uow, refinement_agent
+from domain.transitions import validate_transition
+from interactors.api.deps import get_uow, refinement_agent, temporal_client
+from interactors.api.deps import settings as get_settings
 from interactors.api.envelope import ok
+from interactors.scheduling import reconcile_project
+from interactors.temporal.client import TemporalRunClient
 
 router = APIRouter(tags=["chat"])
+
+_MAX_SESSION_ITEMS = 500  # a single chat session won't draft more items than this
+
+
+def _commit_session(
+    uow, settings, project_id: str, session_id: str, exclude_ids: set[str] = frozenset()
+) -> tuple[list[str], list[dict]]:
+    """Promote the session's DRAFT tasks to READY, activate their parents, and reconcile the
+    project. Items created in the current turn (exclude_ids) are skipped so a commit only
+    starts drafts the user has already seen — the confirmation step is enforced in code, not
+    just via the system prompt. Returns (skipped_notes, run_inputs); caller launches runs
+    after commit. select_committable returns only DRAFT tasks, so DRAFT->READY is always valid."""
+    notes: list[str] = []
+    session_items = [
+        i
+        for i in uow.work_items.list(
+            filters={"project_id": project_id, "chat_session_id": session_id},
+            page_size=_MAX_SESSION_ITEMS,
+        ).results
+        if i.id not in exclude_ids
+    ]
+    plan = select_committable(session_items)
+    by_session_id = {i.id: i for i in session_items}
+    for tid in plan.task_ids:
+        task = by_session_id[tid]
+        validate_transition(task.status, WorkItemStatus.READY)  # always valid; honors convention
+        uow.work_items.update(
+            tid,
+            task.model_copy(update={"status": WorkItemStatus.READY, "updated_at": utc_now()}),
+        )
+    if plan.parent_ids:
+        # owner-scoped by the uow: parent ids from another owner return nothing and are skipped
+        parents = uow.work_items.list(
+            filters={"id__in": plan.parent_ids}, page_size=len(plan.parent_ids) + 1
+        ).results
+        parents_by_id = {p.id: p for p in parents}
+        for pid in plan.parent_ids:
+            parent = parents_by_id.get(pid)
+            if parent is None:
+                notes.append(f"parent {pid} not found, skipping activation")
+                continue
+            if parent.kind in (WorkItemKind.EPIC, WorkItemKind.FEATURE) and not parent.active:
+                uow.work_items.update(
+                    pid,
+                    parent.model_copy(update={"active": True, "updated_at": utc_now()}),
+                )
+    run_inputs = reconcile_project(uow, settings, project_id)
+    return notes, run_inputs
 
 
 class PostMessage(BaseModel):
@@ -33,6 +88,8 @@ def post_message(
     body: PostMessage,
     uow: UnitOfWork = Depends(get_uow),
     agent: RefinementAgent = Depends(refinement_agent),
+    temporal: TemporalRunClient = Depends(temporal_client),
+    settings=Depends(get_settings),
 ) -> dict:
     with uow.transaction():
         project = uow.projects.get(project_id)  # RecordNotFound -> 404
@@ -138,6 +195,7 @@ def post_message(
                     body=proposal.body,
                     acceptance_criteria=proposal.acceptance_criteria,
                     status=WorkItemStatus.DRAFT,  # NEVER ready
+                    chat_session_id=session.id,
                 )
             )
             created.append(item)
@@ -166,7 +224,18 @@ def post_message(
                 "acceptance_criteria": upd.acceptance_criteria,
             })
 
+        run_inputs: list[dict] = []
+        if out.action == RefinementAction.COMMIT:
+            commit_notes, run_inputs = _commit_session(
+                uow, settings, project_id, session.id,
+                exclude_ids={c.id for c in created},
+            )
+            notes.extend(commit_notes)
+
         reply = out.reply + (("\n\nSkipped: " + "; ".join(notes)) if notes else "")
+
+    for ri in run_inputs:
+        temporal.start_run_workflow(ri, "OrchestratorWorkflow")
 
     return ok(
         {
@@ -175,6 +244,7 @@ def post_message(
             "created_items": [c.model_dump(mode="json") for c in created],
             "proposed_epic_update": proposed_epic_update,
             "proposed_updates": proposed_updates,
+            "started_runs": [ri["run_id"] for ri in run_inputs],
         }
     )
 

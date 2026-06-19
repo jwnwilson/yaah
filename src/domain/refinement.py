@@ -8,7 +8,12 @@ from typing import Callable
 from pydantic import BaseModel, Field
 
 from domain.base import new_id, utc_now
-from domain.projects import WorkItem, WorkItemKind
+from domain.projects import WorkItem, WorkItemKind, WorkItemStatus
+
+
+class RefinementAction(StrEnum):
+    DISCUSS = "discuss"
+    COMMIT = "commit"
 
 
 class ChatRole(StrEnum):
@@ -72,6 +77,7 @@ class RefinementOutput(BaseModel):
     proposals: list[WorkItemProposal] = []
     epic_update: EpicSpecEdit | None = None
     updates: list[WorkItemEdit] = []
+    action: RefinementAction = RefinementAction.DISCUSS
 
 
 def validate_proposal(p: WorkItemProposal, *, parent_exists: Callable[[str], bool]) -> None:
@@ -94,7 +100,11 @@ def system_prompt(project_name: str, lead_system_prompt: str = "") -> str:
             "You may also propose edits to EXISTING items (epics, features, or tasks) by "
             "returning `updates`, each with the item's id and any of title/body/"
             "acceptance_criteria — content only, never status. Proposed edits are shown to the "
-            "human for approval before they apply.")
+            "human for approval before they apply. "
+            "After you propose a breakdown, ask the user to confirm before starting; only when "
+            "they approve in a later message, set action='commit' (with no new proposals) to "
+            "promote the drafted tasks and start work. Never set action='commit' in the same "
+            "turn you first propose the breakdown.")
 
 
 def epic_focus_prompt(epic: WorkItem) -> str:
@@ -104,3 +114,25 @@ def epic_focus_prompt(epic: WorkItem) -> str:
         "return an epic_update to refine THIS epic's body and acceptance criteria. Everything "
         "is created as a Draft for human review — never mark anything ready."
     )
+
+
+class CommitPlan(BaseModel):
+    """What a `commit` turn should start: the DRAFT tasks to mark READY and the direct
+    parent ids to activate so the scheduler can see them. Pure — no I/O."""
+
+    task_ids: list[str] = []
+    parent_ids: list[str] = []
+
+
+def select_committable(items: list[WorkItem]) -> CommitPlan:
+    """Given a chat session's work items, pick the DRAFT tasks to promote and the distinct
+    direct-parent ids that must be activated. Non-DRAFT items are ignored (idempotent)."""
+    drafts = [
+        i for i in items
+        if i.kind == WorkItemKind.TASK and i.status == WorkItemStatus.DRAFT
+    ]
+    parent_ids: list[str] = []
+    for t in drafts:
+        if t.parent_id and t.parent_id not in parent_ids:
+            parent_ids.append(t.parent_id)
+    return CommitPlan(task_ids=[t.id for t in drafts], parent_ids=parent_ids)

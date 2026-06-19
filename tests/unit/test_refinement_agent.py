@@ -79,3 +79,51 @@ def test_fake_agent_proposes_feature_and_epic_update_when_epic_scoped():
     assert out.epic_update is not None
     assert out.proposals and out.proposals[0].parent_id == "epic-1"
     assert out.proposals[0].kind == "feature"
+
+
+def test_fake_agent_commits_on_approval_token():
+    from adapters.agent.refinement.fake import FakeRefinementAgent
+    from domain.refinement import (
+        ChatMessage,
+        ChatRole,
+        RefinementAction,
+        RefinementContext,
+    )
+
+    ctx = RefinementContext(
+        project_name="Alpha",
+        history=[ChatMessage(owner_id="u", session_id="s", role=ChatRole.USER,
+                             content="go")],
+    )
+    out = FakeRefinementAgent().respond(ctx)
+    assert out.action == RefinementAction.COMMIT
+    assert out.proposals == []
+
+
+def test_fake_agent_discusses_by_default():
+    from adapters.agent.refinement.fake import FakeRefinementAgent
+    from domain.refinement import (
+        ChatMessage,
+        ChatRole,
+        RefinementAction,
+        RefinementContext,
+    )
+
+    ctx = RefinementContext(
+        project_name="Alpha",
+        history=[ChatMessage(owner_id="u", session_id="s", role=ChatRole.USER,
+                             content="build login")],
+    )
+    out = FakeRefinementAgent().respond(ctx)
+    assert out.action == RefinementAction.DISCUSS
+    assert out.proposals  # still drafts an epic
+
+
+def test_anthropic_output_parses_action_from_tool_input():
+    # Lock-in: action flows through the schema-derived tool + RefinementOutput(**input).
+    from domain.refinement import RefinementAction, RefinementOutput
+
+    schema = RefinementOutput.model_json_schema()
+    assert "action" in schema["properties"]
+    out = RefinementOutput(**{"reply": "ok", "action": "commit"})
+    assert out.action == RefinementAction.COMMIT

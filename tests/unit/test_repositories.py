@@ -115,3 +115,24 @@ def test_chat_repos_owner_scoped():
     other = SqlUnitOfWork(factory, required_filters={"owner_id": "u2"})
     with other.transaction():
         assert other.chat_sessions.list(filters={"project_id": "p1"}).total == 0
+
+
+def test_work_item_chat_session_id_round_trips_and_filters():
+    from adapters.database.engine import make_engine, make_session_factory
+    from adapters.database.orm import Base
+    from adapters.database.uow import SqlUnitOfWork
+    from domain.projects import WorkItem, WorkItemKind
+
+    engine = make_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = make_session_factory(engine)
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "u1"})
+    with uow.transaction():
+        uow.work_items.create(WorkItem(owner_id="u1", project_id="p1",
+                                       kind=WorkItemKind.EPIC, title="E",
+                                       chat_session_id="s1"))
+        uow.work_items.create(WorkItem(owner_id="u1", project_id="p1",
+                                       kind=WorkItemKind.EPIC, title="other"))
+        scoped = uow.work_items.list(filters={"project_id": "p1", "chat_session_id": "s1"})
+    assert scoped.total == 1
+    assert scoped.results[0].chat_session_id == "s1"
