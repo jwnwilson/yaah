@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
+import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { ChatRail } from "@/modules/chat/ChatRail";
-import { ProjectHeader } from "@/modules/projects/ProjectHeader";
 import { BacklogTree, type DeleteTarget } from "./BacklogTree";
 import { DetailPeek } from "./DetailPeek";
 import { InlineAdd } from "./InlineAdd";
@@ -41,11 +42,16 @@ export default function BacklogPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ProjectHeader
-        projectId={projectId}
-        showChat={showChat}
-        onToggleChat={() => setShowChat((v) => !v)}
-        extra={headerExtra}
+      <PageHeader
+        title="Backlog"
+        actions={
+          <>
+            {headerExtra}
+            <Button size="sm" variant="secondary" onClick={() => setShowChat((v) => !v)}>
+              {showChat ? "Hide chat" : "Team lead"}
+            </Button>
+          </>
+        }
       />
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-y-auto">

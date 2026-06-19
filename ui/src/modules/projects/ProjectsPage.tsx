@@ -1,38 +1,57 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ListRow, ListSection } from "@/components/ui/ListRow";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { CreateProjectDialog } from "./CreateProjectDialog";
 import { useProjects } from "./useProjects";
 
 export default function ProjectsPage() {
+  const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const { data, isLoading, isError, error } = useProjects();
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-fg">Projects</h1>
-        <Button size="sm" onClick={() => setDialogOpen(true)}>New project</Button>
-      </div>
-      {isLoading && <p className="text-sm text-subtle">Loading…</p>}
-      {isError && <p className="text-sm text-danger">{(error as Error).message}</p>}
-      {data && data.length === 0 && (
-        <EmptyState
-          title="No projects yet"
-          description="Create your first project to spin up a board."
-          action={<Button size="sm" onClick={() => setDialogOpen(true)}>New project</Button>}
-        />
-      )}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {data?.map((p) => (
-          <Card key={p.id} className="p-4 transition-colors hover:bg-surface-hover">
-            <Link to={`/projects/${p.id}`} className="font-medium text-fg hover:text-accent">
-              {p.name}
-            </Link>
-          </Card>
-        ))}
+    <div className="flex h-full flex-col">
+      <PageHeader title="Projects" />
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-3xl p-6">
+          {isLoading && <p className="text-sm text-subtle">Loading…</p>}
+          {isError && <p className="text-sm text-danger">{(error as Error).message}</p>}
+          {data && data.length === 0 && (
+            <EmptyState
+              title="No projects yet"
+              description="Create your first project to spin up a board."
+              action={
+                <Button size="sm" onClick={() => setDialogOpen(true)}>
+                  New project
+                </Button>
+              }
+            />
+          )}
+          {data && data.length > 0 && (
+            <ListSection>
+              {data.map((p) => (
+                <ListRow key={p.id} onClick={() => navigate(`/projects/${p.id}`)}>
+                  <span className="flex-1 truncate font-medium text-fg">{p.name}</span>
+                  <span className="truncate text-xs text-subtle">
+                    {p.repo_url ?? p.local_path ?? ""}
+                  </span>
+                </ListRow>
+              ))}
+            </ListSection>
+          )}
+          {data && data.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setDialogOpen(true)}
+              className="mt-3 text-sm text-subtle hover:text-fg"
+            >
+              ＋ New project
+            </button>
+          )}
+        </div>
       </div>
       {dialogOpen && <CreateProjectDialog onClose={() => setDialogOpen(false)} />}
     </div>
