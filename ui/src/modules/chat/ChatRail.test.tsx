@@ -2,8 +2,24 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
+import { beforeEach, vi } from "vitest";
 import { server } from "@/test/server";
 import { ChatRail } from "./ChatRail";
+
+let dictationSupported = true;
+vi.mock("@/modules/chat/useSpeechDictation", () => ({
+  useSpeechDictation: ({ onTranscript }: { onTranscript: (t: string) => void }) => ({
+    supported: dictationSupported,
+    listening: false,
+    start: () => onTranscript("voice text"),
+    stop: vi.fn(),
+    toggle: () => onTranscript("voice text"),
+  }),
+}));
+
+beforeEach(() => {
+  dictationSupported = true;
+});
 
 function renderRail() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -76,4 +92,27 @@ test("shows a proposed edit to an existing item and applies it", async () => {
   await userEvent.click(screen.getByRole("button", { name: /apply/i }));
   await waitFor(() => expect(patched).toBe(true));
   await waitFor(() => expect(screen.queryByText(/edit feature: login flow/i)).not.toBeInTheDocument());
+});
+
+test("dictation fills the message input", async () => {
+  server.use(
+    http.get("/api/projects/p1/chat", () =>
+      HttpResponse.json({ success: true, data: [], error: null, meta: { total: 0, page_size: 50, page_number: 1 } })),
+  );
+  renderRail();
+  await userEvent.click(screen.getByLabelText(/dictate|voice/i));
+  expect(screen.getByPlaceholderText(/message the team lead/i)).toHaveValue("voice text");
+});
+
+test("mic button is absent when speech recognition is unsupported", async () => {
+  dictationSupported = false;
+  server.use(
+    http.get("/api/projects/p1/chat", () =>
+      HttpResponse.json({ success: true, data: [], error: null, meta: { total: 0, page_size: 50, page_number: 1 } })),
+  );
+  renderRail();
+  await waitFor(() =>
+    expect(screen.getByPlaceholderText(/message the team lead/i)).toBeInTheDocument(),
+  );
+  expect(screen.queryByLabelText(/dictate|voice/i)).not.toBeInTheDocument();
 });
