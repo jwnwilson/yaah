@@ -58,7 +58,7 @@ describe("BacklogPage", () => {
         },
       ],
     });
-    vi.mocked(backlog.activateEpic).mockResolvedValue(wi({ id: "e1", active: true }) as never);
+    vi.mocked(backlog.activateItem).mockResolvedValue(wi({ id: "e1", active: true }) as never);
     vi.mocked(workItems.createWorkItem).mockResolvedValue(wi({ id: "new" }) as never);
   });
 
@@ -76,7 +76,7 @@ describe("BacklogPage", () => {
     renderPage();
     await screen.findByText("Auth");
     await userEvent.click(screen.getByRole("button", { name: "activate" }));
-    await waitFor(() => expect(backlog.activateEpic).toHaveBeenCalledWith("p1", "e1"));
+    await waitFor(() => expect(backlog.activateItem).toHaveBeenCalledWith("p1", "e1"));
   });
 
   it("creates an epic via inline add", async () => {

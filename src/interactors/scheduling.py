@@ -66,14 +66,26 @@ def reconcile_project(uow, settings, project_id: str) -> list[dict]:
         filters={"project_id": project_id, "kind": WorkItemKind.EPIC, "active": True},
         page_size=200,
     ).results
-    if not epics:
-        return []
-    epic_ids = [e.id for e in epics]
-    features = uow.work_items.list(
-        filters={"project_id": project_id, "kind": WorkItemKind.FEATURE, "parent_id__in": epic_ids},
+    active_features = uow.work_items.list(
+        filters={"project_id": project_id, "kind": WorkItemKind.FEATURE, "active": True},
         page_size=500,
     ).results
+    epic_ids = [e.id for e in epics]
+    features_under_active_epics = (
+        uow.work_items.list(
+            filters={
+                "project_id": project_id, "kind": WorkItemKind.FEATURE, "parent_id__in": epic_ids,
+            },
+            page_size=500,
+        ).results
+        if epic_ids
+        else []
+    )
+    # A task is eligible when its epic is active, or its feature is active (union).
+    features = list({f.id: f for f in (*features_under_active_epics, *active_features)}.values())
     parent_ids = epic_ids + [f.id for f in features]
+    if not parent_ids:
+        return []
     ready_tasks = uow.work_items.list(
         filters={
             "project_id": project_id, "kind": WorkItemKind.TASK,

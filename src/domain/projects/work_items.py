@@ -47,6 +47,6 @@ class WorkItem(BaseModel):
             raise ValueError("epics cannot have a parent")
         if self.kind in (WorkItemKind.FEATURE, WorkItemKind.TASK) and not self.parent_id:
             raise ValueError(f"{self.kind} requires parent_id")
-        if self.active and self.kind != WorkItemKind.EPIC:
-            raise ValueError("only epics can be active")
+        if self.active and self.kind not in (WorkItemKind.EPIC, WorkItemKind.FEATURE):
+            raise ValueError("only epics and features can be active")
         return self

@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  activateEpic,
+  activateItem,
   backlogKeys,
-  deactivateEpic,
+  deactivateItem,
   getBacklog,
   reorderWorkItems,
 } from "@/lib/api/backlog";
@@ -52,12 +52,12 @@ export function useBacklog(projectId: string) {
   });
 
   const activate = useMutation({
-    mutationFn: (epicId: string) => activateEpic(projectId, epicId),
+    mutationFn: (itemId: string) => activateItem(projectId, itemId),
     onSuccess: invalidate,
   });
 
   const deactivate = useMutation({
-    mutationFn: (epicId: string) => deactivateEpic(projectId, epicId),
+    mutationFn: (itemId: string) => deactivateItem(projectId, itemId),
     onSuccess: invalidate,
   });
 

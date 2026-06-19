@@ -33,6 +33,59 @@ class SetStatus(BaseModel):
     status: WorkItemStatus
 
 
+def _load_activatable(uow: UnitOfWork, project_id: str, item_id: str) -> WorkItem:
+    """An epic or feature in this project — the kinds that can be active (on the board)."""
+    uow.projects.get(project_id)  # RecordNotFound -> 404
+    item = uow.work_items.get(item_id)  # owner-scoped
+    if item.project_id != project_id or item.kind not in (WorkItemKind.EPIC, WorkItemKind.FEATURE):
+        raise HTTPException(status_code=404, detail="epic or feature not found")
+    return item
+
+
+def _set_active(uow: UnitOfWork, item: WorkItem, active: bool) -> WorkItem:
+    """Set active on an epic/feature; activating or deactivating an epic cascades to all of
+    its features so the board and backlog stay in sync."""
+    updated = uow.work_items.update(
+        item.id, item.model_copy(update={"active": active, "updated_at": utc_now()})
+    )
+    if item.kind == WorkItemKind.EPIC:
+        features = uow.work_items.list(
+            filters={"parent_id": item.id, "kind": WorkItemKind.FEATURE}, page_size=500
+        ).results
+        for f in features:
+            if f.active != active:
+                uow.work_items.update(
+                    f.id, f.model_copy(update={"active": active, "updated_at": utc_now()})
+                )
+    return updated
+
+
+@router.post("/projects/{project_id}/work-items/{item_id}/activate")
+def activate_item(
+    project_id: str, item_id: str,
+    uow: UnitOfWork = Depends(get_uow),
+    temporal: TemporalRunClient = Depends(temporal_client),
+    settings=Depends(get_settings),
+) -> dict:
+    """Activate an epic or feature (move it onto the board) and auto-start its ready tasks."""
+    with uow.transaction():
+        item = _set_active(uow, _load_activatable(uow, project_id, item_id), True)
+        run_inputs = reconcile_project(uow, settings, project_id)
+    for ri in run_inputs:
+        temporal.start_run_workflow(ri, "OrchestratorWorkflow")
+    return ok(item.model_dump(mode="json"))
+
+
+@router.post("/projects/{project_id}/work-items/{item_id}/deactivate")
+def deactivate_item(
+    project_id: str, item_id: str, uow: UnitOfWork = Depends(get_uow)
+) -> dict:
+    """Deactivate an epic or feature (move it back to the backlog). In-flight runs continue."""
+    with uow.transaction():
+        item = _set_active(uow, _load_activatable(uow, project_id, item_id), False)
+    return ok(item.model_dump(mode="json"))
+
+
 class ReorderItems(BaseModel):
     parent_id: str | None = None
     ordered_ids: list[str]
