@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { initials, roleVisual } from "./roleVisual";
 import { useTeamRoster } from "./useTeamRoster";
 
@@ -14,13 +15,16 @@ export function TeamPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-fg">Team</h1>
-        <Link to="/manage/agents" className="text-sm text-accent hover:underline">
-          Edit agents in Manage →
-        </Link>
-      </div>
+    <div className="flex h-full flex-col">
+      <PageHeader
+        title="Team"
+        actions={
+          <Link to="/manage/agents" className="text-sm text-accent hover:underline">
+            Edit agents in Manage →
+          </Link>
+        }
+      />
+      <div className="flex-1 overflow-auto p-6">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {agents.data?.map((a) => {
           const v = roleVisual(a.role);
@@ -45,6 +49,7 @@ export function TeamPage() {
             </Link>
           );
         })}
+      </div>
       </div>
     </div>
   );

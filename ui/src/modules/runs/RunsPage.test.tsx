@@ -39,6 +39,12 @@ function renderPage() {
 }
 
 describe("RunsPage", () => {
+  it("renders the page header title", () => {
+    mockUseAllRuns.mockReturnValue({ data: [], isLoading: false });
+    renderPage();
+    expect(screen.getByRole("heading", { name: "Runs" })).toBeInTheDocument();
+  });
+
   it("renders a row per run with task title, status, and a link to the inspector", () => {
     mockUseAllRuns.mockReturnValue({ data: [makeRun()], isLoading: false });
     renderPage();
