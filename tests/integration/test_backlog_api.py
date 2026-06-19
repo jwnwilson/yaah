@@ -45,7 +45,7 @@ def test_activate_epic_starts_runs_up_to_limit():
     c.patch(f"/projects/{pid}", json={"max_concurrent_runs": 2})
     epic_id = _epic_with_ready_tasks(c, pid, 3)
 
-    resp = c.post(f"/projects/{pid}/epics/{epic_id}/activate")
+    resp = c.post(f"/projects/{pid}/work-items/{epic_id}/activate")
     assert resp.status_code == 200
     assert resp.json()["data"]["active"] is True
     assert len(fake.started) == 2
@@ -55,28 +55,48 @@ def test_deactivate_epic_starts_nothing():
     c, fake = _client()
     pid = _project_with_team(c)
     epic_id = _epic_with_ready_tasks(c, pid, 1)
-    c.post(f"/projects/{pid}/epics/{epic_id}/activate")
+    c.post(f"/projects/{pid}/work-items/{epic_id}/activate")
     fake.started.clear()
-    resp = c.post(f"/projects/{pid}/epics/{epic_id}/deactivate")
+    resp = c.post(f"/projects/{pid}/work-items/{epic_id}/deactivate")
     assert resp.status_code == 200
     assert resp.json()["data"]["active"] is False
     assert fake.started == []
 
 
-def test_activate_non_epic_404():
+def test_activate_task_404():
     c, _fake = _client()
     pid = _project_with_team(c)
     epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
     feat = c.post(f"/projects/{pid}/work-items",
                   json={"kind": "feature", "title": "F", "parent_id": epic["id"]}).json()["data"]
-    assert c.post(f"/projects/{pid}/epics/{feat['id']}/activate").status_code == 404
+    task = c.post(f"/projects/{pid}/work-items",
+                  json={"kind": "task", "title": "T", "parent_id": feat["id"]}).json()["data"]
+    # tasks can't be activated; epics and features can
+    assert c.post(f"/projects/{pid}/work-items/{task['id']}/activate").status_code == 404
+
+
+def test_activate_feature_autostarts_its_ready_tasks():
+    c, fake = _client()
+    pid = _project_with_team(c)
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+    feat = c.post(f"/projects/{pid}/work-items",
+                  json={"kind": "feature", "title": "F", "parent_id": epic["id"]}).json()["data"]
+    task = c.post(f"/projects/{pid}/work-items",
+                  json={"kind": "task", "title": "T", "parent_id": feat["id"]}).json()["data"]
+    c.post(f"/work-items/{task['id']}/status", json={"status": "ready"})
+    # epic is NOT active; activating the feature alone should start its ready task
+    resp = c.post(f"/projects/{pid}/work-items/{feat['id']}/activate")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["active"] is True
+    assert len(fake.started) == 1
+    assert fake.started[0][1]["task_id"] == task["id"]
 
 
 def test_ready_task_under_active_epic_autostarts():
     c, fake = _client()
     pid = _project_with_team(c)
     epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
-    c.post(f"/projects/{pid}/epics/{epic['id']}/activate")
+    c.post(f"/projects/{pid}/work-items/{epic['id']}/activate")
     assert fake.started == []
     task = c.post(f"/projects/{pid}/work-items",
                   json={"kind": "task", "title": "T", "parent_id": epic["id"]}).json()["data"]
@@ -100,7 +120,7 @@ def test_raising_cap_pulls_more_work():
     pid = _project_with_team(c)
     c.patch(f"/projects/{pid}", json={"max_concurrent_runs": 1})
     epic_id = _epic_with_ready_tasks(c, pid, 3)
-    c.post(f"/projects/{pid}/epics/{epic_id}/activate")
+    c.post(f"/projects/{pid}/work-items/{epic_id}/activate")
     assert len(fake.started) == 1
     c.patch(f"/projects/{pid}", json={"max_concurrent_runs": 3})
     assert len(fake.started) == 3
@@ -191,6 +211,6 @@ def test_position_orders_autostart_queue():
            json={"parent_id": epic["id"], "ordered_ids": [b["id"], a["id"]]})
     c.post(f"/work-items/{a['id']}/status", json={"status": "ready"})
     c.post(f"/work-items/{b['id']}/status", json={"status": "ready"})
-    c.post(f"/projects/{pid}/epics/{epic['id']}/activate")
+    c.post(f"/projects/{pid}/work-items/{epic['id']}/activate")
     assert len(fake.started) == 1
     assert fake.started[0][1]["task_id"] == b["id"]

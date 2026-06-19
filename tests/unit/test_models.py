@@ -135,12 +135,22 @@ def test_epic_can_be_active_and_defaults_false():
     assert active.active is True
 
 
-def test_non_epic_cannot_be_active():
+def test_feature_can_be_active():
+    from domain.projects import WorkItem, WorkItemKind
+
+    feature = WorkItem(
+        owner_id="o", project_id="p", kind=WorkItemKind.FEATURE,
+        parent_id="e", title="F", active=True,
+    )
+    assert feature.active is True
+
+
+def test_task_cannot_be_active():
     import pytest
 
     from domain.projects import WorkItem, WorkItemKind
 
-    with pytest.raises(ValueError, match="only epics can be active"):
+    with pytest.raises(ValueError, match="only epics and features can be active"):
         WorkItem(
             owner_id="o", project_id="p", kind=WorkItemKind.TASK,
             parent_id="f", title="T", active=True,
