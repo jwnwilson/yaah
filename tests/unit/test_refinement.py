@@ -1,9 +1,12 @@
 import pytest
 
-from domain.projects import WorkItemKind
+from domain.projects import WorkItem, WorkItemKind, WorkItemStatus
 from domain.refinement import (
+    CommitPlan,
+    RefinementAction,
     RefinementOutput,
     WorkItemProposal,
+    select_committable,
     system_prompt,
     validate_proposal,
 )
@@ -40,23 +43,16 @@ def test_system_prompt_mentions_project_and_drafts():
 
 
 def test_output_action_defaults_to_discuss():
-    from domain.refinement import RefinementAction, RefinementOutput
-
     out = RefinementOutput(reply="hi")
     assert out.action == RefinementAction.DISCUSS
 
 
 def test_output_parses_commit_action():
-    from domain.refinement import RefinementAction, RefinementOutput
-
     out = RefinementOutput(**{"reply": "starting", "action": "commit"})
     assert out.action == RefinementAction.COMMIT
 
 
 def test_select_committable_picks_draft_tasks_and_their_parents():
-    from domain.projects import WorkItem, WorkItemKind, WorkItemStatus
-    from domain.refinement import select_committable
-
     epic = WorkItem(owner_id="u", project_id="p", kind=WorkItemKind.EPIC, title="E")
     feat = WorkItem(owner_id="u", project_id="p", kind=WorkItemKind.FEATURE,
                     parent_id=epic.id, title="F")
@@ -69,3 +65,19 @@ def test_select_committable_picks_draft_tasks_and_their_parents():
 
     assert plan.task_ids == [draft_task.id]          # only the DRAFT task
     assert plan.parent_ids == [feat.id]              # its direct parent, deduped
+
+
+def test_select_committable_dedups_shared_parent_and_handles_empty():
+    assert select_committable([]) == CommitPlan(task_ids=[], parent_ids=[])
+
+    feat = WorkItem(owner_id="u", project_id="p", kind=WorkItemKind.FEATURE,
+                    parent_id="e1", title="F")
+    t1 = WorkItem(owner_id="u", project_id="p", kind=WorkItemKind.TASK,
+                  parent_id=feat.id, title="a", status=WorkItemStatus.DRAFT)
+    t2 = WorkItem(owner_id="u", project_id="p", kind=WorkItemKind.TASK,
+                  parent_id=feat.id, title="b", status=WorkItemStatus.DRAFT)
+
+    plan = select_committable([feat, t1, t2])
+
+    assert plan.task_ids == [t1.id, t2.id]
+    assert plan.parent_ids == [feat.id]   # shared parent deduped to one
