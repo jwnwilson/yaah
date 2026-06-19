@@ -148,6 +148,24 @@ def post_message(
             else None
         )
 
+        # Edits to existing items are proposed, never applied here. Validate each id is a
+        # known item in the loaded hierarchy; attach its current kind/title for display.
+        by_id = {w.id: w for w in hierarchy}
+        proposed_updates: list[dict] = []
+        for upd in out.updates:
+            item = by_id.get(upd.id)
+            if item is None:
+                notes.append(f"unknown item {upd.id}")
+                continue
+            proposed_updates.append({
+                "id": item.id,
+                "kind": item.kind.value,
+                "current_title": item.title,
+                "title": upd.title,
+                "body": upd.body,
+                "acceptance_criteria": upd.acceptance_criteria,
+            })
+
         reply = out.reply + (("\n\nSkipped: " + "; ".join(notes)) if notes else "")
 
     return ok(
@@ -156,6 +174,7 @@ def post_message(
             "reply": reply,
             "created_items": [c.model_dump(mode="json") for c in created],
             "proposed_epic_update": proposed_epic_update,
+            "proposed_updates": proposed_updates,
         }
     )
 

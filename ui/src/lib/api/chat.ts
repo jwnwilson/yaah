@@ -5,11 +5,21 @@ export interface EpicSpecEdit {
   acceptance_criteria?: string[] | null;
 }
 
+export interface ProposedUpdate {
+  id: string;
+  kind: string;
+  current_title: string;
+  title?: string | null;
+  body?: string | null;
+  acceptance_criteria?: string[] | null;
+}
+
 export interface ChatTurn {
   session_id: string;
   reply: string;
   created_items: unknown[];
   proposed_epic_update?: EpicSpecEdit | null;
+  proposed_updates?: ProposedUpdate[];
 }
 
 export interface ChatMessage {

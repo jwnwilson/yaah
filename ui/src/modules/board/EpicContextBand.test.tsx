@@ -14,7 +14,7 @@ function renderBand(props: Partial<Parameters<typeof EpicContextBand>[0]> = {}) 
         epicId="e1"
         selectedFeature={undefined}
         onSelectFeature={() => {}}
-        onEditEpic={() => {}}
+        onEditItem={() => {}}
         {...props}
       />
     </QueryClientProvider>,

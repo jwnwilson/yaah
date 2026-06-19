@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
-import { Button } from "@/components/ui/Button";
+import { useParams, useSearchParams } from "react-router-dom";
+import { DetailPeek } from "@/modules/backlog/DetailPeek";
 import { ChatRail } from "@/modules/chat/ChatRail";
+import { ProjectHeader } from "@/modules/projects/ProjectHeader";
 import { HierarchyTree } from "@/modules/work-items/HierarchyTree";
-import { TicketPanel } from "@/modules/work-items/TicketPanel";
 import { Board } from "./Board";
 import { EpicContextBand } from "./EpicContextBand";
 import { useEpicBoard } from "./useEpicBoard";
@@ -41,18 +41,11 @@ export default function BoardPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3">
-        <Link to="/" className="text-sm text-accent hover:underline">← Projects</Link>
-        <h1 className="font-semibold text-fg">Board</h1>
-        <Link to={`/projects/${projectId}/backlog`} className="text-sm text-muted hover:text-fg">
-          Backlog
-        </Link>
-        <div className="ml-auto flex items-center gap-2">
-          <Button size="sm" variant="secondary" onClick={() => setShowChat((v) => !v)}>
-            {showChat ? "Hide chat" : "Team lead"}
-          </Button>
-        </div>
-      </header>
+      <ProjectHeader
+        projectId={projectId}
+        showChat={showChat}
+        onToggleChat={() => setShowChat((v) => !v)}
+      />
       <div className="flex flex-1 overflow-hidden">
         <HierarchyTree
           projectId={projectId}
@@ -68,7 +61,7 @@ export default function BoardPage() {
               epicId={selectedEpic}
               selectedFeature={selectedFeature}
               onSelectFeature={selectFeature}
-              onEditEpic={openItem}
+              onEditItem={openItem}
             />
           )}
           <div className="flex-1 overflow-auto">
@@ -78,7 +71,7 @@ export default function BoardPage() {
         {showChat && <ChatRail projectId={projectId} epicId={selectedEpic} />}
       </div>
       {params.get("item") && (
-        <TicketPanel
+        <DetailPeek
           projectId={projectId}
           itemId={params.get("item")!}
           onClose={() => { params.delete("item"); setParams(params); }}

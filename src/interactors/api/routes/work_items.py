@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from adapters.database.ports import UnitOfWork
@@ -33,13 +33,64 @@ class SetStatus(BaseModel):
     status: WorkItemStatus
 
 
+class ReorderItems(BaseModel):
+    parent_id: str | None = None
+    ordered_ids: list[str]
+
+
+def _sibling_count(
+    uow: UnitOfWork, project_id: str, kind: WorkItemKind, parent_id: str | None
+) -> int:
+    """How many same-kind siblings already exist under this parent (drives append position)."""
+    if parent_id:
+        filters = {"parent_id": parent_id, "kind": kind}
+    else:
+        filters = {"project_id": project_id, "kind": kind}
+    return uow.work_items.list(filters=filters, page_size=1).total
+
+
+def _descendant_ids(uow: UnitOfWork, item: WorkItem) -> list[str]:
+    """Ids of everything beneath an item: a feature's tasks, or an epic's features +
+    those features' tasks + the epic's direct tasks. Tasks have no descendants."""
+    if item.kind == WorkItemKind.TASK:
+        return []
+    children = uow.work_items.list(filters={"parent_id": item.id}, page_size=1000).results
+    ids = [c.id for c in children]
+    if item.kind == WorkItemKind.EPIC:
+        feature_ids = [c.id for c in children if c.kind == WorkItemKind.FEATURE]
+        if feature_ids:
+            grand = uow.work_items.list(
+                filters={"parent_id__in": feature_ids}, page_size=1000
+            ).results
+            ids += [g.id for g in grand]
+    return ids
+
+
 @router.post("/projects/{project_id}/work-items", status_code=201)
 def create(project_id: str, body: CreateWorkItem, uow: UnitOfWork = Depends(get_uow)) -> dict:
     with uow.transaction():
         project = uow.projects.get(project_id)  # RecordNotFound -> 404
-        item = WorkItem(project_id=project_id, owner_id=project.owner_id, **body.model_dump())
+        position = _sibling_count(uow, project_id, body.kind, body.parent_id)
+        item = WorkItem(
+            project_id=project_id, owner_id=project.owner_id, position=position, **body.model_dump()
+        )
         created = uow.work_items.create(item)
     return ok(created.model_dump(mode="json"))
+
+
+@router.post("/projects/{project_id}/work-items/reorder")
+def reorder(project_id: str, body: ReorderItems, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    """Set position = index for the given sibling ids (all must share parent_id + project)."""
+    with uow.transaction():
+        uow.projects.get(project_id)  # RecordNotFound -> 404
+        for index, item_id in enumerate(body.ordered_ids):
+            item = uow.work_items.get(item_id)  # owner-scoped
+            if item.project_id != project_id or item.parent_id != body.parent_id:
+                raise HTTPException(status_code=400, detail="item is not a sibling in this parent")
+            uow.work_items.update(
+                item_id, item.model_copy(update={"position": index, "updated_at": utc_now()})
+            )
+    return ok({"reordered": len(body.ordered_ids)})
 
 
 @router.get("/projects/{project_id}/work-items")
@@ -113,6 +164,11 @@ def set_status(
 
 @router.delete("/work-items/{item_id}")
 def delete(item_id: str, uow: UnitOfWork = Depends(get_uow)) -> dict:
+    """Cascade delete: removes the item and all of its descendants."""
     with uow.transaction():
-        uow.work_items.delete(item_id)  # get+delete, owner-scoped
-    return ok({"deleted": item_id})
+        item = uow.work_items.get(item_id)  # RecordNotFound -> 404
+        descendants = _descendant_ids(uow, item)
+        for d in descendants:
+            uow.work_items.delete(d)
+        uow.work_items.delete(item_id)
+    return ok({"deleted": item_id, "removed": len(descendants) + 1})

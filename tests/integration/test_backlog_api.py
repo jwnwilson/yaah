@@ -121,3 +121,76 @@ def test_backlog_endpoint_reports_readiness_and_summary():
     assert epic["ready_count"] == 2
     assert epic["total_tasks"] == 2
     assert epic["active"] is False
+
+
+def test_backlog_returns_nested_tree():
+    c, _fake = _client()
+    pid = _project_with_team(c)
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+    feat = c.post(f"/projects/{pid}/work-items",
+                  json={"kind": "feature", "title": "F", "parent_id": epic["id"]}).json()["data"]
+    c.post(f"/projects/{pid}/work-items",
+           json={"kind": "task", "title": "T", "parent_id": feat["id"]})
+    data = c.get(f"/projects/{pid}/backlog").json()["data"]
+    e = next(x for x in data["epics"] if x["epic"]["id"] == epic["id"])
+    assert e["features"][0]["feature"]["id"] == feat["id"]
+    assert e["features"][0]["tasks"][0]["title"] == "T"
+
+
+def test_create_appends_position_and_reorder_swaps():
+    c, _fake = _client()
+    pid = _project_with_team(c)
+    e1 = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E1"}).json()["data"]
+    e2 = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E2"}).json()["data"]
+    assert e1["position"] == 0 and e2["position"] == 1
+    r = c.post(f"/projects/{pid}/work-items/reorder",
+               json={"parent_id": None, "ordered_ids": [e2["id"], e1["id"]]})
+    assert r.status_code == 200
+    data = c.get(f"/projects/{pid}/backlog").json()["data"]
+    assert [x["epic"]["id"] for x in data["epics"]] == [e2["id"], e1["id"]]
+
+
+def test_reorder_rejects_non_sibling():
+    c, _fake = _client()
+    pid = _project_with_team(c)
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+    # epic has parent None; asking to reorder it under a feature parent is invalid
+    r = c.post(f"/projects/{pid}/work-items/reorder",
+               json={"parent_id": "someparent", "ordered_ids": [epic["id"]]})
+    assert r.status_code == 400
+
+
+def test_cascade_delete_removes_descendants():
+    c, _fake = _client()
+    pid = _project_with_team(c)
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+    feat = c.post(f"/projects/{pid}/work-items",
+                  json={"kind": "feature", "title": "F", "parent_id": epic["id"]}).json()["data"]
+    c.post(f"/projects/{pid}/work-items",
+           json={"kind": "task", "title": "T1", "parent_id": feat["id"]})
+    c.post(f"/projects/{pid}/work-items",
+           json={"kind": "task", "title": "T2", "parent_id": feat["id"]})
+    resp = c.delete(f"/work-items/{epic['id']}")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["removed"] == 4  # epic + feature + 2 tasks
+    remaining = c.get(f"/projects/{pid}/work-items").json()["data"]
+    assert remaining == []
+
+
+def test_position_orders_autostart_queue():
+    c, fake = _client()
+    pid = _project_with_team(c)
+    c.patch(f"/projects/{pid}", json={"max_concurrent_runs": 1})
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+    a = c.post(f"/projects/{pid}/work-items",
+               json={"kind": "task", "title": "A", "parent_id": epic["id"]}).json()["data"]
+    b = c.post(f"/projects/{pid}/work-items",
+               json={"kind": "task", "title": "B", "parent_id": epic["id"]}).json()["data"]
+    # put B before A, then mark both ready, then activate -> only 1 slot -> B starts first
+    c.post(f"/projects/{pid}/work-items/reorder",
+           json={"parent_id": epic["id"], "ordered_ids": [b["id"], a["id"]]})
+    c.post(f"/work-items/{a['id']}/status", json={"status": "ready"})
+    c.post(f"/work-items/{b['id']}/status", json={"status": "ready"})
+    c.post(f"/projects/{pid}/epics/{epic['id']}/activate")
+    assert len(fake.started) == 1
+    assert fake.started[0][1]["task_id"] == b["id"]

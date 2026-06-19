@@ -147,6 +147,14 @@ def test_non_epic_cannot_be_active():
         )
 
 
+def test_work_item_position_defaults_zero():
+    from domain.projects import WorkItem, WorkItemKind
+
+    item = WorkItem(owner_id="o", project_id="p", kind=WorkItemKind.EPIC, title="E")
+    assert item.position == 0
+    assert item.model_copy(update={"position": 5}).position == 5
+
+
 def test_project_max_concurrent_runs_default_and_floor():
     import pytest
 

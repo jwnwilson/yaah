@@ -1,6 +1,11 @@
 import { apiGet, apiPost } from "./client";
 import type { WorkItem } from "./types";
 
+export interface BacklogFeature {
+  feature: WorkItem;
+  tasks: WorkItem[];
+}
+
 export interface BacklogEpic {
   epic: WorkItem;
   active: boolean;
@@ -8,6 +13,8 @@ export interface BacklogEpic {
   total_tasks: number;
   done: number;
   in_flight_count: number;
+  features: BacklogFeature[];
+  tasks: WorkItem[];
 }
 
 export interface BacklogView {
@@ -31,4 +38,15 @@ export async function activateEpic(projectId: string, epicId: string): Promise<W
 
 export async function deactivateEpic(projectId: string, epicId: string): Promise<WorkItem> {
   return apiPost<WorkItem>(`/projects/${projectId}/epics/${epicId}/deactivate`);
+}
+
+export async function reorderWorkItems(
+  projectId: string,
+  parentId: string | null,
+  orderedIds: string[],
+): Promise<void> {
+  await apiPost(`/projects/${projectId}/work-items/reorder`, {
+    parent_id: parentId,
+    ordered_ids: orderedIds,
+  });
 }
