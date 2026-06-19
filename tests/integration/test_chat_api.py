@@ -218,6 +218,9 @@ def test_commit_starts_a_run_for_session_drafted_task():
     assert run_input["task_title"] == "T"
     assert r2["started_runs"] == [run_input["run_id"]]
 
+    item = c.get(f"/work-items/{r1['created_items'][0]['id']}").json()["data"]
+    assert item["status"] == "in_progress"
+
 
 def test_commit_with_nothing_to_start_is_noop():
     app = create_app(Settings(_env_file=None, database_url="sqlite:///:memory:"))

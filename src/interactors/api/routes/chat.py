@@ -18,7 +18,7 @@ from domain.refinement import (
     system_prompt,
     validate_proposal,
 )
-from domain.transitions import InvalidTransition, validate_transition
+from domain.transitions import validate_transition
 from interactors.api.deps import get_uow, refinement_agent, temporal_client
 from interactors.api.deps import settings as get_settings
 from interactors.api.envelope import ok
@@ -26,6 +26,47 @@ from interactors.scheduling import reconcile_project
 from interactors.temporal.client import TemporalRunClient
 
 router = APIRouter(tags=["chat"])
+
+_MAX_SESSION_ITEMS = 500  # a single chat session won't draft more items than this
+
+
+def _commit_session(
+    uow, settings, project_id: str, session_id: str
+) -> tuple[list[str], list[dict]]:
+    """Promote the session's DRAFT tasks to READY, activate their parents, and reconcile the
+    project. Returns (skipped_notes, run_inputs); the caller launches the runs after commit.
+    select_committable returns only DRAFT tasks, so DRAFT->READY is always a valid transition."""
+    notes: list[str] = []
+    session_items = uow.work_items.list(
+        filters={"project_id": project_id, "chat_session_id": session_id},
+        page_size=_MAX_SESSION_ITEMS,
+    ).results
+    plan = select_committable(session_items)
+    by_session_id = {i.id: i for i in session_items}
+    for tid in plan.task_ids:
+        task = by_session_id[tid]
+        validate_transition(task.status, WorkItemStatus.READY)  # always valid; honors convention
+        uow.work_items.update(
+            tid,
+            task.model_copy(update={"status": WorkItemStatus.READY, "updated_at": utc_now()}),
+        )
+    if plan.parent_ids:
+        parents = uow.work_items.list(
+            filters={"id__in": plan.parent_ids}, page_size=len(plan.parent_ids) + 1
+        ).results
+        parents_by_id = {p.id: p for p in parents}
+        for pid in plan.parent_ids:
+            parent = parents_by_id.get(pid)
+            if parent is None:
+                notes.append(f"parent {pid} not found, skipping activation")
+                continue
+            if parent.kind in (WorkItemKind.EPIC, WorkItemKind.FEATURE) and not parent.active:
+                uow.work_items.update(
+                    pid,
+                    parent.model_copy(update={"active": True, "updated_at": utc_now()}),
+                )
+    run_inputs = reconcile_project(uow, settings, project_id)
+    return notes, run_inputs
 
 
 class PostMessage(BaseModel):
@@ -178,33 +219,10 @@ def post_message(
 
         run_inputs: list[dict] = []
         if out.action == RefinementAction.COMMIT:
-            session_items = uow.work_items.list(
-                filters={"project_id": project_id, "chat_session_id": session.id},
-                page_size=500,
-            ).results
-            plan = select_committable(session_items)
-            by_session_id = {i.id: i for i in session_items}
-            for tid in plan.task_ids:
-                task = by_session_id[tid]
-                try:
-                    validate_transition(task.status, WorkItemStatus.READY)
-                except InvalidTransition as exc:
-                    notes.append(str(exc))
-                    continue
-                uow.work_items.update(
-                    tid,
-                    task.model_copy(
-                        update={"status": WorkItemStatus.READY, "updated_at": utc_now()}
-                    ),
-                )
-            for pid in plan.parent_ids:
-                parent = uow.work_items.get(pid)
-                if parent.kind in (WorkItemKind.EPIC, WorkItemKind.FEATURE) and not parent.active:
-                    uow.work_items.update(
-                        pid,
-                        parent.model_copy(update={"active": True, "updated_at": utc_now()}),
-                    )
-            run_inputs = reconcile_project(uow, settings, project_id)
+            commit_notes, run_inputs = _commit_session(
+                uow, settings, project_id, session.id
+            )
+            notes.extend(commit_notes)
 
         reply = out.reply + (("\n\nSkipped: " + "; ".join(notes)) if notes else "")
 
