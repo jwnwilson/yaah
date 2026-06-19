@@ -420,8 +420,8 @@ def test_agent_step_ingests_tool_audit_jsonl(tmp_path):
 
 
 def test_agent_step_records_agent_raised_notification(tmp_path):
-    """A `notification` agent event (the yaah_notify capability) becomes an in-app
-    Notification on the orchestrator path, same as the old run_stage path did."""
+    """A `notification` agent event (the yaah_notify capability) becomes a
+    user-recipient NOTICE Message on the orchestrator path."""
     factory = _factory()
     _seed_run(factory)
 
@@ -440,11 +440,12 @@ def test_agent_step_records_agent_raised_notification(tmp_path):
     _agent_step(acts, team_id=None)
     uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
     with uow.transaction():
-        notifs = uow.notifications.list(filters={"run_id": "r1"}).results
-    assert len(notifs) == 1
-    assert notifs[0].title == "Need a decision"
-    assert notifs[0].category == "decision"
-    assert notifs[0].source == "agent"
+        notices = uow.messages.list(filters={"run_id": "r1", "kind": "notice"}).results
+    assert len(notices) == 1
+    assert notices[0].subject == "Need a decision"
+    assert notices[0].severity == "attention"
+    assert notices[0].recipient_kind == "user"
+    assert notices[0].sender_kind == "system"
 
 
 def test_agent_step_uses_custom_workspace_key(tmp_path):
@@ -575,3 +576,67 @@ def test_curate_memory_swallows_agent_failure(tmp_path):
     out = acts.curate_memory({"run_id": "r1", "owner_id": "dev-user", "task_title": "T",
                               "acceptance_criteria": [], "body": ""})
     assert out["outcome"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# record_event -> gate Messages (ported from the notification subsystem)
+# ---------------------------------------------------------------------------
+def _record_event(acts, ev_type, stage="plan", message=""):
+    acts.record_event({"run_id": "r1", "owner_id": "dev-user", "stage": stage,
+                       "type": ev_type, "message": message})
+
+
+def test_record_event_gate_opened_creates_gate_message():
+    factory = _factory()
+    _seed_run(factory)
+    acts = _acts(factory)
+    _record_event(acts, "gate_opened")
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        gates = uow.messages.list(filters={"run_id": "r1", "kind": "gate"}).results
+    assert len(gates) == 1
+    assert gates[0].severity == "attention"
+    assert gates[0].recipient_kind == "user"
+    assert gates[0].subject == "Approval needed"
+    assert gates[0].processed_at is None
+
+
+def test_record_event_gate_resolved_marks_gate_processed():
+    factory = _factory()
+    _seed_run(factory)
+    acts = _acts(factory)
+    _record_event(acts, "gate_opened")
+    _record_event(acts, "gate_resolved")
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        gates = uow.messages.list(filters={"run_id": "r1", "kind": "gate"}).results
+    assert len(gates) == 1
+    assert gates[0].processed_at is not None
+
+
+def test_record_event_gate_opened_dedups_open_gate():
+    factory = _factory()
+    _seed_run(factory)
+    acts = _acts(factory)
+    _record_event(acts, "gate_opened")
+    _record_event(acts, "gate_opened")  # second open gate is suppressed
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        open_gates = uow.messages.list(
+            filters={"run_id": "r1", "kind": "gate", "processed_at__isnull": True}).results
+    assert len(open_gates) == 1
+
+
+def test_record_notification_creates_user_notice_message():
+    factory = _factory()
+    _seed_run(factory)
+    acts = _acts(factory)
+    acts.record_notification({"run_id": "r1", "owner_id": "dev-user",
+                              "title": "Heads up", "body": "fyi", "severity": "info"})
+    uow = SqlUnitOfWork(factory, required_filters={"owner_id": "dev-user"})
+    with uow.transaction():
+        notices = uow.messages.list(filters={"run_id": "r1", "kind": "notice"}).results
+    assert len(notices) == 1
+    assert notices[0].subject == "Heads up"
+    assert notices[0].recipient_kind == "user"
+    assert notices[0].sender_kind == "system"
