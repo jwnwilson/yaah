@@ -42,6 +42,11 @@ def test_system_prompt_mentions_project_and_drafts():
     assert "Alpha" in p and "draft" in p.lower()
 
 
+def test_system_prompt_explains_confirm_then_commit():
+    p = system_prompt("Alpha").lower()
+    assert "confirm" in p and "commit" in p
+
+
 def test_output_action_defaults_to_discuss():
     out = RefinementOutput(reply="hi")
     assert out.action == RefinementAction.DISCUSS

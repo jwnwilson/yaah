@@ -100,7 +100,11 @@ def system_prompt(project_name: str, lead_system_prompt: str = "") -> str:
             "You may also propose edits to EXISTING items (epics, features, or tasks) by "
             "returning `updates`, each with the item's id and any of title/body/"
             "acceptance_criteria — content only, never status. Proposed edits are shown to the "
-            "human for approval before they apply.")
+            "human for approval before they apply. "
+            "After you propose a breakdown, ask the user to confirm before starting; only when "
+            "they approve in a later message, set action='commit' (with no new proposals) to "
+            "promote the drafted tasks and start work. Never set action='commit' in the same "
+            "turn you first propose the breakdown.")
 
 
 def epic_focus_prompt(epic: WorkItem) -> str:
