@@ -18,7 +18,7 @@ export default function BacklogPage() {
   const data = query.data;
   const [openId, setOpenId] = useState<string | null>(null);
   const [target, setTarget] = useState<DeleteTarget | null>(null);
-  const { open, toggle, dictate, consumeDictate } = useChatLauncher();
+  const { open, toggle, dictate, consumeDictate, setListening } = useChatLauncher();
 
   const headerExtra = data ? (
     <>
@@ -79,7 +79,12 @@ export default function BacklogPage() {
           </div>
         </div>
         {open && (
-          <ChatRail projectId={projectId} autoDictate={dictate} onDictateConsumed={consumeDictate} />
+          <ChatRail
+            projectId={projectId}
+            autoDictate={dictate}
+            onDictateConsumed={consumeDictate}
+            onListeningChange={setListening}
+          />
         )}
       </div>
 

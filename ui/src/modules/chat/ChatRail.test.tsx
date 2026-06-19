@@ -156,3 +156,14 @@ test("mic button is absent when speech recognition is unsupported", async () => 
   );
   expect(screen.queryByLabelText(/dictate|voice/i)).not.toBeInTheDocument();
 });
+
+test("reports its dictation listening state to the launcher", async () => {
+  const onListeningChange = vi.fn();
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={qc}>
+      <ChatRail projectId="p1" onListeningChange={onListeningChange} />
+    </QueryClientProvider>,
+  );
+  await waitFor(() => expect(onListeningChange).toHaveBeenCalledWith(false));
+});

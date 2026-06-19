@@ -10,9 +10,16 @@ interface ChatRailProps {
   epicId?: string;
   autoDictate?: boolean;
   onDictateConsumed?: () => void;
+  onListeningChange?: (listening: boolean) => void;
 }
 
-export function ChatRail({ projectId, epicId, autoDictate, onDictateConsumed }: ChatRailProps) {
+export function ChatRail({
+  projectId,
+  epicId,
+  autoDictate,
+  onDictateConsumed,
+  onListeningChange,
+}: ChatRailProps) {
   const {
     turns,
     send,
@@ -35,6 +42,13 @@ export function ChatRail({ projectId, epicId, autoDictate, onDictateConsumed }: 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoDictate]);
+
+  // Surface the dictation listening state to the launcher (drives the global mic indicator),
+  // and clear it when the chat closes/unmounts.
+  useEffect(() => {
+    onListeningChange?.(dictation.listening);
+  }, [dictation.listening, onListeningChange]);
+  useEffect(() => () => onListeningChange?.(false), [onListeningChange]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
