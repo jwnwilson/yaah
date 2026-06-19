@@ -37,3 +37,35 @@ def test_validate_feature_requires_existing_parent():
 def test_system_prompt_mentions_project_and_drafts():
     p = system_prompt("Alpha", "You are the lead.")
     assert "Alpha" in p and "draft" in p.lower()
+
+
+def test_output_action_defaults_to_discuss():
+    from domain.refinement import RefinementAction, RefinementOutput
+
+    out = RefinementOutput(reply="hi")
+    assert out.action == RefinementAction.DISCUSS
+
+
+def test_output_parses_commit_action():
+    from domain.refinement import RefinementAction, RefinementOutput
+
+    out = RefinementOutput(**{"reply": "starting", "action": "commit"})
+    assert out.action == RefinementAction.COMMIT
+
+
+def test_select_committable_picks_draft_tasks_and_their_parents():
+    from domain.projects import WorkItem, WorkItemKind, WorkItemStatus
+    from domain.refinement import select_committable
+
+    epic = WorkItem(owner_id="u", project_id="p", kind=WorkItemKind.EPIC, title="E")
+    feat = WorkItem(owner_id="u", project_id="p", kind=WorkItemKind.FEATURE,
+                    parent_id=epic.id, title="F")
+    ready_task = WorkItem(owner_id="u", project_id="p", kind=WorkItemKind.TASK,
+                          parent_id=feat.id, title="done", status=WorkItemStatus.READY)
+    draft_task = WorkItem(owner_id="u", project_id="p", kind=WorkItemKind.TASK,
+                          parent_id=feat.id, title="todo", status=WorkItemStatus.DRAFT)
+
+    plan = select_committable([epic, feat, ready_task, draft_task])
+
+    assert plan.task_ids == [draft_task.id]          # only the DRAFT task
+    assert plan.parent_ids == [feat.id]              # its direct parent, deduped
