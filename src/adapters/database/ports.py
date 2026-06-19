@@ -8,7 +8,6 @@ from domain.agent.memory import MemoryProposal
 from domain.agent.models import AgentDefinition, Team
 from domain.audit import AuditEvent
 from domain.messages import Message
-from domain.notifications import Notification
 from domain.projects import Project, WorkItem
 from domain.refinement import ChatMessage, ChatSession
 from domain.runs import Run, RunEvent
@@ -62,8 +61,6 @@ class UnitOfWork(Protocol):
     def mcp_servers(self) -> Repository[McpServer]: ...
     @property
     def secrets(self) -> Repository[Secret]: ...
-    @property
-    def notifications(self) -> Repository[Notification]: ...
     @property
     def messages(self) -> Repository[Message]: ...
     @property

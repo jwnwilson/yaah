@@ -133,25 +133,6 @@ class RunEventRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
-class NotificationRow(Base):
-    __tablename__ = "notifications"
-
-    id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    owner_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    source: Mapped[str] = mapped_column(String(10), nullable=False)
-    category: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
-    severity: Mapped[str] = mapped_column(String(20), nullable=False, default="info")
-    title: Mapped[str] = mapped_column(String(300), nullable=False)
-    body: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    run_id: Mapped[str | None] = mapped_column(String(32), index=True)
-    work_item_id: Mapped[str | None] = mapped_column(String(32))
-    project_id: Mapped[str | None] = mapped_column(String(32))
-    action: Mapped[dict | None] = mapped_column(JSON)
-    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
-
 class MessageRow(Base):
     __tablename__ = "messages"
 
@@ -162,6 +143,7 @@ class MessageRow(Base):
     recipient_kind: Mapped[str] = mapped_column(String(10), nullable=False)
     recipient_agent_id: Mapped[str | None] = mapped_column(String(32), index=True)
     kind: Mapped[str] = mapped_column(String(20), nullable=False, default="chat")
+    severity: Mapped[str] = mapped_column(String(20), nullable=False, default="info")
     subject: Mapped[str] = mapped_column(String(300), nullable=False, default="")
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
     run_id: Mapped[str | None] = mapped_column(String(32), index=True)

@@ -1,19 +1,19 @@
 from temporalio import activity
 
-from adapters.agent.notify.ports import NotificationDispatcher
 from adapters.database.uow import SqlUnitOfWork
 from adapters.storage.ports import StoragePort
 from domain.agent import AgentRuntime, RunContext, result_of
 from domain.agent.models import AgentRole
 from domain.base import utc_now
 from domain.errors import IntegrityConflict
-from domain.notifications import (
-    Notification,
-    NotificationCategory,
-    NotificationSeverity,
-    NotificationSource,
-    notification_for_event,
-    resolves,
+from domain.messages import (
+    Message,
+    MessageKind,
+    MessageRecipientKind,
+    MessageSenderKind,
+    MessageSeverity,
+    message_for_event,
+    message_resolves,
 )
 from domain.runs import RunEvent, RunEventType, RunStage, RunStatus
 from domain.scm import WORKSPACE_SCRATCH
@@ -36,7 +36,6 @@ class RunActivities:
 
     def __init__(self, session_factory, runtime: AgentRuntime, storage: StoragePort,
                  git, forge, *, cipher=None,
-                 notifier: NotificationDispatcher | None = None,
                  settings=None, run_client=None) -> None:
         self._session_factory = session_factory
         self._runtime = runtime
@@ -44,7 +43,6 @@ class RunActivities:
         self._git = git
         self._forge = forge
         self._cipher = cipher
-        self._notifier = notifier or NotificationDispatcher([])
         self._settings = settings
         self._run_client = run_client
 
@@ -125,54 +123,49 @@ class RunActivities:
         run_id = payload["run_id"]
         ev_type = RunEventType(payload["type"])
         stage = RunStage(payload["stage"]) if payload.get("stage") else None
-        to_deliver: list[Notification] = []
         uow = self._uow(owner_id)
         with uow.transaction():
             ev = RunEvent(run_id=run_id, owner_id=owner_id, stage=stage, type=ev_type,
                           message=payload.get("message", ""), created_at=utc_now())
             uow.run_events.create(ev)
             if ev_type == RunEventType.GATE_RESOLVED:
-                open_notifs = uow.notifications.list(
-                    filters={"run_id": run_id, "resolved_at__isnull": True}, page_size=200
+                open_gates = uow.messages.list(
+                    filters={"run_id": run_id, "kind": "gate", "processed_at__isnull": True},
+                    page_size=200,
                 ).results
-                for n in open_notifs:
-                    if resolves(n, ev):
-                        uow.notifications.update(
-                            n.id, n.model_copy(update={"resolved_at": utc_now()}))
+                for m in open_gates:
+                    if message_resolves(m, ev):
+                        uow.messages.update(
+                            m.id, m.model_copy(update={"processed_at": utc_now()}))
             else:
                 run = uow.runs.get(run_id)
-                notif = notification_for_event(ev, run=run)
-                if notif is not None and not self._has_open_gate_notification(uow, run_id, notif):
-                    to_deliver.append(uow.notifications.create(notif))
-        for n in to_deliver:
-            self._notifier.deliver(n)
+                msg = message_for_event(ev, run=run)
+                if msg is not None and not self._has_open_gate_message(uow, run_id, msg):
+                    uow.messages.create(msg)
 
-    def _has_open_gate_notification(self, uow, run_id: str, candidate: Notification) -> bool:
-        if candidate.action is None:
+    def _has_open_gate_message(self, uow, run_id: str, candidate: Message) -> bool:
+        if candidate.kind != MessageKind.GATE:
             return False
-        existing = uow.notifications.list(
-            filters={"run_id": run_id, "resolved_at__isnull": True}, page_size=200
+        existing = uow.messages.list(
+            filters={"run_id": run_id, "kind": "gate", "processed_at__isnull": True},
+            page_size=200,
         ).results
-        return any(n.action is not None for n in existing)
+        return len(existing) > 0
 
     @activity.defn(name="record_notification")
     def record_notification(self, payload: dict) -> None:
         owner_id = payload["owner_id"]
         run_id = payload["run_id"]
-        category = NotificationCategory(payload.get("category", "update"))
-        severity = NotificationSeverity(payload.get("severity", "info"))
-        to_deliver: list[Notification] = []
+        severity = MessageSeverity(payload.get("severity", "info"))
         uow = self._uow(owner_id)
         with uow.transaction():
             run = uow.runs.get(run_id)
-            notif = Notification(
-                owner_id=owner_id, source=NotificationSource.AGENT, category=category,
-                severity=severity, title=payload["title"], body=payload.get("body", ""),
+            uow.messages.create(Message(
+                owner_id=owner_id, sender_kind=MessageSenderKind.SYSTEM,
+                recipient_kind=MessageRecipientKind.USER, kind=MessageKind.NOTICE,
+                severity=severity, subject=payload["title"], body=payload.get("body", ""),
                 run_id=run_id, work_item_id=run.task_id,
-            )
-            to_deliver.append(uow.notifications.create(notif))
-        for n in to_deliver:
-            self._notifier.deliver(n)
+            ))
 
     @activity.defn(name="record_usage")
     def record_usage(self, payload: dict) -> None:

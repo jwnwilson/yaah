@@ -81,13 +81,10 @@ def build_activities(database_url: str, profile: str = "local") -> list:
     if settings.secret_key:
         from lib.secrets import FernetCipher
         cipher = FernetCipher(settings.secret_key)
-    from adapters.agent.notify.inapp import InAppChannel
-    from adapters.agent.notify.ports import NotificationDispatcher
-    notifier = NotificationDispatcher([InAppChannel()])
     from interactors.temporal.client import TemporalRunClient
     run_client = TemporalRunClient(TemporalConfig.from_settings(settings))
     acts = RunActivities(factory, runtime, storage, git, forge, cipher=cipher,
-                         notifier=notifier, settings=settings, run_client=run_client)
+                         settings=settings, run_client=run_client)
     return [acts.persist_run_state, acts.record_event, acts.record_usage,
             acts.cleanup_workspace, acts.provision_workspace, acts.open_pr,
             acts.record_notification, acts.capture_memory, acts.curate_memory,

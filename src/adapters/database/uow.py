@@ -11,7 +11,6 @@ from adapters.database.repositories import (
     McpServerRepository,
     MemoryProposalRepository,
     MessageRepository,
-    NotificationRepository,
     ProjectRepository,
     RoleMemoryRepository,
     RunEventRepository,
@@ -107,10 +106,6 @@ class SqlUnitOfWork:
     @property
     def secrets(self) -> SecretRepository:
         return SecretRepository(self.session, self._required_filters)
-
-    @property
-    def notifications(self) -> NotificationRepository:
-        return NotificationRepository(self.session, self._required_filters)
 
     @property
     def messages(self) -> MessageRepository:

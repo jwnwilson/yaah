@@ -8,7 +8,6 @@ from adapters.database.orm import (
     McpServerRow,
     MemoryProposalRow,
     MessageRow,
-    NotificationRow,
     ProjectRow,
     RoleMemoryRow,
     RunEventRow,
@@ -28,7 +27,6 @@ from domain.attachments import WorkItemAttachment
 from domain.audit import AuditEvent
 from domain.errors import IntegrityConflict
 from domain.messages import Message
-from domain.notifications import Notification
 from domain.projects import Project, WorkItem
 from domain.refinement import ChatMessage, ChatSession
 from domain.runs import Run, RunEvent
@@ -110,11 +108,6 @@ class ChatMessageRepository(SqlRepository[ChatMessage]):
     orm_model = ChatMessageRow
     dto = ChatMessage
     default_order_by = "created_at"
-
-
-class NotificationRepository(SqlRepository[Notification]):
-    orm_model = NotificationRow
-    dto = Notification
 
 
 class MessageRepository(SqlRepository[Message]):
