@@ -158,6 +158,10 @@ test("mic button is absent when speech recognition is unsupported", async () => 
 });
 
 test("reports its dictation listening state to the launcher", async () => {
+  server.use(
+    http.get("/api/projects/p1/chat", () =>
+      HttpResponse.json({ success: true, data: [], error: null, meta: { total: 0, page_size: 50, page_number: 1 } })),
+  );
   const onListeningChange = vi.fn();
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
