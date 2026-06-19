@@ -35,6 +35,7 @@ class WorkItemRow(Base):
     acceptance_criteria: Mapped[list] = mapped_column(JSON, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     assignee_agent_id: Mapped[str | None] = mapped_column(String(32), index=True)
+    chat_session_id: Mapped[str | None] = mapped_column(String(32), index=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
