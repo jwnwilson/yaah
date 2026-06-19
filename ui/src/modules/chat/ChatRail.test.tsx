@@ -167,3 +167,21 @@ test("reports its dictation listening state to the launcher", async () => {
   );
   await waitFor(() => expect(onListeningChange).toHaveBeenCalledWith(false));
 });
+
+test("shows a working indicator while the team lead processes a message", async () => {
+  let resolve: (v: unknown) => void = () => {};
+  server.use(
+    http.get("/api/projects/p1/chat", () =>
+      HttpResponse.json({ success: true, data: [], error: null, meta: { total: 0, page_size: 50, page_number: 1 } })),
+    http.post("/api/projects/p1/chat", async () => {
+      await new Promise((r) => (resolve = r));
+      return HttpResponse.json({ success: true, error: null, data: { session_id: "s1", reply: "done", created_items: [] } });
+    }),
+  );
+  renderRail();
+  await userEvent.type(screen.getByPlaceholderText(/message the team lead/i), "build login");
+  await userEvent.click(screen.getByRole("button", { name: /send/i }));
+  await waitFor(() => expect(screen.getByText(/team lead is working/i)).toBeInTheDocument());
+  resolve(null);
+  await waitFor(() => expect(screen.getByText("done")).toBeInTheDocument());
+});
