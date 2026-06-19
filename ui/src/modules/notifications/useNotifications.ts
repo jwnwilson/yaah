@@ -1,26 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  getUnreadCount,
-  listNotifications,
-  notificationKeys,
-} from "@/lib/api/notifications";
+import { getMessageUnreadCount, listMessages, messageKeys } from "@/lib/api/messages";
+
+// The notification bell reads the user's mailbox (box="me"): notices and gate
+// approvals land there as user-recipient messages.
+const USER_BOX = "me";
 
 // Poll the unread count on the same cadence the board uses to stay fresh
 // without SSE (deferred for A5e).
 const UNREAD_COUNT_POLL_MS = 15_000;
 
-export function useUnreadCount() {
+export function useUserUnreadCount() {
   return useQuery({
-    queryKey: notificationKeys.unreadCount,
-    queryFn: getUnreadCount,
+    queryKey: messageKeys.unread(USER_BOX),
+    queryFn: () => getMessageUnreadCount(USER_BOX),
     refetchInterval: UNREAD_COUNT_POLL_MS,
   });
 }
 
-export function useNotifications(enabled = true) {
+export function useUserNotices(enabled = true) {
   return useQuery({
-    queryKey: notificationKeys.list,
-    queryFn: listNotifications,
+    queryKey: messageKeys.list(USER_BOX),
+    queryFn: () => listMessages(USER_BOX),
     enabled,
   });
 }
