@@ -42,6 +42,24 @@ def _load_activatable(uow: UnitOfWork, project_id: str, item_id: str) -> WorkIte
     return item
 
 
+def _set_active(uow: UnitOfWork, item: WorkItem, active: bool) -> WorkItem:
+    """Set active on an epic/feature; activating or deactivating an epic cascades to all of
+    its features so the board and backlog stay in sync."""
+    updated = uow.work_items.update(
+        item.id, item.model_copy(update={"active": active, "updated_at": utc_now()})
+    )
+    if item.kind == WorkItemKind.EPIC:
+        features = uow.work_items.list(
+            filters={"parent_id": item.id, "kind": WorkItemKind.FEATURE}, page_size=500
+        ).results
+        for f in features:
+            if f.active != active:
+                uow.work_items.update(
+                    f.id, f.model_copy(update={"active": active, "updated_at": utc_now()})
+                )
+    return updated
+
+
 @router.post("/projects/{project_id}/work-items/{item_id}/activate")
 def activate_item(
     project_id: str, item_id: str,
@@ -51,10 +69,7 @@ def activate_item(
 ) -> dict:
     """Activate an epic or feature (move it onto the board) and auto-start its ready tasks."""
     with uow.transaction():
-        item = _load_activatable(uow, project_id, item_id)
-        item = uow.work_items.update(
-            item_id, item.model_copy(update={"active": True, "updated_at": utc_now()})
-        )
+        item = _set_active(uow, _load_activatable(uow, project_id, item_id), True)
         run_inputs = reconcile_project(uow, settings, project_id)
     for ri in run_inputs:
         temporal.start_run_workflow(ri, "OrchestratorWorkflow")
@@ -67,10 +82,7 @@ def deactivate_item(
 ) -> dict:
     """Deactivate an epic or feature (move it back to the backlog). In-flight runs continue."""
     with uow.transaction():
-        item = _load_activatable(uow, project_id, item_id)
-        item = uow.work_items.update(
-            item_id, item.model_copy(update={"active": False, "updated_at": utc_now()})
-        )
+        item = _set_active(uow, _load_activatable(uow, project_id, item_id), False)
     return ok(item.model_dump(mode="json"))
 
 

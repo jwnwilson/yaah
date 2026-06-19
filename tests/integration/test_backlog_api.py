@@ -214,3 +214,27 @@ def test_position_orders_autostart_queue():
     c.post(f"/projects/{pid}/work-items/{epic['id']}/activate")
     assert len(fake.started) == 1
     assert fake.started[0][1]["task_id"] == b["id"]
+
+
+def test_activate_epic_cascades_active_to_features():
+    c, _fake = _client()
+    pid = _project_with_team(c)
+    epic = c.post(f"/projects/{pid}/work-items", json={"kind": "epic", "title": "E"}).json()["data"]
+    f1 = c.post(f"/projects/{pid}/work-items",
+                json={"kind": "feature", "title": "F1", "parent_id": epic["id"]}).json()["data"]
+    f2 = c.post(f"/projects/{pid}/work-items",
+                json={"kind": "feature", "title": "F2", "parent_id": epic["id"]}).json()["data"]
+
+    c.post(f"/projects/{pid}/work-items/{epic['id']}/activate")
+    data = c.get(f"/projects/{pid}/backlog").json()["data"]
+    be = next(e for e in data["epics"] if e["epic"]["id"] == epic["id"])
+    assert be["active"] is True
+    assert all(bf["feature"]["active"] is True for bf in be["features"])
+
+    # deactivating the epic cascades off
+    c.post(f"/projects/{pid}/work-items/{epic['id']}/deactivate")
+    data = c.get(f"/projects/{pid}/backlog").json()["data"]
+    be = next(e for e in data["epics"] if e["epic"]["id"] == epic["id"])
+    assert be["active"] is False
+    assert all(bf["feature"]["active"] is False for bf in be["features"])
+    assert {f1["id"], f2["id"]} == {bf["feature"]["id"] for bf in be["features"]}
