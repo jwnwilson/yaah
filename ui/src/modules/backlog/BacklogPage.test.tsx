@@ -122,3 +122,96 @@ describe("BacklogPage feature details", () => {
     expect(await screen.findByRole("button", { name: "close" })).toBeInTheDocument();
   });
 });
+
+function epicEntry(over: {
+  id: string;
+  title: string;
+  active?: boolean;
+  features?: backlog.BacklogFeature[];
+}): backlog.BacklogEpic {
+  return {
+    epic: wi({ id: over.id, kind: "epic", title: over.title, active: over.active ?? false }),
+    active: over.active ?? false,
+    ready_count: 0,
+    total_tasks: 0,
+    done: 0,
+    in_flight_count: 0,
+    features: over.features ?? [],
+    tasks: [],
+  };
+}
+
+function mockBacklog(epics: backlog.BacklogEpic[]) {
+  vi.mocked(backlog.getBacklog).mockResolvedValue({
+    max_concurrent_runs: 2,
+    in_flight: 0,
+    queued: 0,
+    epics,
+  });
+}
+
+describe("BacklogPage active-work divider", () => {
+  it("separates active-work epics from the rest, active ones first", async () => {
+    mockBacklog([
+      epicEntry({ id: "e1", title: "Backlog epic" }),
+      epicEntry({ id: "e2", title: "Active epic", active: true }),
+    ]);
+    renderPage();
+
+    await screen.findByText("Active epic");
+    expect(screen.getByRole("separator", { name: "backlog" })).toBeInTheDocument();
+    // active-work epics render above the divider, the rest below
+    const active = screen.getByText("Active epic");
+    const inactive = screen.getByText("Backlog epic");
+    expect(active.compareDocumentPosition(inactive)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("treats an epic with an active feature as active work", async () => {
+    mockBacklog([
+      epicEntry({ id: "e1", title: "Plain epic" }),
+      epicEntry({
+        id: "e2",
+        title: "Epic with active feature",
+        features: [
+          {
+            feature: wi({ id: "f1", kind: "feature", parent_id: "e2", title: "Live feature", active: true }),
+            tasks: [],
+          },
+        ],
+      }),
+    ]);
+    renderPage();
+
+    await screen.findByText("Epic with active feature");
+    expect(screen.getByRole("separator", { name: "backlog" })).toBeInTheDocument();
+    const activeWork = screen.getByText("Epic with active feature");
+    const plain = screen.getByText("Plain epic");
+    expect(activeWork.compareDocumentPosition(plain)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("omits the divider when no epic is active work", async () => {
+    mockBacklog([
+      epicEntry({ id: "e1", title: "One" }),
+      epicEntry({ id: "e2", title: "Two" }),
+    ]);
+    renderPage();
+
+    await screen.findByText("One");
+    expect(screen.queryByRole("separator", { name: "backlog" })).not.toBeInTheDocument();
+  });
+
+  it("omits the divider when every epic is active work", async () => {
+    mockBacklog([
+      epicEntry({ id: "e1", title: "One", active: true }),
+      epicEntry({ id: "e2", title: "Two", active: true }),
+    ]);
+    renderPage();
+
+    await screen.findByText("One");
+    expect(screen.queryByRole("separator", { name: "backlog" })).not.toBeInTheDocument();
+  });
+});

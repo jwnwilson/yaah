@@ -314,6 +314,65 @@ function EpicNode({
   );
 }
 
+/** An epic counts as active work when it is active itself or has any active feature. */
+function isActiveWork(be: BacklogEpic): boolean {
+  return be.active || be.features.some((bf) => bf.feature.active);
+}
+
+function GroupDivider() {
+  return (
+    <div
+      role="separator"
+      aria-label="backlog"
+      className="flex items-center gap-3 border-t border-line bg-surface-hover px-3 py-1.5"
+    >
+      <span className="text-xs font-medium uppercase tracking-wide text-subtle">Backlog</span>
+      <span className="h-px flex-1 bg-line" />
+    </div>
+  );
+}
+
+function EpicGroup({
+  epics,
+  actions,
+  onOpen,
+  onDelete,
+  otherIds,
+  otherFirst,
+}: {
+  epics: BacklogEpic[];
+  actions: BacklogActions;
+  onOpen: (id: string) => void;
+  onDelete: (t: DeleteTarget) => void;
+  /** Sibling ids in the other group, kept fixed so positions stay globally consistent. */
+  otherIds: string[];
+  /** Whether the other group's ids precede this group's in the persisted order. */
+  otherFirst: boolean;
+}) {
+  return (
+    <div className="divide-y divide-line">
+      <SortableList
+        items={epics.map((e) => ({ id: e.epic.id, be: e }))}
+        onReorder={(orderedIds) =>
+          actions.reorder.mutate({
+            parentId: null,
+            orderedIds: otherFirst ? [...otherIds, ...orderedIds] : [...orderedIds, ...otherIds],
+          })
+        }
+        renderItem={(row, handle) => (
+          <EpicNode
+            be={row.be}
+            handle={handle}
+            actions={actions}
+            onOpen={onOpen}
+            onDelete={onDelete}
+          />
+        )}
+      />
+    </div>
+  );
+}
+
 export function BacklogTree({
   view,
   actions,
@@ -325,21 +384,35 @@ export function BacklogTree({
   onOpen: (id: string) => void;
   onDelete: (t: DeleteTarget) => void;
 }) {
+  const active = view.epics.filter(isActiveWork);
+  const rest = view.epics.filter((be) => !isActiveWork(be));
+  const showDivider = active.length > 0 && rest.length > 0;
+  const activeIds = active.map((e) => e.epic.id);
+  const restIds = rest.map((e) => e.epic.id);
+
   return (
     <div className="divide-y divide-line rounded-md border border-line">
-      <SortableList
-        items={view.epics.map((e) => ({ id: e.epic.id, be: e }))}
-        onReorder={(orderedIds) => actions.reorder.mutate({ parentId: null, orderedIds })}
-        renderItem={(row, handle) => (
-          <EpicNode
-            be={row.be}
-            handle={handle}
-            actions={actions}
-            onOpen={onOpen}
-            onDelete={onDelete}
-          />
-        )}
-      />
+      {active.length > 0 && (
+        <EpicGroup
+          epics={active}
+          actions={actions}
+          onOpen={onOpen}
+          onDelete={onDelete}
+          otherIds={restIds}
+          otherFirst={false}
+        />
+      )}
+      {showDivider && <GroupDivider />}
+      {rest.length > 0 && (
+        <EpicGroup
+          epics={rest}
+          actions={actions}
+          onOpen={onOpen}
+          onDelete={onDelete}
+          otherIds={activeIds}
+          otherFirst
+        />
+      )}
     </div>
   );
 }
